@@ -1,0 +1,6 @@
+aiohttp
+hume
+resampy
+numpy
+hume[microphone]
+pipecat-ai[daily,google,openai,silero,websocket,deepgram,elevenlabs,cartesia,fish,deepseek]==0.0.69
