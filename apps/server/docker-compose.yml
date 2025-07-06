@@ -1,0 +1,11 @@
+services:
+  pipecat-app:
+    build: .
+    container_name: pipecat-app
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    ports:
+      - "7860:7860"
+    command: ["python", "src/sesame.py", "run", "--host", "0.0.0.0", "--port", "7860"] 

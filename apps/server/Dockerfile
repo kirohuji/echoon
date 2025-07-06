@@ -30,4 +30,9 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install --upgrade pip && pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ && pip install -r webapp/requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ && pip install -r bots/requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
+# 复制 ssl 证书目录
+COPY /ssl/ ./ssl/
+
 COPY . .
+
+EXPOSE 7860
