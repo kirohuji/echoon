@@ -1,6 +1,7 @@
 typer==0.12.5
 prisma
 gunicorn
+pika
 -r webapp/requirements.txt
 -r bots/requirements.txt
 pipecat-ai-small-webrtc-prebuilt

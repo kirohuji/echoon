@@ -3,6 +3,7 @@ import sys
 from contextlib import asynccontextmanager
 
 from common.database import DatabaseSessionFactory
+from common.publisher import PublisherFactory
 from common.models import Base
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -19,6 +20,7 @@ logger.add(sys.stderr, level=os.getenv("WEBAPP_LOG_LEVEL", "DEBUG"))
 
 
 default_session_factory = DatabaseSessionFactory()
+default_publisher_factory = PublisherFactory()
 
 # ========================
 # FastAPI App
@@ -28,7 +30,7 @@ default_session_factory = DatabaseSessionFactory()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.db_factory = default_session_factory
-
+    app.state.publisher_factory = default_publisher_factory
     try:
         # Initialize schema from model definitions
         await default_session_factory.initialize_schema()
@@ -41,6 +43,7 @@ async def lifespan(app: FastAPI):
         os._exit(1)
     yield
     await default_session_factory.engine.dispose()
+    default_publisher_factory.close()
 
 
 app = FastAPI(

@@ -1,17 +1,21 @@
 import asyncio
 from typing import Any, AsyncGenerator, List, Tuple
-
+import os
+import json
 from bots.http.frame_serializer import BotFrameSerializer
 from bots.persistent_context import PersistentContext
+from common.publisher import PublisherFactory
 from bots.rtvi import create_rtvi_processor
 from bots.types import BotConfig, BotParams
 from common.config import SERVICE_API_KEYS
 from common.models import Attachment, Message
+from common.publisher import default_publisher_factory
 from fastapi import HTTPException, status
 from loguru import logger
 from openai._types import NOT_GIVEN
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from pipecat.services.cartesia.tts import CartesiaTTSService
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineTask
@@ -73,12 +77,14 @@ async def http_bot_pipeline(
     # Processing
     #
 
+    tts = CartesiaTTSService(api_key=os.getenv("CARTESIA_API_KEY"), model="sonic-turbo-2025-03-07", voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02")
 
     processors = [
         rtvi,
         user_aggregator,
         storage.create_processor(),
         llm,
+        # tts,
         async_generator,
         assistant_aggregator,
         storage.create_processor(exit_on_endframe=True),
@@ -96,12 +102,20 @@ async def http_bot_pipeline(
     async def on_context_message(messages: list[Any]):
         logger.debug(f"{len(messages)} message(s) received for storage: {str(messages)[:120]}...")
         try:
-            await Message.create_messages(
-                db_session=db,
-                conversation_id=params.conversation_id,
-                messages=messages,
-                language_code=language_code,
-            )
+            default_publisher_factory = PublisherFactory()
+            payload = {
+                "language_code": language_code,
+                "conversation_id": params.conversation_id,
+                "messages": messages,
+            }
+            default_publisher_factory.publish(json.dumps(payload))
+            print("存储数据到rabbitmq")
+            # await Message.create_messages(
+            #     db_session=db,
+            #     conversation_id=params.conversation_id,
+            #     messages=messages,
+            #     language_code=language_code,
+            # )
         except Exception as e:
             logger.error(f"Error storing messages: {e}")
             raise e
