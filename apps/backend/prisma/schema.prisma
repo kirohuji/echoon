@@ -18,11 +18,13 @@ model User {
   lastOnline    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  roles         Role[]    @relation("UserToRole")
   verificationCodes VerificationCode[]
   conversations Conversation[]
   refreshTokens RefreshToken[]
   profile       Profile?
+  files         File[]
+  participants  Participant[]
+  roleAssignments RoleAssignment[]
 }
 
 model Profile {
@@ -53,9 +55,6 @@ model Scope {
   createdBy   String
   updatedBy   String?
 
-  // Relations
-  updatedByUser User?    @relation(fields: [updatedBy], references: [id])
-  createdByUser User?    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   roleAssignments RoleAssignment[]
   @@unique([parentId, value])
 }
@@ -65,16 +64,13 @@ model Role {
   label       String    @unique
   value       String    @unique
   description String?
-  parentRoles Role[]    @relation("RoleInheritance", references: [id])
+  parentRoles Role[]    @relation("RoleInheritance")
   childRoles  Role[]    @relation("RoleInheritance")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   createdBy   String
   updatedBy   String?
 
-  // Relations
-  updatedByUser User?    @relation(fields: [updatedBy], references: [id])
-  createdByUser User?    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   roleAssignments RoleAssignment[]
   permissions Permission[] @relation("PermissionToRole")
 }
@@ -93,24 +89,23 @@ model RoleAssignment {
   role   Role   @relation(fields: [roleId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
   scope  Scope? @relation(fields: [scopeId], references: [id])
-  updatedByUser User?    @relation(fields: [updatedBy], references: [id])
-  createdByUser User?    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   @@unique([userId, roleId, scopeId])
 }
 
 model Permission {
-  id        String   @id @default(cuid())
-  label       String    @unique
-  value       String    @unique
+  id          String      @id @default(cuid())
+  label       String      @unique
+  value       String      @unique
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  parentId    String?
+  parent      Permission? @relation("PermissionHierarchy", fields: [parentId], references: [id])
+  children    Permission[] @relation("PermissionHierarchy")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   createdBy   String
   updatedBy   String?
 
   // Relations
-  updatedByUser User?    @relation(fields: [updatedBy], references: [id])
-  createdByUser User?    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   roles Role[] @relation("PermissionToRole")
 }
 
@@ -155,6 +150,10 @@ model Conversation {
   messages          Message[]
   isRemoved         Boolean  @default(false)
   isArchived        Boolean  @default(false)
+  createdBy         String
+  updatedBy         String?
+  user              User     @relation(fields: [userId], references: [id])
+  userId            String
 }
 
 model Participant {
@@ -207,9 +206,6 @@ model File {
 
   // Relations
   user        User     @relation(fields: [createdBy], references: [id])
-  contract    Contract? @relation(fields: [contractId], references: [id])
-  contractId  String?
-
+  attachments Attachment[]
   @@index([createdBy])
-  @@index([contractId])
 }
