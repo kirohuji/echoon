@@ -1,0 +1,12 @@
+export const AUTH_ERROR_MESSAGES = {
+  INVALID_CREDENTIALS: '用户名或密码错误',
+  USER_NOT_FOUND: '用户不存在',
+  USER_ALREADY_EXISTS: '用户已存在',
+  INVALID_VERIFICATION_CODE: '验证码错误或已过期',
+  VERIFICATION_CODE_EXPIRED: '验证码已过期',
+  TOO_MANY_VERIFICATION_ATTEMPTS: '验证码尝试次数过多，请稍后再试',
+  INVALID_TOKEN: '无效的令牌',
+  TOKEN_EXPIRED: '令牌已过期',
+  INSUFFICIENT_PERMISSIONS: '权限不足',
+  VERIFICATION_CODE_SEND_FAILED: '验证码发送失败',
+} as const;
