@@ -1,12 +1,14 @@
 
 import { Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { CurrentUser } from '@/decorator/user.decorator';
+import { User } from '@prisma/client';
 
 export class CrudController<T> {
   constructor(protected readonly service: any) {}
 
   @Post()
-  create(@Body() data: T) {
-    return this.service.create(data);
+  create(@Body() data: T, @CurrentUser() user: User) {
+    return this.service.create(data, user);
   }
   @Get()
   findAll() {

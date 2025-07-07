@@ -53,13 +53,13 @@ async def stream_action(
     conversation = None
 
     # Early exit check that conversation exists before initiating a stream response
-    async with default_session_factory() as db:
-        conversation = await Conversation.get_conversation_by_id(params.conversation_id, db)
-        if conversation is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Conversation {params.conversation_id} not found",
-            )
+    # async with default_session_factory() as db:
+    #     conversation = await Conversation.get_conversation_by_id(params.conversation_id, db)
+    #     if conversation is None:
+    #         raise HTTPException(
+    #             status_code=status.HTTP_404_NOT_FOUND,
+    #             detail=f"Conversation {params.conversation_id} not found",
+    #         )
 
     config = DEFAULT_BOT_CONFIG
 
@@ -72,7 +72,8 @@ async def stream_action(
     async def generate():
         async with default_session_factory() as db:
             # Retrieve any existing messages for the conversation
-            messages = [msg.content for msg in conversation.messages]
+            # messages = [msg.content for msg in conversation.messages]
+            messages = []
             # Run the single turn pipeline and yield text frames
             gen, task = await http_bot_pipeline(params, config, messages, attachments, db)
             async for chunk in gen:

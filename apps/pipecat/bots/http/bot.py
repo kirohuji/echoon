@@ -104,9 +104,15 @@ async def http_bot_pipeline(
         try:
             default_publisher_factory = PublisherFactory()
             payload = {
-                "language_code": language_code,
-                "conversation_id": params.conversation_id,
-                "messages": messages,
+                "pattern": "message",
+                "data": {
+                    "language_code": language_code,
+                    "conversation_id": params.conversation_id,
+                    "messages": messages,
+                }
+                # "language_code": language_code,
+                # "conversation_id": params.conversation_id,
+                # "messages": messages,
             }
             default_publisher_factory.publish(json.dumps(payload))
             print("存储数据到rabbitmq")

@@ -1,4 +1,5 @@
 import { PrismaService } from '@/common/prisma/prisma.service';
+import { User } from '@prisma/client';
 
 export class CrudService<T> {
   constructor(
@@ -6,8 +7,12 @@ export class CrudService<T> {
     private readonly modelName: string, // 比如 'user'
   ) {}
 
-  async create(data: T) {
-    return this.prisma[this.modelName].create({ data });
+  async create(data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>, user?: User) {
+    if(user){
+      return this.prisma[this.modelName].create({ data: { ...data, createdBy: user.id, userId: user.id } });
+    } else {
+      return this.prisma[this.modelName].create({ data });
+    }
   }
 
   async findAll() {

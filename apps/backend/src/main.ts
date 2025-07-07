@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { SuccessResponseInterceptor } from '@/interceptor/success-response.interceptor';
 import { HttpExceptionFilter } from '@/exception-handler/http-exception.filter';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -12,6 +13,19 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   });
 
+  app.connectMicroservice<MicroserviceOptions>(
+    {
+      transport: Transport.RMQ,
+      options: {
+        urls: ['amqp://115.159.95.166:5672'],
+        queue: 'pipecat',
+        routingKey: 'pipecat',
+        queueOptions: {
+          durable: true,
+        },
+      },
+    },
+  );
   app.useBodyParser('json', { limit: '15mb' });
 
   app.useGlobalPipes(
@@ -37,6 +51,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new SuccessResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
 
+  await app.startAllMicroservices();
   await app.listen(process.env.PORT ?? 3000);
 }
 
