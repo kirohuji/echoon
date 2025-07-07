@@ -5,7 +5,7 @@ import { PrismaModule } from '@/common/prisma/prisma.module';
 
 @Module({
   imports: [
-    PrismaModule,
+    PrismaModule.forRoot({ isGlobal: true }),
   ],
   controllers: [UserController],
   providers: [

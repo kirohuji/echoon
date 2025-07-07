@@ -8,13 +8,13 @@ interface JwtPayload {
   id: string;
   sub: string;
   phone: string;
-  roles: string[];
+  roleAssignments: string[];
 }
 
 interface UserWithRoles {
   id: string;
   phone: string;
-  roles: Array<{ name: string }>;
+  roleAssignments: Array<{ role: { value: string } }>;
 }
 
 @Injectable()
@@ -30,7 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload) {
     const user = (await this.prisma.user.findUnique({
       where: { id: payload.id || payload.sub },
-      include: { roles: { select: { name: true } } },
+      include: { roleAssignments: { select: { role: { select: { value: true } } } } },
     })) as unknown as UserWithRoles | null;
 
     if (!user) {
@@ -40,7 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       id: user.id,
       phone: user.phone,
-      roles: user.roles.map((role) => role.name),
+      roleAssignments: user.roleAssignments.map((role) => role.role.value),
     };
   }
 }
