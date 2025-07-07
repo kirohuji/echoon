@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { SuccessResponseInterceptor } from '@/interceptor/success-response.interceptor';
+import { HttpExceptionFilter } from '@/exception-handler/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -32,6 +34,8 @@ async function bootstrap() {
       },
     }),
   );
+  app.useGlobalInterceptors(new SuccessResponseInterceptor());
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   await app.listen(process.env.PORT ?? 3000);
 }

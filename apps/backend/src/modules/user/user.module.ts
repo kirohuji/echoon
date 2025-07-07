@@ -13,4 +13,4 @@ import { PrismaModule } from '@/common/prisma/prisma.module';
   ],
   exports: [UserService],
 })
-export class AuthModule {}
+export class UserModule {}
