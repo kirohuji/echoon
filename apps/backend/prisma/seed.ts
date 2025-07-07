@@ -80,7 +80,7 @@ async function main() {
 
   const adminUser = await prisma.user.create({
     data: {
-      phone: '1305220624',
+      phone: '13052202624',
       password: `${salt}:${hashedPassword}`,
       username: 'admin',
       status: 1,
