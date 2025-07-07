@@ -25,25 +25,16 @@ export class ProfileResponseDto {
   phone: string;
 
   @ApiProperty({ description: '用户名', required: false })
-  name: string | null;
-
-  @ApiProperty({ description: '头像', required: false })
-  avatar: string | null;
+  username: string | null;
 
   @ApiProperty({ description: '状态' })
   status: number;
-
-  @ApiProperty({ description: '最后登录时间', required: false })
-  lastLoginAt: Date | null;
 
   @ApiProperty({ description: '创建时间' })
   createdAt: Date;
 
   @ApiProperty({ description: '更新时间' })
   updatedAt: Date;
-
-  @ApiProperty({ description: '用户角色', type: [RoleDto] })
-  roles: RoleDto[];
 }
 
 export class TokenResponseDto {

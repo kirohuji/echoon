@@ -17,13 +17,8 @@ export class RegisterDto {
   @IsNotEmpty({ message: '密码不能为空' })
   password: string;
 
-  @ApiProperty({ description: '短信验证码' })
-  @IsString({ message: '验证码必须是字符串' })
-  @IsNotEmpty({ message: '验证码不能为空' })
-  code: string;
-
   @ApiProperty({ description: '用户名', required: false })
   @IsString({ message: '用户名必须是字符串' })
   @IsOptional()
-  name?: string;
+  username?: string;
 }
