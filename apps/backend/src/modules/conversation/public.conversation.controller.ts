@@ -16,9 +16,9 @@ export class PublicConversationController {
     messages.forEach(async (message: any) => {
       this.messageService.create({
         conversationId: conversation_id,
-        content: message.content[0].text,
+        content: message.content,
         languageCode: language_code,
-        extraMetadata: message.content,
+        extraMetadata: {},
       });
     });
   }

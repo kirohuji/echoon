@@ -3,4 +3,4 @@ hume
 resampy
 numpy
 hume[microphone]
-pipecat-ai[daily,google,openai,silero,websocket,deepgram,elevenlabs,cartesia,fish,deepseek]==0.0.69
+pipecat-ai[daily,google,openai,silero,websocket,deepgram,elevenlabs,cartesia,fish,deepseek,mem0]==0.0.69

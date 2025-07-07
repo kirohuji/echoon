@@ -13,6 +13,7 @@ from common.publisher import default_publisher_factory
 from fastapi import HTTPException, status
 from loguru import logger
 from openai._types import NOT_GIVEN
+from pipecat.services.deepseek.llm import DeepSeekLLMService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pipecat.services.cartesia.tts import CartesiaTTSService
@@ -28,7 +29,7 @@ from pipecat.processors.frameworks.rtvi import (
 )
 from pipecat.services.ai_services import OpenAILLMContext
 from pipecat.services.google import GoogleLLMContext, GoogleLLMService
-
+from pipecat.services.mem0.memory import Mem0MemoryService
 
 async def http_bot_pipeline(
     params: BotParams,
@@ -45,11 +46,15 @@ async def http_bot_pipeline(
             detail="Service `llm` not available in SERVICE_API_KEYS. Please check your environment variables.",
         )
 
-    llm = GoogleLLMService(
-        api_key=str(SERVICE_API_KEYS["gemini"]),
-        model="gemini-2.0-flash-exp",
-    )
+    # llm = GoogleLLMService(
+    #     api_key=str(SERVICE_API_KEYS["gemini"]),
+    #     model="gemini-2.0-flash-exp",
+    # )
 
+    llm = DeepSeekLLMService(
+        api_key=os.getenv("DEEPSEEK_API_KEY"),
+        model="deepseek-chat",
+    )
     tools = NOT_GIVEN
     context = OpenAILLMContext(messages, tools)
     context_aggregator = llm.create_context_aggregator(
@@ -58,8 +63,8 @@ async def http_bot_pipeline(
     # Terrible hack. Fix this by making create_context_aggregator downcast the context
     # automatically. But think through that code first to make sure there won't be
     # any unintended consequences.
-    if isinstance(llm, GoogleLLMService):
-        GoogleLLMContext.upgrade_to_google(context)
+    # if isinstance(llm, GoogleLLMService):
+    #     GoogleLLMContext.upgrade_to_google(context)
     user_aggregator = context_aggregator.user()
     assistant_aggregator = context_aggregator.assistant()
 
@@ -78,12 +83,28 @@ async def http_bot_pipeline(
     #
 
     tts = CartesiaTTSService(api_key=os.getenv("CARTESIA_API_KEY"), model="sonic-turbo-2025-03-07", voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02")
+    print(params.user_id)
+    memory = Mem0MemoryService(
+        api_key=os.getenv("MEM0_API_KEY"),  # Your Mem0 API key
+        user_id=params.user_id,  # Unique identifier for the user
+        # agent_id="agent1",  # Optional identifier for the agent
+        # run_id="session1",  # Optional identifier for the run
+        params=Mem0MemoryService.InputParams(
+            search_limit=10,
+            search_threshold=0.3,
+            api_version="v2",
+            system_prompt="Based on previous conversations, I recall: \n\n",
+            add_as_system_message=True,
+            position=1,
+        ),
+    )
 
     processors = [
         rtvi,
         user_aggregator,
         storage.create_processor(),
         llm,
+        # memory,
         # tts,
         async_generator,
         assistant_aggregator,
@@ -110,18 +131,8 @@ async def http_bot_pipeline(
                     "conversation_id": params.conversation_id,
                     "messages": messages,
                 }
-                # "language_code": language_code,
-                # "conversation_id": params.conversation_id,
-                # "messages": messages,
             }
             default_publisher_factory.publish(json.dumps(payload))
-            print("存储数据到rabbitmq")
-            # await Message.create_messages(
-            #     db_session=db,
-            #     conversation_id=params.conversation_id,
-            #     messages=messages,
-            #     language_code=language_code,
-            # )
         except Exception as e:
             logger.error(f"Error storing messages: {e}")
             raise e
