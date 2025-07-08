@@ -6,20 +6,24 @@ import { LocalizationProvider } from 'src/locales';
 import { I18nProvider } from 'src/locales/i18n-provider';
 import { AuthProvider } from 'src/auth/context/jwt';
 import { MotionLazy } from 'src/components/animate/motion-lazy';
-
+// import { ThemeProvider } from 'src/theme/theme-provider';
 
 // ----------------------------------------------------------------------
 
 export default function App() {
   useScrollToTop();
 
-  return <I18nProvider>
-    <LocalizationProvider>
-      <AuthProvider>
-        <MotionLazy>
-          <Router />
-        </MotionLazy>
-      </AuthProvider>
-    </LocalizationProvider>
-  </I18nProvider>;
+  return (
+    <I18nProvider>
+      <LocalizationProvider>
+        <AuthProvider>
+          {/* <ThemeProvider> */}
+            <MotionLazy>
+              <Router />
+            </MotionLazy>
+          {/* </ThemeProvider> */}
+        </AuthProvider>
+      </LocalizationProvider>
+    </I18nProvider>
+  )
 }
