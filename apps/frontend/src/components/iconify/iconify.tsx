@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { Icon, disableCache } from '@iconify/react';
+import { Icon } from '@iconify/react';
 
 import Box from '@mui/material/Box';
 import NoSsr from '@mui/material/NoSsr';
@@ -42,4 +42,4 @@ export const Iconify = forwardRef<SVGElement, IconifyProps>(
 );
 
 // https://iconify.design/docs/iconify-icon/disable-cache.html
-disableCache('local');
+// disableCache('local');

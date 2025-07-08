@@ -1,4 +1,4 @@
-import { paramCase } from 'src/utils/change-case';
+// import { paramCase } from 'src/utils/change-case';
 
 // ----------------------------------------------------------------------
 
@@ -12,9 +12,9 @@ export const paths = {
   root: '/',
   auth: {
     root: ROOTS.AUTH,
-    login: `${ROOTS.AUTH}/login`,
-    register: `${ROOTS.AUTH}/register`,
-    forgotPassword: `${ROOTS.AUTH}/forgot-password`,
-    resetPassword: `${ROOTS.AUTH}/reset-password`,
+    jwt: {
+      signIn: `${ROOTS.AUTH}/jwt/sign-in`,
+      signUp: `${ROOTS.AUTH}/jwt/sign-up`,
+    },
   },
 };

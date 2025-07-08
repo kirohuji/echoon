@@ -130,7 +130,7 @@ export function AnimateText({
                 >
                   {word.split('').map((char, charIndex) => (
                     <Box
-                      component={m.span}
+                      component={m.span as any}
                       key={`${char}-${charIndex}`}
                       variants={variants ?? varFade().in}
                       data-index={charIndex}

@@ -1,4 +1,5 @@
 import type { MotionValue } from 'framer-motion';
+import type { Theme } from '@mui/material/styles';
 import type { BoxProps } from '@mui/material/Box';
 
 import { m, useSpring } from 'framer-motion';
@@ -39,9 +40,9 @@ export function ScrollProgress({
         width: progressSize,
         height: progressSize,
         transform: 'rotate(-90deg)',
-        color: (theme) => theme.vars.palette.text.primary,
+        color: (theme: Theme) => theme.vars?.palette.text.primary,
         ...(color !== 'inherit' && {
-          color: (theme) => theme.vars.palette[color].main,
+          color: (theme: Theme) => theme.vars?.palette[color].main,
         }),
         circle: {
           fill: 'none',
@@ -84,8 +85,8 @@ export function ScrollProgress({
         transformOrigin: '0%',
         bgcolor: 'text.primary',
         ...(color !== 'inherit' && {
-          background: (theme) =>
-            `linear-gradient(135deg, ${theme.vars.palette[color].light}, ${theme.vars.palette[color].main})`,
+          background: (theme: Theme) =>
+            `linear-gradient(135deg, ${theme.vars?.palette[color].light}, ${theme.vars?.palette[color].main})`,
         }),
         ...sx,
       }}

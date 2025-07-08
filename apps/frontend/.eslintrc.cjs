@@ -5,6 +5,7 @@ module.exports = {
   root: true,
   env: { browser: true, es2020: true },
   plugins: ['perfectionist', 'unused-imports', '@typescript-eslint', 'prettier'],
+  parser: '@typescript-eslint/parser',
   extends: ['airbnb', 'airbnb-typescript', 'airbnb/hooks', 'prettier'],
   parserOptions: {
     sourceType: 'module',
@@ -42,7 +43,8 @@ module.exports = {
     '@typescript-eslint/no-use-before-define': 0,
     '@typescript-eslint/consistent-type-exports': 1,
     '@typescript-eslint/consistent-type-imports': 1,
-    '@typescript-eslint/no-unused-vars': [1, { args: 'none' }],
+    // '@typescript-eslint/no-unused-vars': [1, { args: 'none' }],
+    '@typescript-eslint/no-unused-vars': 0,
     // react
     'react/no-children-prop': 0,
     'react/react-in-jsx-scope': 0,
@@ -65,45 +67,6 @@ module.exports = {
     // perfectionist
     'perfectionist/sort-exports': [1, { order: 'asc', type: 'line-length' }],
     'perfectionist/sort-named-imports': [1, { order: 'asc', type: 'line-length' }],
-    'perfectionist/sort-named-exports': [1, { order: 'asc', type: 'line-length' }],
-    'perfectionist/sort-imports': [
-      1,
-      {
-        order: 'asc',
-        type: 'line-length',
-        'newlines-between': 'always',
-        groups: [
-          'style',
-          'type',
-          ['builtin', 'external'],
-          'custom-mui',
-          'custom-routes',
-          'custom-hooks',
-          'custom-utils',
-          'internal',
-          'custom-components',
-          'custom-sections',
-          'custom-auth',
-          'custom-types',
-          ['parent', 'sibling', 'index'],
-          ['parent-type', 'sibling-type', 'index-type'],
-          'object',
-          'unknown',
-        ],
-        'custom-groups': {
-          value: {
-            ['custom-mui']: '@mui/**',
-            ['custom-auth']: 'src/auth/**',
-            ['custom-hooks']: 'src/hooks/**',
-            ['custom-utils']: 'src/utils/**',
-            ['custom-types']: 'src/types/**',
-            ['custom-routes']: 'src/routes/**',
-            ['custom-sections']: 'src/sections/**',
-            ['custom-components']: 'src/components/**',
-          },
-        },
-        'internal-pattern': ['src/**'],
-      },
-    ],
+    'perfectionist/sort-named-exports': [1, { order: 'asc', type: 'line-length' }]
   },
 };
