@@ -24,20 +24,17 @@ import { Form, Field } from 'src/components/hook-form';
 
 import { useAuthContext } from 'src/auth/hooks';
 import { signInWithPassword } from 'src/auth/context/jwt';
-
 // ----------------------------------------------------------------------
 
 export type SignInSchemaType = zod.infer<typeof SignInSchema>;
 
 export const SignInSchema = zod.object({
-  email: zod
-    .string()
-    .min(1, { message: 'Email is required!' })
-    .email({ message: 'Email must be a valid email address!' }),
+  phone: zod
+    .string(),
   password: zod
     .string()
     .min(1, { message: 'Password is required!' })
-    .min(6, { message: 'Password must be at least 6 characters!' }),
+    // .min(6, { message: 'Password must be at least 6 characters!' }),
 });
 
 // ----------------------------------------------------------------------
@@ -52,8 +49,8 @@ export function JwtSignInView() {
   const password = useBoolean();
 
   const defaultValues = {
-    email: 'demo@minimals.cc',
-    password: '@demo1',
+    phone: '13052202624',
+    password: '123456',
   };
 
   const methods = useForm<SignInSchemaType>({
@@ -68,7 +65,7 @@ export function JwtSignInView() {
 
   const onSubmit = handleSubmit(async (data) => {
     try {
-      await signInWithPassword({ email: data.email, password: data.password });
+      await signInWithPassword({ phone: data.phone, password: data.password });
       await checkUserSession?.();
 
       router.refresh();
@@ -96,7 +93,7 @@ export function JwtSignInView() {
 
   const renderForm = (
     <Stack spacing={3}>
-      <Field.Text name="email" label="Email address" InputLabelProps={{ shrink: true }} />
+      <Field.Text name="phone" label="Email address" InputLabelProps={{ shrink: true }} />
 
       <Stack spacing={1.5}>
         <Link
@@ -146,7 +143,7 @@ export function JwtSignInView() {
       {renderHead}
 
       <Alert severity="info" sx={{ mb: 3 }}>
-        Use <strong>{defaultValues.email}</strong>
+        Use <strong>{defaultValues.phone}</strong>
         {' with password '}
         <strong>{defaultValues.password}</strong>
       </Alert>

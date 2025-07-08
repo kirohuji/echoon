@@ -4,6 +4,31 @@ import axios from 'axios';
 
 import { CONFIG } from 'src/config-global';
 
+const baseURL = CONFIG.site.serverUrl
+  // process.env.NODE_ENV === 'development'
+  //   ? 'http://localhost:3030/api/v1'
+  //   : 'https://hope.lourd.top/api/v1/';
+export const service = axios.create({
+  baseURL,
+  timeout: 180000,
+});
+// service.interceptors.request.use(
+//   (config) => {
+//     const token = localStorage.getItem('accessToken');
+//     if (token) {
+//       config.headers['Authorization'] = token;
+//     }
+//     return config;
+//   },
+//   (error) => Promise.reject(error)
+// );
+
+service.interceptors.response.use(
+  (response) => response.data,
+  (error) => Promise.reject(error)
+);
+
+
 // ----------------------------------------------------------------------
 
 const axiosInstance = axios.create({ baseURL: CONFIG.site.serverUrl });

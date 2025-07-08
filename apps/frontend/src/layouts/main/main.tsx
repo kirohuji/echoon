@@ -32,17 +32,17 @@ export function Main({ children, isNavHorizontal, sx, ...other }: MainProps) {
   );
 }
 
-type DashboardContentProps = ContainerProps & {
+type MainContentProps = ContainerProps & {
   disablePadding?: boolean;
 };
 
-export function DashboardContent({
+export function MainContent({
   sx,
   children,
   disablePadding,
   maxWidth = 'lg',
   ...other
-}: DashboardContentProps) {
+}: MainContentProps) {
   const theme = useTheme();
 
   const layoutQuery: Breakpoint = 'lg';

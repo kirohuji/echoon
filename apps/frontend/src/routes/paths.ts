@@ -17,4 +17,9 @@ export const paths = {
       signUp: `${ROOTS.AUTH}/jwt/sign-up`,
     },
   },
+  main: {
+    chat: {
+      root: '/chat'
+    }
+  }
 };

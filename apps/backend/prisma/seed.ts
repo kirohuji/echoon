@@ -75,7 +75,7 @@ async function main() {
   // 5. 创建管理员用户
   const salt = crypto.randomBytes(16).toString('hex');
   const hashedPassword = crypto
-    .pbkdf2Sync('admin', salt, 1000, 64, 'sha512')
+    .pbkdf2Sync('123456', salt, 1000, 64, 'sha512')
     .toString('hex');
 
   const adminUser = await prisma.user.create({
