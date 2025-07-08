@@ -2,7 +2,7 @@ import { Helmet } from 'react-helmet-async';
 
 import { CONFIG } from 'src/config-global';
 
-// import { JwtSignInView } from 'src/sections/auth/jwt';
+import { JwtSignInView } from './views';
 
 // ----------------------------------------------------------------------
 
@@ -15,8 +15,7 @@ export default function Page() {
         <title> {metadata.title}</title>
       </Helmet>
 
-      {/* <JwtSignInView /> */}
-      <div>Sign in</div>
+      <JwtSignInView />
     </>
   );
 }

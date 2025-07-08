@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 
-// import { AuthSplitLayout } from 'src/layouts/auth-split';
+import { AuthCenteredLayout } from 'src/layouts/auth';
 
 import { SplashScreen } from 'src/components/loading-screen';
 
@@ -24,9 +24,9 @@ const authJwt = {
       path: 'sign-in',
       element: (
         <GuestGuard>
-          {/* <AuthSplitLayout section={{ title: 'Hi, Welcome back' }}> */}
+          <AuthCenteredLayout>
             <Jwt.SignInPage />
-          {/* </AuthSplitLayout> */}
+          </AuthCenteredLayout>
         </GuestGuard>
       ),
     },
@@ -34,9 +34,9 @@ const authJwt = {
       path: 'sign-up',
       element: (
         <GuestGuard>
-          {/* <AuthSplitLayout> */}
+          <AuthCenteredLayout>
             <Jwt.SignUpPage />
-          {/* </AuthSplitLayout> */}
+          </AuthCenteredLayout>
         </GuestGuard>
       ),
     },
