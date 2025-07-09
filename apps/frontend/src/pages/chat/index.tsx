@@ -1,18 +1,21 @@
-// import { Helmet } from 'react-helmet-async';
+import { Helmet } from 'react-helmet-async';
 
-// import { CONFIG } from 'src/config-global';
+import { CONFIG } from 'src/config-global';
 
-import { MainContent } from 'src/layouts/main';
-
+import { ChatView } from './views/chat-view';
 
 // ----------------------------------------------------------------------
 
-// const metadata = { title: `聊天 ${CONFIG.site.name}` };
+const metadata = { title: `聊天 ${CONFIG.site.name}` };
 
 export default function Chat() {
   return (
-    <MainContent>
-      你好
-    </MainContent>
+    <>
+      <Helmet>
+        <title>{metadata.title}</title>
+      </Helmet>
+      
+      <ChatView />
+    </>
   )
 }

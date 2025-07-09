@@ -66,7 +66,7 @@ module.exports = {
     ],
     // perfectionist
     'perfectionist/sort-exports': [1, { order: 'asc', type: 'line-length' }],
-    'perfectionist/sort-named-imports': [1, { order: 'asc', type: 'line-length' }],
-    'perfectionist/sort-named-exports': [1, { order: 'asc', type: 'line-length' }]
+    // 'perfectionist/sort-named-imports': [1, { order: 'asc', type: 'line-length' }],
+    // 'perfectionist/sort-named-exports': [1, { order: 'asc', type: 'line-length' }]
   },
 };
