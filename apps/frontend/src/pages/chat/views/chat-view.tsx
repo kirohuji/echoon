@@ -1,4 +1,3 @@
-import { useAuthContext } from 'src/auth/hooks';
 import { useRouter, useSearchParams } from 'src/routes/hooks';
 import { MainContent } from 'src/layouts/main';
 import { Card, Stack, Typography } from '@mui/material';
@@ -10,6 +9,18 @@ import ChatNavItem from '../chat-nav-item';
 import ChatNav from '../chat-nav';
 import ChatHeaderDetail from '../chat-header-detail';
 import ChatMessageList from '../chat-message-list';
+import ChatMessageInput from '../chat-message-input';
+import ChatRoom from '../chat-room';
+import { mockConversations } from './mockConversations';
+
+import { DailyTransport } from "@pipecat-ai/daily-transport";
+import { PipecatClient } from "@pipecat-ai/client-js";
+import {
+  PipecatClientProvider,
+  PipecatClientAudio,
+  usePipecatClient,
+} from "@pipecat-ai/client-react";
+
 
 function calcHeight(isDesktop: boolean, selectedConversationId: string) {
   if (isDesktop) {
@@ -18,40 +29,60 @@ function calcHeight(isDesktop: boolean, selectedConversationId: string) {
   return selectedConversationId ? 'calc(100vh - 70px)' : 'calc(100vh - 140px)';
 }
 
+const transport = new DailyTransport()
+const pipecatClient = new PipecatClient({
+  transport,
+  enableCam: false,  // Default camera off
+  enableMic: true,   // Default microphone on
+  callbacks: {
+    onTransportStateChanged: (state) => {
+      console.log(`Transport state: ${state}`)
+    },
+    onConnected: () => {
+      console.log("onConnected")
+    },
+    onBotReady: () => {
+      console.log("onBotReady")
+      transport.state = 'ready'
+    },
+    onDisconnected: () => {
+      console.log("onDisconnected")
+    },
+    onUserStartedSpeaking: () => {
+      console.log("User started speaking.")
+    },
+    onUserStoppedSpeaking: () => {
+      console.log("User stopped speaking.")
+    },
+    onBotStartedSpeaking: () => {
+      console.log("Bot started speaking.")
+    },
+    onBotStoppedSpeaking: () => {
+      console.log("Bot stopped speaking.")
+    },
+    onUserTranscript: async (transcript) => {
+      if (transcript.final) {
+        console.log(`User transcript: ${transcript.text}`)
+      }
+    },
+    onBotTranscript: (transcript) => {
+      console.log(`Bot transcript: ${transcript.text}`)
+    },
+    onServerMessage: (msg) => {
+      console.log(`Server message: ${msg}`)
+    }
+  },
+});
+
 export function ChatView() {
 
   const router = useRouter();
-
-  const { user } = useAuthContext();
 
   const searchParams = useSearchParams();
 
   const [participants, setParticipants] = useState<any[]>([]);
 
-  const [conversations, setConversations] = useState<any[]>([
-    {
-      id: '1',
-      username: 'John Doe',
-      photoURL: 'https://via.placeholder.com/150',
-      lastActivity: new Date(),
-      status: 'online',
-      displayName: 'John Doe',
-      realName: 'John Doe',
-      displayText: 'Hello, how are you?',
-      unreadCount: 0,
-    },
-    {
-      id: '2',
-      username: 'John Doe',
-      photoURL: 'https://via.placeholder.com/150',
-      lastActivity: new Date(),
-      status: 'online',
-      displayName: 'John Doe',
-      realName: 'John Doe',
-      displayText: 'Hello, how are you?',
-      unreadCount: 0,
-    },
-  ]);
+  const [conversations, setConversations] = useState<any[]>(mockConversations);
 
   const isDesktop = useResponsive('up', 'md');
 
@@ -63,11 +94,11 @@ export function ChatView() {
     router.push(`/main/chat?id=${conversation.id}`);
   }, [router]);
 
-
   const renderNav = (
     <ChatNav
       conversations={conversations}
       selectedConversationId={selectedConversationId}
+      onClick={(conversation) => handleClickConversation(conversation)}
     />
   );
 
@@ -91,20 +122,19 @@ export function ChatView() {
       }}
       className="chat-message-list"
     >
-      {/* <ChatMessageList
+      <ChatMessageList
         conversationId={selectedConversationId}
-        messages={messages.byId[selectedConversationId]}
-        sendingMessages={(sendingMessage.byId && sendingMessage.byId[selectedConversationId]) || []}
+        messages={[]}
         participants={participants}
-        onRefresh={onRefresh}
-      /> */}
-{/* 
+        onRefresh={() => { }}
+      />
+
       <ChatMessageInput
-        recipients={recipients}
-        onAddRecipients={handleAddRecipients}
+        recipients={[]}
+        onAddRecipients={() => { }}
         selectedConversationId={selectedConversationId}
-        disabled={!recipients.length && !selectedConversationId}
-      /> */}
+        disabled={!selectedConversationId}
+      />
     </Stack>
   );
 
@@ -118,34 +148,43 @@ export function ChatView() {
       </Typography>
       {
         (isDesktop || selectedConversationId) && (
-          <Stack
-            component={!isDesktop && selectedConversationId ? 'div' : Card}
-            direction="row"
-            className="bottom-chat"
-            sx={{ height: calcHeight(isDesktop, selectedConversationId) }}>
-            {isDesktop && renderNav}
+          <PipecatClientProvider client={pipecatClient}>
             <Stack
-              sx={{
-                width: 1,
-                height: 1,
-                overflow: 'hidden',
-              }}
-            >
-              {renderHead}
+              component={!isDesktop && selectedConversationId ? 'div' : Card}
+              direction="row"
+              className="bottom-chat"
+              sx={{ height: calcHeight(isDesktop, selectedConversationId) }}>
+              {isDesktop && renderNav}
               <Stack
-                direction="row"
                 sx={{
                   width: 1,
                   height: 1,
                   overflow: 'hidden',
-                  borderTop: (theme) => `solid 1px ${theme.palette.divider}`,
                 }}
               >
-                <span>renderMessages</span>
-                <span>ChatRoom</span>
+                {renderHead}
+                <Stack
+                  direction="row"
+                  sx={{
+                    width: 1,
+                    height: 1,
+                    overflow: 'hidden',
+                    borderTop: (theme) => `solid 1px ${theme.palette.divider}`,
+                  }}
+                >
+                  {renderMessages}
+                  {details && (
+                    <ChatRoom
+                      conversation={conversations[0]}
+                      messages={[]}
+                      participants={[]}
+                    />
+                  )}
+                </Stack>
               </Stack>
             </Stack>
-          </Stack>
+            <PipecatClientAudio />
+          </PipecatClientProvider>
         )
       }
       {
@@ -153,7 +192,7 @@ export function ChatView() {
           <Stack>
             {!isDesktop && (
               conversations.map((conversation, index) => (
-                <ChatNavItem key={index} conversation={conversation} selected={conversation.id === selectedConversationId} collapse={false} onClick={() => {}} />
+                <ChatNavItem key={index} conversation={conversation} selected={conversation.id === selectedConversationId} collapse={false} onClick={() => handleClickConversation(conversation)} />
               ))
             )}
           </Stack>

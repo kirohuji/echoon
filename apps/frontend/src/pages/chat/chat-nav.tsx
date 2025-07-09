@@ -13,7 +13,7 @@ const NAV_WIDTH = 320;
 
 const NAV_COLLAPSE_WIDTH = 96;
 
-export default function ChatNav({ conversations, selectedConversationId }: { conversations: any[], selectedConversationId: string }) {
+export default function ChatNav({ conversations, selectedConversationId, onClick }: { conversations: any[], selectedConversationId: string, onClick: (conversation: any) => void }) {
   const theme = useTheme();
 
   const mdUp = useResponsive('up', 'md');
@@ -44,7 +44,7 @@ export default function ChatNav({ conversations, selectedConversationId }: { con
   }, [mdUp, onCloseMobile, onCollapseDesktop]);
 
   const renderList = (conversations.map((conversation: any, index: number) => (
-    <ChatNavItem key={index} conversation={conversation} selected={conversation.id === selectedConversationId} collapse={false} onClick={() => {}} />
+    <ChatNavItem key={index} conversation={conversation} selected={conversation.id === selectedConversationId} collapse={false} onClick={() => onClick(conversation)} />
   )));
 
   const renderContent = (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 // @mui
 import Box from '@mui/material/Box';
 // components
@@ -7,6 +7,8 @@ import Lightbox, { useLightBox } from 'src/components/lightbox';
 //
 import { useMessagesScroll } from './hooks';
 import ChatMessageItem from './chat-message-item';
+import ChatLiveMessageList from './chat-live-message-list'
+
 // ----------------------------------------------------------------------
 const secretKey = 'future';
 export default function ChatMessageList({
@@ -30,7 +32,7 @@ export default function ChatMessageList({
   const lightbox = useLightBox(slides);
 
   const handleScroll = useCallback(async () => {
-    if (messagesEndRef.current.scrollTop === 0 && !isFetching) {
+    if (messagesEndRef.current && messagesEndRef.current.scrollTop === 0 && !isFetching) {
       const scrollPosition = messagesEndRef.current.scrollHeight - messagesEndRef.current.scrollTop;
       if (!isFetching) {
         setIsFetching(true);
@@ -42,10 +44,14 @@ export default function ChatMessageList({
   }, [messagesEndRef, isFetching, onRefresh, messages.length]);
 
   useEffect(() => {
-    const scrollNode = messagesEndRef.current;
-    scrollNode.addEventListener('scroll', handleScroll);
+    const ref = messagesEndRef.current;
+    if (ref) {
+      ref.addEventListener('scroll', handleScroll);
+    }
     return () => {
-      scrollNode.removeEventListener('scroll', handleScroll);
+      if (ref) {
+        ref.removeEventListener('scroll', handleScroll);
+      }
     };
   }, [handleScroll, messagesEndRef]);
 
@@ -55,13 +61,13 @@ export default function ChatMessageList({
         <Box sx={{ height: 1 }}>
           {messages.map((message, index) => (
             <ChatMessageItem
-              conversationId={conversationId}
               key={index}
               message={message}
               participants={participants}
               onOpenLightbox={() => lightbox.onOpen(message.body)}
             />
           ))}
+           <ChatLiveMessageList conversationId={conversationId} messages={messages} autoscroll/>
         </Box>
       </Scrollbar>
 

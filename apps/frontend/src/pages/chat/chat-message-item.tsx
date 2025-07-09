@@ -19,18 +19,12 @@ import FileThumbnail from 'src/components/file-thumbnail';
 //
 import { zhCN } from 'date-fns/locale';
 
-// hooks
-import {
-  useRTVIClient,
-} from "@pipecat-ai/client-react";
 import { useGetMessage } from './hooks';
 
 
-const secretKey = 'future';
-
 // ----------------------------------------------------------------------
 
-export default function ChatMessageItem({ message, participants, onOpenLightbox, conversationId }: { message: any, participants: any[], onOpenLightbox: (body: string) => void, conversationId: string }) {
+export default function ChatMessageItem({ message, participants, onOpenLightbox }: { message: any, participants: any[], onOpenLightbox: (body: string) => void}) {
   const { user } = useAuthContext();
 
   const { me, senderDetails, hasImage } = useGetMessage({
@@ -38,8 +32,6 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox,
     participants,
     currentUserId: user?.id,
   });
-
-  const rtviClient = useRTVIClient();
 
   const { username, photoURL, displayName, realName } = senderDetails;
 
@@ -66,24 +58,24 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox,
   );
 
   const handleSendAudio = useCallback(async () => {
-    rtviClient.params.requestData = {
-      ...(rtviClient.params.requestData ?? {}),
-      conversation_id: conversationId,
-      user_id: user?.id,
-      participant_id: participants[0]._id,
-    };
-    console.log('send audio');
-    await rtviClient.action({
-      service: "tts",
-      action: "say",
-      arguments: [
-        {
-          name: "text",
-          value: message.body,
-        },
-      ],
-    });
-  }, [conversationId, message, participants, rtviClient, user?.id]);
+    // rtviClient.params.requestData = {
+    //   ...(rtviClient.params.requestData ?? {}),
+    //   conversation_id: conversationId,
+    //   user_id: user?.id,
+    //   participant_id: participants[0]._id,
+    // };
+    // console.log('send audio');
+    // await rtviClient.action({
+    //   service: "tts",
+    //   action: "say",
+    //   arguments: [
+    //     {
+    //       name: "text",
+    //       value: message.body,
+    //     },
+    //   ],
+    // });
+  }, []);
 
 
   const renderBodyContent = ({ bodyContent, type }: { bodyContent: string, type: string }) => {
@@ -104,18 +96,14 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox,
       case 'mp3':
         return (
           <Stack spacing={1} direction="row" alignItems="center">
-            <FileThumbnail file="audio" tooltip={false} imageView={false} onDownload={function (): void {
-              throw new Error('Function not implemented.');
-            } } sx={undefined} imgSx={undefined} />
+            <FileThumbnail file="audio" tooltip={false} imageView={false} onDownload={() => {}} sx={undefined} imgSx={undefined} />
             <Typography variant="body2">{attachments[0]?.name}</Typography>
           </Stack>
         );
       default:
         return (
           <Stack spacing={1} direction="row" alignItems="center">
-            <FileThumbnail file={type} tooltip={false} imageView={false} onDownload={function (): void {
-              throw new Error('Function not implemented.');
-            } } sx={undefined} imgSx={undefined} />
+            <FileThumbnail file={type} tooltip={false} imageView={false} onDownload={() => {}} sx={undefined} imgSx={undefined} />
             <Typography
               sx={{
                 whiteSpace: 'nowrap' /* 防止文本换行 */,

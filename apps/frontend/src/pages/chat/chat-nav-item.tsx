@@ -11,12 +11,12 @@ export default function ChatNavItem({
   conversation: any;
   selected: boolean;
   collapse: boolean;
-  onClick: () => void;
+  onClick: (conversation: any) => void;
 }) {
   const { username, photoURL, lastActivity, status, displayName, realName, displayText } = conversation;
   return (
     <ListItemButton
-      onClick={() => onClick()}
+      onClick={() => onClick(conversation)}
       disableGutters
       sx={{
         width: '100%',
