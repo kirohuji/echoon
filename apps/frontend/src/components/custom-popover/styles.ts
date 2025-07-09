@@ -1,11 +1,11 @@
 // @mui
 import { styled, alpha } from '@mui/material/styles';
 // theme
-import { bgBlur } from 'src/theme/css';
+// import { bgBlur } from 'src/theme/css';
 
 // ----------------------------------------------------------------------
 
-export const StyledArrow = styled('span')(({ arrow, theme }) => {
+export const StyledArrow = styled('span')(({ arrow, theme }: { arrow: any, theme: any }) => {
   const SIZE = 14;
 
   const POSITION = -(SIZE / 2) + 0.5;
@@ -40,9 +40,9 @@ export const StyledArrow = styled('span')(({ arrow, theme }) => {
       theme.palette.mode === 'light' ? theme.palette.grey[500] : theme.palette.common.black,
       0.12
     )}`,
-    ...bgBlur({
-      color: theme.palette.background.paper,
-    }),
+    // ...bgBlur({
+    //   color: theme.palette.background.paper,
+    // }),
     // Top
     ...(arrow === 'top-left' && { ...topStyle, left: 20 }),
     ...(arrow === 'top-center' && { ...topStyle, left: 0, right: 0, margin: 'auto' }),

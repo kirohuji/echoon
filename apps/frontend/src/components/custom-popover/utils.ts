@@ -1,6 +1,6 @@
 // ----------------------------------------------------------------------
 
-export function getPosition(arrow) {
+export function getPosition(arrow: any) {
   let props;
 
   switch (arrow) {

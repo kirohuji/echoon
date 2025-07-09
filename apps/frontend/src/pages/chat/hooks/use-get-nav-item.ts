@@ -1,8 +1,8 @@
 // ----------------------------------------------------------------------
-import CryptoJS from 'crypto-js';
+// import CryptoJS from 'crypto-js';
 
 const secretKey = 'future';
-export default function useGetNavItem({ currentUserId, conversation, user }) {
+export default function useGetNavItem({ currentUserId, conversation, user }: { currentUserId: string, conversation: any, user: any }) {
   const { messages, participants } = conversation;
 
   let participantsInConversation = [];
@@ -16,7 +16,7 @@ export default function useGetNavItem({ currentUserId, conversation, user }) {
     ];
   } else {
     participantsInConversation = participants?.filter(
-      (participant) => participant._id !== currentUserId
+      (participant: any) => participant._id !== currentUserId
     ) || [
       {
         ...conversation,
@@ -31,7 +31,7 @@ export default function useGetNavItem({ currentUserId, conversation, user }) {
 
   const displayName = group
     ? conversation.label ||
-      participantsInConversation.map((participant) => participant.realName).join(', ')
+      participantsInConversation.map((participant: any) => participant.realName).join(', ')
     : participantsInConversation[0]?.displayName ||
       participantsInConversation[0]?.username ||
       conversation.label;
@@ -41,7 +41,7 @@ export default function useGetNavItem({ currentUserId, conversation, user }) {
     : participantsInConversation[0]?.realName;
 
   const hasOnlineInGroup = group
-    ? participantsInConversation.map((item) => item.status).includes('online')
+    ? participantsInConversation.map((item: any) => item.status).includes('online')
     : false;
 
   let displayText = '';
@@ -52,7 +52,7 @@ export default function useGetNavItem({ currentUserId, conversation, user }) {
     const message =
       lastMessage.contentType === 'image'
         ? '发送了一张照片'
-        : CryptoJS.AES.decrypt(lastMessage.body, secretKey).toString(CryptoJS.enc.Utf8);
+        : lastMessage.body;
 
     displayText = `${sender}${message}`;
   }

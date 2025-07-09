@@ -2,12 +2,12 @@ import { forwardRef, memo } from 'react';
 // @mui
 import { Box } from '@mui/material';
 //
+// import { SxProps, Theme } from '@mui/material/styles';
 import { StyledRootScrollbar, StyledScrollbar } from './styles';
-import { SxProps, Theme } from '@mui/material/styles';
 
 // ----------------------------------------------------------------------
 
-const Scrollbar = forwardRef<HTMLDivElement, { children: React.ReactNode; sx?: SxProps<Theme>; }>(({ children, sx, ...other }, ref) => {
+const Scrollbar = forwardRef<HTMLDivElement, { children: React.ReactNode; sx?: any; }>(({ children, sx, ...other }, ref) => {
   const userAgent = typeof navigator === 'undefined' ? 'SSR' : navigator.userAgent;
 
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);

@@ -1,11 +1,11 @@
-import { useRouter } from 'src/routes/hooks';
+
 import { useResponsive } from 'src/hooks/use-responsive';
-import { useCollapseNav } from './hooks';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Box, IconButton, Stack, Drawer } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Iconify } from 'src/components/iconify';
 import Scrollbar from 'src/components/scrollbar';
+import { useCollapseNav } from './hooks';
 import ChatNavItem from './chat-nav-item';
 import ChatNavAccount from './chat-nav-account';
 

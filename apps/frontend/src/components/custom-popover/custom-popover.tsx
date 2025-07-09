@@ -1,8 +1,8 @@
-import PropTypes from 'prop-types';
 // @mui
 import { menuItemClasses } from '@mui/material/MenuItem';
 import Popover from '@mui/material/Popover';
 //
+import { useTheme } from '@mui/material/styles';
 import { getPosition } from './utils';
 import { StyledArrow } from './styles';
 
@@ -14,16 +14,26 @@ export default function CustomPopover({
   arrow = 'top-right',
   hiddenArrow,
   sx,
+  onClose,
   ...other
+}: {
+  open: any;
+  children: any;
+  arrow?: any;
+  hiddenArrow?: boolean;
+  onClose?: any;
+  sx?: any;
 }) {
+  const theme = useTheme();
   const { style, anchorOrigin, transformOrigin } = getPosition(arrow);
 
   return (
     <Popover
       open={Boolean(open)}
       anchorEl={open}
-      anchorOrigin={anchorOrigin}
-      transformOrigin={transformOrigin}
+      onClose={onClose}
+      // anchorOrigin={anchorOrigin}
+      // transformOrigin={transformOrigin}
       slotProps={{
         paper: {
           sx: {
@@ -42,31 +52,9 @@ export default function CustomPopover({
       }}
       {...other}
     >
-      {!hiddenArrow && <StyledArrow arrow={arrow} />}
+      {!hiddenArrow && <StyledArrow arrow={arrow} theme={theme} />}
 
       {children}
     </Popover>
   );
 }
-
-CustomPopover.propTypes = {
-  sx: PropTypes.object,
-  open: PropTypes.object,
-  children: PropTypes.node,
-  hiddenArrow: PropTypes.bool,
-  disabledArrow: PropTypes.bool,
-  arrow: PropTypes.oneOf([
-    'top-left',
-    'top-center',
-    'top-right',
-    'bottom-left',
-    'bottom-center',
-    'bottom-right',
-    'left-top',
-    'left-center',
-    'left-bottom',
-    'right-top',
-    'right-center',
-    'right-bottom',
-  ]),
-};
