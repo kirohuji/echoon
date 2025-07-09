@@ -1,16 +1,45 @@
+import { useState, useEffect } from 'react';
 import type { Breakpoint } from '@mui/material/styles';
 import Paper from '@mui/material/Paper';
 import BottomNavigation from '@mui/material/BottomNavigation';
 import { Link } from 'react-router-dom';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
-import { useState } from 'react';
+import { usePathname } from 'src/routes/hooks';
+import { Iconify } from 'src/components/iconify';
 
 export type FooterProps = {
   layoutQuery: Breakpoint;
 };
 
+const bottomNavigationAction = [
+  {
+    label: 'Chat',
+    to: '/main/chat',
+    icon: <Iconify width={32} icon="solar:hashtag-chat-outline" />
+  },
+  {
+    label: 'Library',
+    to: '/main/library',
+    icon: <Iconify width={32} icon="solar:music-library-line-duotone" />
+  },
+  {
+    label: 'Settings',
+    to: '/main/settings',
+    icon: <Iconify width={32} icon="solar:settings-broken" />
+  }
+]
+
 export function MainFooter({ layoutQuery }: FooterProps) {
-  const [bottomNavigationActionValue, setBottomNavigationActionValue] = useState('chat')
+
+  const [bottomNavigationActionValue, setBottomNavigationActionValue] = useState(0)
+
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const index = bottomNavigationAction.findIndex((item) => item.to === pathname);
+    setBottomNavigationActionValue(index);
+  }, [pathname]);
+
   return (
     <Paper
       sx={{
@@ -31,7 +60,9 @@ export function MainFooter({ layoutQuery }: FooterProps) {
           setBottomNavigationActionValue(newValue)
         }}
       >
-        <BottomNavigationAction component={Link} sx={{ pt: 0, opacity: 1 }} label="聊天" to="/main/chat" />
+        {bottomNavigationAction.map((item) => (
+          <BottomNavigationAction key={item.label} component={Link} sx={{ pt: 0, opacity: 1 }} {...item} />
+        ))}
       </BottomNavigation>
     </Paper>
   )
