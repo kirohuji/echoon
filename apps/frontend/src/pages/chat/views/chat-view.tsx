@@ -8,6 +8,8 @@ import { useCallback, useState } from 'react';
 
 import ChatNavItem from '../chat-nav-item';
 import ChatNav from '../chat-nav';
+import ChatHeaderDetail from '../chat-header-detail';
+import ChatMessageList from '../chat-message-list';
 
 function calcHeight(isDesktop: boolean, selectedConversationId: string) {
   if (isDesktop) {
@@ -24,7 +26,7 @@ export function ChatView() {
 
   const searchParams = useSearchParams();
 
-  const [conversationsLoading, setConversationsLoading] = useState(false);
+  const [participants, setParticipants] = useState<any[]>([]);
 
   const [conversations, setConversations] = useState<any[]>([
     {
@@ -55,6 +57,8 @@ export function ChatView() {
 
   const selectedConversationId = searchParams.get('id') || '';
 
+  const details = !!selectedConversationId;
+
   const handleClickConversation = useCallback((conversation: any) => {
     router.push(`/main/chat?id=${conversation.id}`);
   }, [router]);
@@ -65,6 +69,43 @@ export function ChatView() {
       conversations={conversations}
       selectedConversationId={selectedConversationId}
     />
+  );
+
+  const renderHead = (
+    <Stack
+      direction="row"
+      alignItems="center"
+      flexShrink={0}
+      sx={{ pr: 1, pl: 2.5, py: 1, minHeight: isDesktop ? 72 : 56 }}
+    >
+      {selectedConversationId && details && <ChatHeaderDetail participants={participants} />}
+    </Stack>
+  );
+
+  const renderMessages = (
+    <Stack
+      sx={{
+        width: 1,
+        height: 1,
+        overflow: 'hidden',
+      }}
+      className="chat-message-list"
+    >
+      {/* <ChatMessageList
+        conversationId={selectedConversationId}
+        messages={messages.byId[selectedConversationId]}
+        sendingMessages={(sendingMessage.byId && sendingMessage.byId[selectedConversationId]) || []}
+        participants={participants}
+        onRefresh={onRefresh}
+      /> */}
+{/* 
+      <ChatMessageInput
+        recipients={recipients}
+        onAddRecipients={handleAddRecipients}
+        selectedConversationId={selectedConversationId}
+        disabled={!recipients.length && !selectedConversationId}
+      /> */}
+    </Stack>
   );
 
   return (
@@ -90,7 +131,7 @@ export function ChatView() {
                 overflow: 'hidden',
               }}
             >
-              <span>renderHeader</span>
+              {renderHead}
               <Stack
                 direction="row"
                 sx={{

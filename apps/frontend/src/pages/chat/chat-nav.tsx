@@ -70,7 +70,7 @@ export default function ChatNav({ conversations, selectedConversationId }: { con
         )}
       </Stack>
 
-      <Scrollbar sx={{ pb: 1 }}>
+      <Scrollbar sx={{ pb: 1, height: '100%' }}>
         {renderList}
       </Scrollbar>
     </>
