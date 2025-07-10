@@ -1,5 +1,6 @@
-import { ImageContent, TextContent } from "./messages";
 import { EventEmitter } from "events";
+import type { ImageContent, TextContent } from "./messages";
+
 
 interface EventMap {
   changeLlmModel: [llmModel: string];

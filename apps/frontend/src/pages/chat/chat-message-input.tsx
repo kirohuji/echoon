@@ -132,7 +132,7 @@ export default function ChatMessageInput({
         },
       ],
     });
-  }, [user])
+  }, [user, selectedConversationId, pipecatClient])
 
   const handleSendMessage = useCallback(
     async (event: any) => {
@@ -172,7 +172,8 @@ export default function ChatMessageInput({
       message,
       selectedConversationId,
       messageData,
-      enqueueSnackbar
+      enqueueSnackbar,
+      handleRTVIMessage,
     ]
   );
 

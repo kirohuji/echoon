@@ -1,4 +1,4 @@
-import { LLMMessageRole } from "./llm";
+import type { LLMMessageRole } from "./llm";
 
 export interface TextContent {
   type: "text";
@@ -21,7 +21,7 @@ export interface Message {
   conversation_id: string;
   extra_metadata: Record<string, unknown> | null;
   message_id: string;
-  message_number: number;
+  // message_number: number;
   updated_at: string;
 }
 

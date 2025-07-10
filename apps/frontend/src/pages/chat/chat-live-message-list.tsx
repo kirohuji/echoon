@@ -1,24 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import ChatMessageItem from './chat-message-item'
-import { getScrollableParent } from "src/utils/dom";
-import emitter from "src/utils/eventEmitter";
-import { LLMMessageRole } from "src/utils/llm";
+import { v4 as uuidv4 } from "uuid";
 import {
-  addNewLinesBeforeCodeblocks,
-  ImageContent,
-  normalizeMessageText,
-  TextContent,
-  type Message,
-} from "src/utils/messages";
-import {
-  BotLLMTextData,
-  BotTTSTextData,
+  type BotLLMTextData,
+  type BotTTSTextData,
   RTVIEvent,
-  TranscriptData,
+  type TranscriptData,
 } from "@pipecat-ai/client-js";
 import { usePipecatClient, useRTVIClientEvent } from "@pipecat-ai/client-react";
-import { v4 as uuidv4 } from "uuid";
+import {
+  addNewLinesBeforeCodeblocks,
+  type ImageContent,
+  normalizeMessageText,
+  type TextContent,
+  type Message,
+} from "src/utils/messages";
+import type { LLMMessageRole } from "src/utils/llm";
+import emitter from "src/utils/eventEmitter";
+import { getScrollableParent } from "src/utils/dom";
+import ChatMessageItem from './chat-message-item'
 
 interface LiveMessage extends Message {
   final?: boolean;
@@ -68,7 +68,7 @@ export default function ChatLiveMessageList({
         bot_prompt: prompt,
       },
     };
-  }, [client, conversationId, prompt]);
+  }, [client, conversationId]);
 
   const addMessageChunk = useCallback(
     ({
@@ -82,18 +82,18 @@ export default function ChatLiveMessageList({
       const createdAtIso = createdAt.toISOString();
       const updatedAtIso = updatedAt.toISOString();
 
-      setLiveMessages((liveMessages) => {
-        const matchingMessageIdx = liveMessages.findIndex(
+      setLiveMessages((currentLiveMessages) => {
+        const matchingMessageIdx = currentLiveMessages.findIndex(
           (m) => m.content.role === role && m.created_at === createdAtIso,
         );
-        const matchingMessage = liveMessages[matchingMessageIdx];
+        const matchingMessage = currentLiveMessages[matchingMessageIdx];
 
         const isSameMessage =
           matchingMessage?.final === final &&
           normalizeMessageText(matchingMessage) ===
-            addNewLinesBeforeCodeblocks(text);
+          addNewLinesBeforeCodeblocks(text);
 
-        if (isSameMessage) return liveMessages;
+        if (isSameMessage) return currentLiveMessages;
 
         if (!matchingMessage || matchingMessage?.final) {
           // Append new message
@@ -107,13 +107,13 @@ export default function ChatLiveMessageList({
             extra_metadata: {},
             final,
             message_id: uuidv4(),
-            message_number: messages.length + liveMessages.length + 1,
+            // message_number: messages.length + liveMessages.length + 1,
             updated_at: updatedAtIso,
           };
-          return [...liveMessages, message];
+          return [...currentLiveMessages, message];
         }
 
-        const updatedMessages = [...liveMessages];
+        const updatedMessages = [...currentLiveMessages];
         const prevText = normalizeMessageText(
           updatedMessages[matchingMessageIdx],
         );
@@ -129,9 +129,9 @@ export default function ChatLiveMessageList({
           updated_at: updatedAtIso,
         };
 
-        return liveMessages
-          .map((liveMessage, idx) =>
-            idx === matchingMessageIdx ? updatedMessage : liveMessage,
+        return currentLiveMessages
+          .map((currentLiveMessage, idx) =>
+            idx === matchingMessageIdx ? updatedMessage : currentLiveMessage,
           )
           .filter((m, idx, arr) => {
             const normalizedText = normalizeMessageText(m);
@@ -141,7 +141,7 @@ export default function ChatLiveMessageList({
           });
       });
     },
-    [conversationId, messages.length],
+    [conversationId],
   );
 
   const firstBotResponseTime = useRef<Date | undefined>(undefined);
@@ -149,13 +149,13 @@ export default function ChatLiveMessageList({
   const userStoppedSpeakingTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const cleanupUserMessages = useCallback(() => {
-    setLiveMessages((messages) => {
-      return messages.filter((m) => {
+    setLiveMessages((currentLiveMessages) =>
+      currentLiveMessages.filter((m) => {
         if (m.content.role !== "user") return true;
         const normalizedText = normalizeMessageText(m);
         return normalizedText.length > 0;
-      });
-    });
+      })
+    );
   }, []);
 
   const isTextResponse = useRef(false);
@@ -247,7 +247,7 @@ export default function ChatLiveMessageList({
             createdAt: firstBotResponseTime.current,
             final: false,
             role: "assistant",
-            text: " " + text.text,
+            text: ` ${text.text}`,
             updatedAt: new Date(),
           });
         }
@@ -341,24 +341,22 @@ export default function ChatLiveMessageList({
     ) => {
       isTextResponse.current = true;
       const now = new Date();
-      setLiveMessages((liveMessages) => {
-        return [
-          ...liveMessages,
-          {
-            content: {
-              role: "user",
-              content,
-            },
-            conversation_id: conversationId,
-            created_at: now.toISOString(),
-            extra_metadata: {},
-            final: true,
-            message_id: uuidv4(),
-            message_number: messages.length + liveMessages.length + 1,
-            updated_at: now.toISOString(),
+      setLiveMessages((currentLiveMessages: any) => [
+        ...currentLiveMessages,
+        {
+          content: {
+            role: "user",
+            content,
           },
-        ];
-      });
+          conversation_id: conversationId,
+          created_at: now.toISOString(),
+          extra_metadata: {},
+          final: true,
+          message_id: uuidv4(),
+          // message_number: messages.length + liveMessages.length + 1,
+          updated_at: now.toISOString(),
+        },
+      ])
     };
     emitter.on("userTextMessage", handleUserTextMessage);
     return () => {
@@ -388,11 +386,11 @@ export default function ChatLiveMessageList({
       message={m}
       participants={[]}
       onOpenLightbox={() => []}
-      // isSpeaking={
-      //   i === liveMessages.length - 1 &&
-      //   m.content.role === "assistant" &&
-      //   isBotSpeaking
-      // }
+    // isSpeaking={
+    //   i === liveMessages.length - 1 &&
+    //   m.content.role === "assistant" &&
+    //   isBotSpeaking
+    // }
     />
   ));
 }

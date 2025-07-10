@@ -5,6 +5,12 @@ import { Card, Stack, Typography } from '@mui/material';
 import { useResponsive } from 'src/hooks/use-responsive';
 import { useCallback, useState } from 'react';
 
+import { DailyTransport } from "@pipecat-ai/daily-transport";
+import { PipecatClient } from "@pipecat-ai/client-js";
+import {
+  PipecatClientProvider,
+  PipecatClientAudio
+} from "@pipecat-ai/client-react";
 import ChatNavItem from '../chat-nav-item';
 import ChatNav from '../chat-nav';
 import ChatHeaderDetail from '../chat-header-detail';
@@ -12,14 +18,6 @@ import ChatMessageList from '../chat-message-list';
 import ChatMessageInput from '../chat-message-input';
 import ChatRoom from '../chat-room';
 import { mockConversations } from './mockConversations';
-
-import { DailyTransport } from "@pipecat-ai/daily-transport";
-import { PipecatClient } from "@pipecat-ai/client-js";
-import {
-  PipecatClientProvider,
-  PipecatClientAudio,
-  usePipecatClient,
-} from "@pipecat-ai/client-react";
 
 
 function calcHeight(isDesktop: boolean, selectedConversationId: string) {
@@ -43,7 +41,7 @@ const pipecatClient = new PipecatClient({
     },
     onBotReady: () => {
       console.log("onBotReady")
-      transport.state = 'ready'
+      // transport.state = 'ready'
     },
     onDisconnected: () => {
       console.log("onDisconnected")
