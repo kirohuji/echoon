@@ -18,7 +18,7 @@ import { uuidv4 } from 'src/utils/uuidv4';
 // components
 import { Iconify } from 'src/components/iconify';
 
-import { usePipecatClient } from '@pipecat-ai/client-react';
+import { useRTVIClient } from '@pipecat-ai/client-react';
 
 // ----------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ export default function ChatMessageInput({
   selectedConversationId: string,
 }) {
 
-  const pipecatClient: any = usePipecatClient();
+  const pipecatClient: any = useRTVIClient();
 
   const loading = useBoolean(false);
 

@@ -7,7 +7,7 @@ import {
   RTVIEvent,
   type TranscriptData,
 } from "@pipecat-ai/client-js";
-import { usePipecatClient, useRTVIClientEvent } from "@pipecat-ai/client-react";
+import { useRTVIClient, useRTVIClientEvent } from "@pipecat-ai/client-react";
 import {
   addNewLinesBeforeCodeblocks,
   type ImageContent,
@@ -24,11 +24,11 @@ interface LiveMessage extends Message {
   final?: boolean;
 }
 
-export const PipecatExtraEvents = {
+export const RTVIExtraEvents = {
   StorageItemStored: "storageItemStored",
 } as const;
 
-// enum PipecatEvent = typeof RTVIEvent[keyof typeof RTVIEvent];
+// enum RTVIEvent = typeof RTVIEvent[keyof typeof RTVIEvent];
 
 interface Props {
   autoscroll: boolean;
@@ -56,7 +56,7 @@ export default function ChatLiveMessageList({
 
   const interactionMode: string = "conversational"
 
-  const client: any = usePipecatClient();
+  const client: any = useRTVIClient();
 
   useEffect(() => {
     if (!client) return;
@@ -217,7 +217,7 @@ export default function ChatLiveMessageList({
         // TODO: Move to StorageItemStored handler, once that is emitted in text-mode
         setTimeout(revalidateAndRefresh, 2000);
       }
-    }, [addMessageChunk, revalidateAndRefresh, interactionMode]),
+    }, [addMessageChunk, revalidateAndRefresh, liveMessages, interactionMode]),
   );
 
   useRTVIClientEvent(
@@ -383,7 +383,16 @@ export default function ChatLiveMessageList({
   return liveMessages.map((m, i) => (
     <ChatMessageItem
       key={i}
-      message={m}
+      message={{
+        ...m,
+        createdAt: m.created_at,
+        senderId: m.content.role === 'user' ? '用户' : 'AI',
+        contentType: 'text',
+        body: m.content.content,
+        // isLoading: i === liveMessages.length - 1 &&
+        //   m.content.role === "assistant" &&
+        //   isBotSpeaking
+      }}
       participants={[]}
       onOpenLightbox={() => []}
     // isSpeaking={
