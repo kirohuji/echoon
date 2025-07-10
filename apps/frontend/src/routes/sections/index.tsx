@@ -1,5 +1,8 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 import { CONFIG } from 'src/config-global';
+import ChatPage from 'src/pages/chat';
+import ReturnLayout from 'src/layouts/return/ReturnLayout';
+
 import { authRoutes } from './auth';
 import { mainRoutes } from './main';
 
@@ -19,6 +22,13 @@ export function Router() {
 
     // Main
     ...mainRoutes,
+
+    {
+      element: <ReturnLayout />,
+      children: [
+        { path: 'chat', element: <ChatPage /> }
+      ],
+    },
 
     // No match
     { path: '*', element: <Navigate to="/404" replace /> },

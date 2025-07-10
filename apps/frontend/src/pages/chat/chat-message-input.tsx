@@ -14,11 +14,13 @@ import { useAuthContext } from 'src/auth/hooks';
 import { useBoolean } from 'src/hooks/use-boolean';
 // utils
 import { uuidv4 } from 'src/utils/uuidv4';
+import emitter from 'src/utils/eventEmitter';
 
 // components
 import { Iconify } from 'src/components/iconify';
 
 import { useRTVIClient } from '@pipecat-ai/client-react';
+import { type Message } from 'src/utils/messages';
 
 // ----------------------------------------------------------------------
 
@@ -117,6 +119,17 @@ export default function ChatMessageInput({
       user_id: user?.id,
     };
 
+    const content: Message["content"]["content"] = [
+      {
+        type: "text",
+        text: message,
+      },
+    ];
+
+    emitter.emit("userTextMessage", [
+      ...content,
+    ]);
+
     await pipecatClient.action({
       service: "llm",
       action: "append_to_messages",
@@ -132,7 +145,7 @@ export default function ChatMessageInput({
         },
       ],
     });
-  }, [user, selectedConversationId, pipecatClient])
+  }, [user, selectedConversationId, pipecatClient, message])
 
   const handleSendMessage = useCallback(
     async (event: any) => {

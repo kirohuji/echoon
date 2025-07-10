@@ -73,7 +73,17 @@ async def stream_action(
         async with default_session_factory() as db:
             # Retrieve any existing messages for the conversation
             # messages = [msg.content for msg in conversation.messages]
-            messages = []
+            messages = [
+                {
+                    "role": "system",
+                    "content": """
+                        You are an English conversation coach.
+                        Always reply using correct English grammar and natural expressions.
+                        Each response must be in **English first**, followed by a **Chinese translation after a Markdown line break** (`\\n\\n`).
+                        Keep replies clear, educational, and helpful. Correct any mistakes and suggest better expressions when needed.
+                    """
+                },
+            ]
             # Run the single turn pipeline and yield text frames
             gen, task = await http_bot_pipeline(params, config, messages, attachments, db)
             async for chunk in gen:

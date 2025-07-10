@@ -33,7 +33,7 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox 
     currentUserId: user?.id,
   });
 
-  const { username, photoURL, displayName, realName } = senderDetails;
+  const { username, photoURL } = senderDetails;
 
   const { body, attachments, contentType, createdAt, isLoading, isFailure } = message;
 
@@ -49,7 +49,7 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox 
         }),
       }}
     >
-      {!me && `${displayName}(${realName}),`} &nbsp;
+      {!me && `${username || '对话教练'},`} &nbsp;
       {formatDistanceToNowStrict(new Date(createdAt), {
         addSuffix: true,
         locale: zhCN,

@@ -29,7 +29,7 @@ from pipecat.processors.frameworks.rtvi import (
 )
 from pipecat.services.ai_services import OpenAILLMContext
 from pipecat.services.google import GoogleLLMContext, GoogleLLMService
-from pipecat.services.mem0.memory import Mem0MemoryService
+# from pipecat.services.mem0.memory import Mem0MemoryService
 
 async def http_bot_pipeline(
     params: BotParams,
@@ -56,6 +56,13 @@ async def http_bot_pipeline(
         model="deepseek-chat",
     )
     tools = NOT_GIVEN
+    # messages = [
+    #     {
+    #         "role": "system",
+    #         "content": "你是一个英语对话教练,你每次返回给我都是按照英语的语法和表达方式来回答我,要有中英文结合,先出现英文,然后 按照 markdown 的换行 再出现中文"
+    #     },
+    #     *messages
+    # ]
     context = OpenAILLMContext(messages, tools)
     context_aggregator = llm.create_context_aggregator(
         context
@@ -84,20 +91,20 @@ async def http_bot_pipeline(
 
     tts = CartesiaTTSService(api_key=os.getenv("CARTESIA_API_KEY"), model="sonic-turbo-2025-03-07", voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02")
     print(params.user_id)
-    memory = Mem0MemoryService(
-        api_key=os.getenv("MEM0_API_KEY"),  # Your Mem0 API key
-        user_id=params.user_id,  # Unique identifier for the user
-        # agent_id="agent1",  # Optional identifier for the agent
-        # run_id="session1",  # Optional identifier for the run
-        params=Mem0MemoryService.InputParams(
-            search_limit=10,
-            search_threshold=0.3,
-            api_version="v2",
-            system_prompt="Based on previous conversations, I recall: \n\n",
-            add_as_system_message=True,
-            position=1,
-        ),
-    )
+    # memory = Mem0MemoryService(
+    #     api_key=os.getenv("MEM0_API_KEY"),  # Your Mem0 API key
+    #     user_id=params.user_id,  # Unique identifier for the user
+    #     # agent_id="agent1",  # Optional identifier for the agent
+    #     # run_id="session1",  # Optional identifier for the run
+    #     params=Mem0MemoryService.InputParams(
+    #         search_limit=10,
+    #         search_threshold=0.3,
+    #         api_version="v2",
+    #         system_prompt="Based on previous conversations, I recall: \n\n",
+    #         add_as_system_message=True,
+    #         position=1,
+    #     ),
+    # )
 
     processors = [
         rtvi,

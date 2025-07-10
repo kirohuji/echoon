@@ -51,7 +51,7 @@ export default function ChatHeaderDetail({ participants }: { participants: any[]
       </Badge>
 
       <ListItemText
-        primary={`${singleParticipant.displayName}(${singleParticipant.realName})`}
+        primary={`${singleParticipant.username || '对话教练'}`}
         secondary={
           singleParticipant.status === 'offline'
             ? fToNow(singleParticipant.lastActivity)

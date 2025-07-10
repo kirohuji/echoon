@@ -10,14 +10,15 @@ import {
 import { useRTVIClient, useRTVIClientEvent } from "@pipecat-ai/client-react";
 import {
   addNewLinesBeforeCodeblocks,
-  type ImageContent,
+  // type ImageContent,
   normalizeMessageText,
-  type TextContent,
+  // type TextContent,
   type Message,
 } from "src/utils/messages";
 import type { LLMMessageRole } from "src/utils/llm";
 import emitter from "src/utils/eventEmitter";
 import { getScrollableParent } from "src/utils/dom";
+import { useAuthContext } from "src/auth/hooks";
 import ChatMessageItem from './chat-message-item'
 
 interface LiveMessage extends Message {
@@ -54,9 +55,11 @@ export default function ChatLiveMessageList({
 }: Props) {
   const [liveMessages, setLiveMessages] = useState<LiveMessage[]>([]);
 
-  const interactionMode: string = "conversational"
+  const interactionMode: string = "informational"
 
   const client: any = useRTVIClient();
+
+  const { user } = useAuthContext();
 
   useEffect(() => {
     if (!client) return;
@@ -164,6 +167,7 @@ export default function ChatLiveMessageList({
     emitter.emit("updateSidebar");
   }, []);
 
+  // BotLlmStarted
   useRTVIClientEvent(
     RTVIEvent.BotLlmStarted,
     useCallback(() => {
@@ -177,6 +181,7 @@ export default function ChatLiveMessageList({
     }, [addMessageChunk]),
   );
 
+  // BotLlmText
   useRTVIClientEvent(
     RTVIEvent.BotLlmText,
     useCallback(
@@ -197,6 +202,7 @@ export default function ChatLiveMessageList({
     ),
   );
 
+  // BotLlmStopped
   useRTVIClientEvent(
     RTVIEvent.BotLlmStopped,
     useCallback(async () => {
@@ -217,9 +223,10 @@ export default function ChatLiveMessageList({
         // TODO: Move to StorageItemStored handler, once that is emitted in text-mode
         setTimeout(revalidateAndRefresh, 2000);
       }
-    }, [addMessageChunk, revalidateAndRefresh, liveMessages, interactionMode]),
+    }, [addMessageChunk, revalidateAndRefresh, interactionMode]),
   );
 
+  // BotStartedSpeaking
   useRTVIClientEvent(
     RTVIEvent.BotStartedSpeaking,
     useCallback(() => {
@@ -237,6 +244,7 @@ export default function ChatLiveMessageList({
     }, [addMessageChunk, interactionMode]),
   );
 
+  // BotTtsText
   useRTVIClientEvent(
     RTVIEvent.BotTtsText,
     useCallback(
@@ -256,6 +264,7 @@ export default function ChatLiveMessageList({
     ),
   );
 
+  // BotStoppedSpeaking
   useRTVIClientEvent(
     RTVIEvent.BotStoppedSpeaking,
     useCallback(() => {
@@ -272,6 +281,7 @@ export default function ChatLiveMessageList({
     }, [addMessageChunk, interactionMode]),
   );
 
+  // UserStartedSpeaking
   useRTVIClientEvent(
     RTVIEvent.UserStartedSpeaking,
     useCallback(() => {
@@ -287,6 +297,7 @@ export default function ChatLiveMessageList({
     }, [addMessageChunk]),
   );
 
+  // UserStoppedSpeaking
   useRTVIClientEvent(
     RTVIEvent.UserStoppedSpeaking,
     useCallback(() => {
@@ -297,6 +308,7 @@ export default function ChatLiveMessageList({
     }, [cleanupUserMessages]),
   );
 
+  // UserTranscript
   useRTVIClientEvent(
     RTVIEvent.UserTranscript,
     useCallback(
@@ -322,6 +334,7 @@ export default function ChatLiveMessageList({
 
   useRTVIClientEvent(RTVIEvent.Disconnected, revalidateAndRefresh);
 
+  // StorageItemStored
   useRTVIClientEvent(
     RTVIEvent.StorageItemStored,
     useCallback(
@@ -337,8 +350,10 @@ export default function ChatLiveMessageList({
 
   useEffect(() => {
     const handleUserTextMessage = (
-      content: Array<TextContent | ImageContent>,
+      // content: Array<TextContent | ImageContent>,
+      content: any,
     ) => {
+      console.log('收到了用户的消息', content);
       isTextResponse.current = true;
       const now = new Date();
       setLiveMessages((currentLiveMessages: any) => [
@@ -346,7 +361,7 @@ export default function ChatLiveMessageList({
         {
           content: {
             role: "user",
-            content,
+            content: content[0].text,
           },
           conversation_id: conversationId,
           created_at: now.toISOString(),
@@ -386,7 +401,7 @@ export default function ChatLiveMessageList({
       message={{
         ...m,
         createdAt: m.created_at,
-        senderId: m.content.role === 'user' ? '用户' : 'AI',
+        senderId: m.content.role === 'user' ? user?.id : 'AI',
         contentType: 'text',
         body: m.content.content,
         // isLoading: i === liveMessages.length - 1 &&
