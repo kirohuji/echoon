@@ -2,7 +2,7 @@ from bots.http.bot import http_bot_pipeline
 from bots.types import BotParams, BotConfig
 from bots.webrtc.bot import bot_create, bot_launch
 from common.config import DEFAULT_BOT_CONFIG, SERVICE_API_KEYS
-from common.database import default_session_factory
+# from common.database import default_session_factory
 from common.models import Attachment, Conversation
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -63,32 +63,25 @@ async def stream_action(
 
     config = DEFAULT_BOT_CONFIG
 
-    # Retrieve attachments from database
     attachments = []
-    if params.attachments:
-        attachments = await Attachment.get_attachments_by_ids(db, params.attachments)
-        logger.debug(f"Retrieved {len(attachments)} attachments")
 
     async def generate():
-        async with default_session_factory() as db:
-            # Retrieve any existing messages for the conversation
-            # messages = [msg.content for msg in conversation.messages]
-            messages = [
-                {
-                    "role": "system",
-                    "content": """
+        messages = [
+            {
+                "role": "system",
+                "content": """
                         You are an English conversation coach.
                         Always reply using correct English grammar and natural expressions.
                         Each response must be in **English first**, followed by a **Chinese translation after a Markdown line break** (`\\n\\n`).
                         Keep replies clear, educational, and helpful. Correct any mistakes and suggest better expressions when needed.
-                    """
-                },
-            ]
-            # Run the single turn pipeline and yield text frames
-            gen, task = await http_bot_pipeline(params, config, messages, attachments, db)
-            async for chunk in gen:
-                yield chunk
-            await task
+                """
+            },
+        ]
+        # Run the single turn pipeline and yield text frames
+        gen, task = await http_bot_pipeline(params, config, messages, attachments)
+        async for chunk in gen:
+            yield chunk
+        await task
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

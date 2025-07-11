@@ -289,6 +289,9 @@ importers:
       '@iconify/react':
         specifier: ^6.0.0
         version: 6.0.0(react@19.1.0)
+      '@microsoft/fetch-event-source':
+        specifier: ^2.0.1
+        version: 2.0.1
       '@mui/lab':
         specifier: 7.0.0-beta.14
         version: 7.0.0-beta.14(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@types/react@19.1.8)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@types/react@19.1.8)(react@19.1.0))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -305,14 +308,14 @@ importers:
         specifier: ^8.7.0
         version: 8.7.0(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@types/react@19.1.8)(react@19.1.0))(@mui/material@7.2.0(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@types/react@19.1.8)(react@19.1.0))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(@mui/system@7.2.0(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.1.8)(react@19.1.0))(@types/react@19.1.8)(react@19.1.0))(@types/react@19.1.8)(react@19.1.0))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@pipecat-ai/client-js':
-        specifier: 0.4.1
-        version: 0.4.1
+        specifier: 1.0.0
+        version: 1.0.0
       '@pipecat-ai/client-react':
-        specifier: 0.4.1
-        version: 0.4.1(@pipecat-ai/client-js@0.4.1)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        specifier: 1.0.0
+        version: 1.0.0(@pipecat-ai/client-js@1.0.0)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@pipecat-ai/daily-transport':
-        specifier: ^0.4.0
-        version: 0.4.0(@pipecat-ai/client-js@0.4.1)
+        specifier: 1.0.0
+        version: 1.0.0(@pipecat-ai/client-js@1.0.0)
       add:
         specifier: ^2.0.6
         version: 2.0.6
@@ -1348,6 +1351,9 @@ packages:
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
     engines: {node: '>=8'}
 
+  '@microsoft/fetch-event-source@2.0.1':
+    resolution: {integrity: sha512-W6CLUJ2eBMw3Rec70qrsEW0jOm/3twwJv21mrmj2yORiaVmVYGS4sSS5yUwvQc1ZlDLYGPnClVWmUUMagKNsfA==}
+
   '@microsoft/tsdoc@0.15.1':
     resolution: {integrity: sha512-4aErSrCR/On/e5G2hDP0wjooqDdauzEbIq8hIkIe5pXV0rtWJZvdCEKL0ykZxex+IxIwBp0eGeV48hQN07dXtw==}
 
@@ -2015,20 +2021,20 @@ packages:
   '@paralleldrive/cuid2@2.2.2':
     resolution: {integrity: sha512-ZOBkgDwEdoYVlSeRbYYXs0S9MejQofiVYoTbKzy/6GQa39/q5tQU2IX46+shYnUkpEl3wc+J6wRlar7r2EK2xA==}
 
-  '@pipecat-ai/client-js@0.4.1':
-    resolution: {integrity: sha512-3jLKRzeryqLxtkqvr4Bvxe2OxoI7mdOFecm6iolZizXnk/BE480SEg2oAKyov3b5oT6+jmPlT+1HRBlTzEtL7A==}
+  '@pipecat-ai/client-js@1.0.0':
+    resolution: {integrity: sha512-c+LtwyG7KlEPxDImXnxlNrFIlq0I3nd6R3gmLHfDr3fAq5zmlOrzZCeOPWWRhPFvBO+MNSoVrmNeDv6DJWsMPA==}
 
-  '@pipecat-ai/client-react@0.4.1':
-    resolution: {integrity: sha512-7bzSOma8L2UPW/Cp8uOFEDbggRMm/XErzkQNopXYfr4/5QMmLikAuzJOCwwXo5zewVczUUFtinFmqZT2B5VwDQ==}
+  '@pipecat-ai/client-react@1.0.0':
+    resolution: {integrity: sha512-vhyKeFnQlN6311w4f+g+45rLQcn6Qmd5CI933T7wV8Yti8qHi2Tf54mQ9CS7X1lU0wgl7KLDMi/8p+7JaUoTfg==}
     peerDependencies:
       '@pipecat-ai/client-js': '*'
       react: '>=18'
       react-dom: '>=18'
 
-  '@pipecat-ai/daily-transport@0.4.0':
-    resolution: {integrity: sha512-qPiLwAILBpPY3nUYxpEl4bdvtP+qIb/GwjKugyw3LVbC4HkD5Q5nav0GgKMPNTXIbK08YDCJbAWZhnqzTcmuyw==}
+  '@pipecat-ai/daily-transport@1.0.0':
+    resolution: {integrity: sha512-iXmv9Et/TGPvJoeOY+ZBPv+a3pbqT502jco2MBHl8l2VrtztkidjDwiOkPfPdD191CCwaSbV5laSYALsD0AyxA==}
     peerDependencies:
-      '@pipecat-ai/client-js': ~0.4.0
+      '@pipecat-ai/client-js': ~1.0.0
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -8613,6 +8619,8 @@ snapshots:
 
   '@lukeed/csprng@1.1.0': {}
 
+  '@microsoft/fetch-event-source@2.0.1': {}
+
   '@microsoft/tsdoc@0.15.1': {}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
@@ -9267,27 +9275,28 @@ snapshots:
     dependencies:
       '@noble/hashes': 1.8.0
 
-  '@pipecat-ai/client-js@0.4.1':
+  '@pipecat-ai/client-js@1.0.0':
     dependencies:
       '@types/events': 3.0.3
+      bowser: 2.11.0
       clone-deep: 4.0.1
       events: 3.3.0
       typed-emitter: 2.1.0
       uuid: 10.0.0
 
-  '@pipecat-ai/client-react@0.4.1(@pipecat-ai/client-js@0.4.1)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+  '@pipecat-ai/client-react@1.0.0(@pipecat-ai/client-js@1.0.0)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
-      '@pipecat-ai/client-js': 0.4.1
+      '@pipecat-ai/client-js': 1.0.0
       jotai: 2.12.5(@types/react@19.1.8)(react@19.1.0)
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
     transitivePeerDependencies:
       - '@types/react'
 
-  '@pipecat-ai/daily-transport@0.4.0(@pipecat-ai/client-js@0.4.1)':
+  '@pipecat-ai/daily-transport@1.0.0(@pipecat-ai/client-js@1.0.0)':
     dependencies:
       '@daily-co/daily-js': 0.77.0
-      '@pipecat-ai/client-js': 0.4.1
+      '@pipecat-ai/client-js': 1.0.0
 
   '@pkgjs/parseargs@0.11.0':
     optional: true

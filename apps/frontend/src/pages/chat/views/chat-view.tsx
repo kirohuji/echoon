@@ -6,10 +6,10 @@ import { useResponsive } from 'src/hooks/use-responsive';
 import { useCallback, useState } from 'react';
 
 import { DailyTransport } from "@pipecat-ai/daily-transport";
-import { RTVIClient } from "@pipecat-ai/client-js";
+import { PipecatClient } from "@pipecat-ai/client-js";
 import {
-  RTVIClientProvider,
-  RTVIClientAudio
+  PipecatClientProvider,
+  PipecatClientAudio
 } from "@pipecat-ai/client-react";
 import ChatNavItem from '../chat-nav-item';
 import ChatNav from '../chat-nav';
@@ -28,18 +28,18 @@ function calcHeight(isDesktop: boolean, selectedConversationId: string) {
 }
 
 const transport = new DailyTransport()
-const connectUrl =
-  process.env.NODE_ENV === 'development'
-    ? 'http://localhost:7860/api'
-    : 'http://192.168.110.137:7860/api';
-const pipecatClient = new RTVIClient({
-  params: {
-    baseUrl: connectUrl,
-    endpoints: {
-      connect: "/bot/offer",
-      action: "/bot/action",
-    },
-  },
+// const connectUrl =
+//   process.env.NODE_ENV === 'development'
+//     ? 'http://localhost:7860/api'
+//     : 'http://192.168.110.137:7860/api';
+const pipecatClient = new PipecatClient({
+  // params: {
+  //   baseUrl: connectUrl,
+  //   endpoints: {
+  //     connect: "/bot/offer",
+  //     action: "/bot/action",
+  //   },
+  // },
   transport,
   enableCam: false,  // Default camera off
   enableMic: true,   // Default microphone on
@@ -157,7 +157,7 @@ export function ChatView() {
       </Typography>
       {
         (isDesktop || selectedConversationId) && (
-          <RTVIClientProvider client={pipecatClient}>
+          <PipecatClientProvider client={pipecatClient}>
             <Stack
               component={!isDesktop && selectedConversationId ? 'div' : Card}
               direction="row"
@@ -192,8 +192,8 @@ export function ChatView() {
                 </Stack>
               </Stack>
             </Stack>
-            <RTVIClientAudio />
-          </RTVIClientProvider>
+            <PipecatClientAudio />
+          </PipecatClientProvider>
         )
       }
       {

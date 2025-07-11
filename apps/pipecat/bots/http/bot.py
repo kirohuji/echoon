@@ -36,7 +36,6 @@ async def http_bot_pipeline(
     config: BotConfig,
     messages,
     attachments: List[Attachment],
-    db: AsyncSession,
     language_code: str = "english",
 ) -> Tuple[AsyncGenerator[Any, None], Any]:
     llm_api_key = SERVICE_API_KEYS.get("gemini")
@@ -172,8 +171,8 @@ async def http_bot_pipeline(
                                     },
                                 }
                             )
-                            await db.delete(attachment)
-                            await db.commit()
+                            # await db.delete(attachment)
+                            # await db.commit()
                         break
 
             await rtvi.handle_message(action)

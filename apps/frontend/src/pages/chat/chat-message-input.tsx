@@ -19,7 +19,9 @@ import emitter from 'src/utils/eventEmitter';
 // components
 import { Iconify } from 'src/components/iconify';
 
-import { useRTVIClient } from '@pipecat-ai/client-react';
+import { usePipecatClient } from '@pipecat-ai/client-react';
+import { pipecatService } from 'src/composables/context-provider';
+// import { httpActionGenerator, RTVIActionRequest, type RTVIClientParams } from '@pipecat-ai/client-js';
 import { type Message } from 'src/utils/messages';
 
 // ----------------------------------------------------------------------
@@ -36,7 +38,7 @@ export default function ChatMessageInput({
   selectedConversationId: string,
 }) {
 
-  const pipecatClient: any = useRTVIClient();
+  const pipecatClient: any = usePipecatClient();
 
   const loading = useBoolean(false);
 
@@ -130,21 +132,76 @@ export default function ChatMessageInput({
       ...content,
     ]);
 
-    await pipecatClient.action({
-      service: "llm",
-      action: "append_to_messages",
-      arguments: [
+    await pipecatService.action(pipecatClient, {
+      "conversation_id": "cmcsu3kuh00018yc8fdyeyyf9",
+      "bot_model": "gemini2_minimax",
+      "user_id": "kiro",
+      "bot_prompt": "你是名为 Lumi 的 AI 角色，拥有温和而坚定的性格。",
+      actions: [
         {
-          name: "messages",
-          value: [
-            {
-              role: "user",
-              content: currentMessage,
-            },
-          ],
-        },
-      ],
-    });
+          "label": "rtvi-ai",
+          "type": "action",
+          "data": {
+            service: "llm",
+            action: "append_to_messages",
+            arguments: [
+              {
+                name: "messages",
+                value: [
+                  {
+                    role: "user",
+                    content: currentMessage,
+                  },
+                ],
+              },
+            ],
+          },
+          "id": "440fc1db"
+        }
+      ]
+    })
+    // await pipecatClient.action({
+    //   service: "llm",
+    //   action: "append_to_messages",
+    //   arguments: [
+    //     {
+    //       name: "messages",
+    //       value: [
+    //         {
+    //           role: "user",
+    //           content: currentMessage,
+    //         },
+    //       ],
+    //     },
+    //   ],
+    // });
+    // const params: RTVIClientParams = {
+    //   endpoints: {
+    //     connect: "/bot/offer",
+    //     action: "/bot/action",
+    //   },
+    //   requestData: pipecatClient.params.requestData
+    // }
+    // await httpActionGenerator(
+    //   "http://localhost:7860/api/bot/action",
+    //   new RTVIActionRequest({
+    //     service: "llm",
+    //     action: "append_to_messages",
+    //     arguments: [
+    //       {
+    //         name: "messages",
+    //         value: [
+    //           {
+    //             role: "user",
+    //             content: currentMessage,
+    //           },
+    //         ],
+    //       },
+    //     ],
+    //   }),
+    //   params,
+    //   ()=> {}
+    // )
   }, [user, selectedConversationId, pipecatClient, message])
 
   const handleSendMessage = useCallback(

@@ -28,7 +28,6 @@ service.interceptors.response.use(
   (error) => Promise.reject(error)
 );
 
-
 // ----------------------------------------------------------------------
 
 const axiosInstance = axios.create({ baseURL: CONFIG.site.serverUrl });

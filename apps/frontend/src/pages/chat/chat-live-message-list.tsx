@@ -7,7 +7,7 @@ import {
   RTVIEvent,
   type TranscriptData,
 } from "@pipecat-ai/client-js";
-import { useRTVIClient, useRTVIClientEvent } from "@pipecat-ai/client-react";
+import { usePipecatClient, useRTVIClientEvent } from "@pipecat-ai/client-react";
 import {
   addNewLinesBeforeCodeblocks,
   // type ImageContent,
@@ -57,7 +57,7 @@ export default function ChatLiveMessageList({
 
   const interactionMode: string = "informational"
 
-  const client: any = useRTVIClient();
+  const client: any = usePipecatClient();
 
   const { user } = useAuthContext();
 
@@ -335,18 +335,18 @@ export default function ChatLiveMessageList({
   useRTVIClientEvent(RTVIEvent.Disconnected, revalidateAndRefresh);
 
   // StorageItemStored
-  useRTVIClientEvent(
-    RTVIEvent.StorageItemStored,
-    useCallback(
-      (data: any) => {
-        const items = data.items as Array<Message["content"]>;
-        if (items.some((i) => i.role === "assistant")) {
-          revalidateAndRefresh();
-        }
-      },
-      [revalidateAndRefresh],
-    ),
-  );
+  // useRTVIClientEvent(
+  //   RTVIEvent.StorageItemStored,
+  //   useCallback(
+  //     (data: any) => {
+  //       const items = data.items as Array<Message["content"]>;
+  //       if (items.some((i) => i.role === "assistant")) {
+  //         revalidateAndRefresh();
+  //       }
+  //     },
+  //     [revalidateAndRefresh],
+  //   ),
+  // );
 
   useEffect(() => {
     const handleUserTextMessage = (

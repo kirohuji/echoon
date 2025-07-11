@@ -11,6 +11,7 @@ export type ConfigValue = {
     assetURL: string;
     basePath: string;
     version: string;
+    pipecatUrl: string;
   };
   auth: {
     method: 'jwt' | 'amplify' | 'firebase' | 'supabase' | 'auth0';
@@ -28,6 +29,7 @@ export const CONFIG: ConfigValue = {
     assetURL: import.meta.env.VITE_ASSET_URL ?? '',
     basePath: import.meta.env.VITE_BASE_PATH ?? '',
     version: packageJson.version,
+    pipecatUrl: import.meta.env.VITE_PIPETCAT_URL ?? '',
   },
   /**
    * Auth
