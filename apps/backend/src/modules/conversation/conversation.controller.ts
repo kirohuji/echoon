@@ -43,4 +43,9 @@ export class ConversationController extends CrudController<Conversation> {
   ) {
     return this.conversationService.getMessagesByConversationId(id, page, pageSize);
   }
+
+  @Post('personal/default/create')
+  async createConversationWithDefaultPersonal(@CurrentUser() user: User) {
+    return this.conversationService.createConversationWithDefaultPersonal(user);
+  }
 }

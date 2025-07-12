@@ -46,4 +46,34 @@ export class PersonalService extends CrudService<Personal> {
     await this.prisma.user.delete({ where: { id } });
     return personal;
   }
+
+  // 批量创建 AI 角色
+  async createMockAiRoles(roles: any[]): Promise<Personal[]> {
+    const created: Personal[] = [];
+    for (const role of roles) {
+      // 先创建 user
+      const user = await this.prisma.user.create({
+        data: {
+          phone: role.id + '@ai.mock',
+          password: 'mocked',
+          emails: [],
+          username: role.name,
+        },
+      });
+      // 再创建 personal
+      const personal = await this.prisma.personal.create({
+        data: {
+          id: user.id,
+          prompt: role.prompt,
+          llm: {},
+          tts: {},
+          stt: {},
+          photoURL: role.photoURL,
+          description: role.description,
+        },
+      });
+      created.push(personal);
+    }
+    return created;
+  }
 }

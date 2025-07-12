@@ -5,6 +5,7 @@ import { PrismaModule } from '@/common/prisma/prisma.module';
 import { MessageService } from './message.service';
 import { PublicConversationController } from './public.conversation.controller';
 import { ParticipantService } from './participant.service';
+import { PersonalService } from '../personal/personal.service';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ParticipantService } from './participant.service';
   ],
   controllers: [ConversationController, PublicConversationController],
   providers: [
+    PersonalService,
     ConversationService,  
     MessageService,
     ParticipantService,

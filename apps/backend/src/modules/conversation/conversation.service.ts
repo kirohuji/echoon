@@ -1,18 +1,24 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
-import { Conversation } from '@prisma/client';
+import { User, Conversation } from '@prisma/client';
 import { CrudService } from '@/common/crud.service';
 import { MessageService } from './message.service';
 import { ParticipantService } from './participant.service';
+import { PersonalService } from '../personal/personal.service';
 
 @Injectable()
 export class ConversationService extends CrudService<Conversation> {
-  constructor(prisma: PrismaService, private readonly messageService: MessageService, private readonly participantService: ParticipantService) {
+  constructor(
+    prisma: PrismaService, 
+    private readonly messageService: MessageService, 
+    private readonly participantService: ParticipantService,
+    private readonly personalService: PersonalService,
+  ) {
     super(prisma, 'conversation');
   }
   
-  async createConversationWithUser(conversation: Conversation, userIds: string[]) {
+  async createConversationWithUser(conversation: Omit<Conversation, 'id'>, userIds: string[]) {
     const newConversation = await this.prisma.conversation.create({
       data: conversation,
     });
@@ -65,5 +71,24 @@ export class ConversationService extends CrudService<Conversation> {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+  }
+
+  async createConversationWithDefaultPersonal(user: User) {
+    const personals = await this.personalService.findAll();
+    personals.forEach(async (personal) => {
+      const conversation = await this.createConversationWithUser({
+        title: personal.name,
+        type: 'personal',
+        createdBy: user.id,
+        updatedBy: user.id,
+        userId: user.id,
+        messageCount: 0,
+        isRemoved: false,
+        isArchived: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }, [personal.id, user.id]);
+      return conversation;
+    });
   }
 }
