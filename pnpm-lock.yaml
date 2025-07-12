@@ -316,6 +316,9 @@ importers:
       '@pipecat-ai/daily-transport':
         specifier: 1.0.0
         version: 1.0.0(@pipecat-ai/client-js@1.0.0)
+      '@pipecat-ai/small-webrtc-transport':
+        specifier: ^1.0.0
+        version: 1.0.0(@pipecat-ai/client-js@1.0.0)
       '@pipecat-ai/websocket-transport':
         specifier: ^1.0.0
         version: 1.0.0(@pipecat-ai/client-js@1.0.0)
@@ -2046,6 +2049,11 @@ packages:
 
   '@pipecat-ai/daily-transport@1.0.0':
     resolution: {integrity: sha512-iXmv9Et/TGPvJoeOY+ZBPv+a3pbqT502jco2MBHl8l2VrtztkidjDwiOkPfPdD191CCwaSbV5laSYALsD0AyxA==}
+    peerDependencies:
+      '@pipecat-ai/client-js': ~1.0.0
+
+  '@pipecat-ai/small-webrtc-transport@1.0.0':
+    resolution: {integrity: sha512-JRXepnMN9w0thxjrpdzvoR6pn8MoC+J8lywnMHzAOifGGhlrA6ZSgMQtoRjiXs7PdjDFOkAT4mAdJrte0dC00A==}
     peerDependencies:
       '@pipecat-ai/client-js': ~1.0.0
 
@@ -9366,6 +9374,12 @@ snapshots:
     dependencies:
       '@daily-co/daily-js': 0.77.0
       '@pipecat-ai/client-js': 1.0.0
+
+  '@pipecat-ai/small-webrtc-transport@1.0.0(@pipecat-ai/client-js@1.0.0)':
+    dependencies:
+      '@daily-co/daily-js': 0.77.0
+      '@pipecat-ai/client-js': 1.0.0
+      dequal: 2.0.3
 
   '@pipecat-ai/websocket-transport@1.0.0(@pipecat-ai/client-js@1.0.0)':
     dependencies:

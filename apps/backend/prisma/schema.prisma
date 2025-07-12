@@ -224,3 +224,13 @@ model File {
   @@index([createdBy])
 }
 
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String
+  updatedBy String?
+}
+

@@ -5,14 +5,26 @@ from bots.tts.tts_bot import tts_bot_pipeline
 from bots.websocket.bot import ws_bot_pipeline
 from bots.types import BotParams, BotConfig
 from bots.webrtc.bot import bot_create, bot_launch
+from bots.smallwebrtc.bot import smallwebrtc_bot_pipeline
 from common.config import DEFAULT_BOT_CONFIG, SERVICE_API_KEYS
 # from common.database import default_session_factory
 from common.models import Attachment, Conversation
-from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, Request
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, Request, BackgroundTasks
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from webapp import get_db
+
+from pipecat.transports.network.webrtc_connection import IceServer, SmallWebRTCConnection
+
+# Store connections by pc_id
+pcs_map: Dict[str, SmallWebRTCConnection] = {}
+
+ice_servers = [
+    IceServer(
+        urls="stun:stun.l.google.com:19302",
+    )
+]
 
 router = APIRouter(prefix="/bot")
 
@@ -183,6 +195,32 @@ async def websocket_endpoint(websocket: WebSocket):
         await ws_bot_pipeline(websocket)
     except Exception as e:
         print(f"Exception in run_bot: {e}")
+
+@router.post("/offer")
+async def offer(request: dict, background_tasks: BackgroundTasks):
+    pc_id = request.get("pc_id")
+
+    if pc_id and pc_id in pcs_map:
+        pipecat_connection = pcs_map[pc_id]
+        logger.info(f"Reusing existing connection for pc_id: {pc_id}")
+        await pipecat_connection.renegotiate(
+            sdp=request["sdp"], type=request["type"], restart_pc=request.get("restart_pc", False)
+        )
+    else:
+        pipecat_connection = SmallWebRTCConnection(ice_servers)
+        await pipecat_connection.initialize(sdp=request["sdp"], type=request["type"])
+
+        @pipecat_connection.event_handler("closed")
+        async def handle_disconnected(webrtc_connection: SmallWebRTCConnection):
+            logger.info(f"Discarding peer connection for pc_id: {webrtc_connection.pc_id}")
+            pcs_map.pop(webrtc_connection.pc_id, None)
+
+        background_tasks.add_task(smallwebrtc_bot_pipeline, pipecat_connection)
+
+    answer = pipecat_connection.get_answer()
+    # Updating the peer connection inside the map
+    pcs_map[answer["pc_id"]] = pipecat_connection
+    return answer
 
 def merge_bot_config(default_config: BotConfig, override_config: BotConfig) -> BotConfig:
     merged = default_config.dict()

@@ -25,4 +25,45 @@ export class ConversationService extends CrudService<Conversation> {
     });
     return newConversation;
   }
+
+  // 获取某用户参与的所有会话
+  async getConversationsByUserId(userId: string) {
+    return this.prisma.conversation.findMany({
+      where: {
+        participants: {
+          some: {
+            userId,
+          },
+        },
+      },
+    });
+  }
+
+  // 根据会话id获取会话详情
+  async getConversationById(id: string) {
+    return this.prisma.conversation.findUnique({
+      where: { id },
+    });
+  }
+
+  // 根据会话id分页获取消息记录
+  async getMessagesByConversationId(conversationId: string, page: number = 1, pageSize: number = 20) {
+    const skip = (page - 1) * pageSize;
+    const [messages, total] = await Promise.all([
+      this.prisma.message.findMany({
+        where: { conversationId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      this.prisma.message.count({ where: { conversationId } }),
+    ]);
+    return {
+      data: messages,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
 }

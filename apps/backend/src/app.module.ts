@@ -6,6 +6,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { ConversationModule } from './modules/conversation/conversation.module';
+import { PersonalModule } from './modules/personal/personal.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ConversationModule } from './modules/conversation/conversation.module';
     AuthModule,
     UserModule,
     ConversationModule,
+    PersonalModule,
   ],
   controllers: [],
 })
