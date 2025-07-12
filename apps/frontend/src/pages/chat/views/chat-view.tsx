@@ -5,12 +5,17 @@ import { Card, Stack, Typography } from '@mui/material';
 import { useResponsive } from 'src/hooks/use-responsive';
 import { useCallback, useState } from 'react';
 
-import { DailyTransport } from "@pipecat-ai/daily-transport";
+// import { DailyTransport } from "@pipecat-ai/daily-transport";
 import { PipecatClient } from "@pipecat-ai/client-js";
 import {
   PipecatClientProvider,
   PipecatClientAudio
 } from "@pipecat-ai/client-react";
+import {
+  WebSocketTransport,
+  ProtobufFrameSerializer,
+} from "@pipecat-ai/websocket-transport";
+
 import ChatNavItem from '../chat-nav-item';
 import ChatNav from '../chat-nav';
 import ChatHeaderDetail from '../chat-header-detail';
@@ -19,7 +24,6 @@ import ChatMessageInput from '../chat-message-input';
 import ChatRoom from '../chat-room';
 import { mockConversations } from './mockConversations';
 
-
 function calcHeight(isDesktop: boolean, selectedConversationId: string) {
   if (isDesktop) {
     return '72vh';
@@ -27,7 +31,8 @@ function calcHeight(isDesktop: boolean, selectedConversationId: string) {
   return selectedConversationId ? 'calc(100vh - 70px)' : 'calc(100vh - 140px)';
 }
 
-const transport = new DailyTransport()
+// const transport = new DailyTransport()
+
 // const connectUrl =
 //   process.env.NODE_ENV === 'development'
 //     ? 'http://localhost:7860/api'
@@ -40,7 +45,11 @@ const pipecatClient = new PipecatClient({
   //     action: "/bot/action",
   //   },
   // },
-  transport,
+  transport: new WebSocketTransport ({
+    serializer: new ProtobufFrameSerializer(),
+    recorderSampleRate: 24000,
+    playerSampleRate: 24000,
+  }),
   enableCam: false,  // Default camera off
   enableMic: true,   // Default microphone on
   callbacks: {

@@ -1,11 +1,15 @@
+import os
+from typing import Any, Dict
 from bots.http.bot import http_bot_pipeline
+from bots.tts.tts_bot import tts_bot_pipeline
+from bots.websocket.bot import ws_bot_pipeline
 from bots.types import BotParams, BotConfig
 from bots.webrtc.bot import bot_create, bot_launch
 from common.config import DEFAULT_BOT_CONFIG, SERVICE_API_KEYS
 # from common.database import default_session_factory
 from common.models import Attachment, Conversation
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, Request
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from webapp import get_db
@@ -85,6 +89,24 @@ async def stream_action(
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
+@router.post("/tts", response_class=StreamingResponse)
+async def tts(
+    params: BotParams,
+) -> StreamingResponse:
+    config = DEFAULT_BOT_CONFIG
+    async def generate():
+        gen, task = await tts_bot_pipeline(params, config)
+        async for chunk in gen:
+            yield chunk
+        await task
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+@router.get("/download")
+async def download_audio(filename: str):
+    file_path = os.path.join("recordings", f"{filename}_conversation_recording.wav")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(file_path, media_type="audio/mpeg", filename=f"{filename}_conversation_recording.wav")
 
 @router.post("/connect", response_class=JSONResponse)
 async def connect(
@@ -144,6 +166,23 @@ async def connect(
             "token": user_token,
         }
     )
+
+
+
+
+@router.post("/connect_ws")
+async def bot_connect_ws(request: Request) -> Dict[Any, Any]:
+    ws_url = "ws://localhost:7860/ws"
+    return {"ws_url": ws_url}
+
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("WebSocket connection accepted")
+    try:
+        await ws_bot_pipeline(websocket)
+    except Exception as e:
+        print(f"Exception in run_bot: {e}")
 
 def merge_bot_config(default_config: BotConfig, override_config: BotConfig) -> BotConfig:
     merged = default_config.dict()

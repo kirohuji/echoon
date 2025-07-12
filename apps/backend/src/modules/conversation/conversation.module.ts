@@ -4,6 +4,7 @@ import { ConversationController } from './conversation.controller';
 import { PrismaModule } from '@/common/prisma/prisma.module';
 import { MessageService } from './message.service';
 import { PublicConversationController } from './public.conversation.controller';
+import { ParticipantService } from './participant.service';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { PublicConversationController } from './public.conversation.controller';
   providers: [
     ConversationService,  
     MessageService,
+    ParticipantService,
   ],
   exports: [ConversationService],
 })

@@ -19,6 +19,7 @@ import type { LLMMessageRole } from "src/utils/llm";
 import emitter from "src/utils/eventEmitter";
 import { getScrollableParent } from "src/utils/dom";
 import { useAuthContext } from "src/auth/hooks";
+import { pipecatService } from "src/composables/context-provider";
 import ChatMessageItem from './chat-message-item'
 
 interface LiveMessage extends Message {
@@ -56,6 +57,8 @@ export default function ChatLiveMessageList({
   const [liveMessages, setLiveMessages] = useState<LiveMessage[]>([]);
 
   const interactionMode: string = "informational"
+
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   const client: any = usePipecatClient();
 
@@ -348,6 +351,16 @@ export default function ChatLiveMessageList({
   //   ),
   // );
 
+  useRTVIClientEvent(
+    RTVIEvent.ServerMessage,
+    useCallback(async (message: { fileUrl: string }) => {
+      if (!message.fileUrl) return;
+      const url = await pipecatService.downloadAudio(message.fileUrl)
+      setAudioUrl(url)
+    }, []),
+  );
+
+
   useEffect(() => {
     const handleUserTextMessage = (
       // content: Array<TextContent | ImageContent>,
@@ -395,26 +408,44 @@ export default function ChatLiveMessageList({
     setLiveMessages((lm) => lm.filter((m) => !m.final));
   }, [messages.length]);
 
-  return liveMessages.map((m, i) => (
-    <ChatMessageItem
-      key={i}
-      message={{
-        ...m,
-        createdAt: m.created_at,
-        senderId: m.content.role === 'user' ? user?.id : 'AI',
-        contentType: 'text',
-        body: m.content.content,
-        // isLoading: i === liveMessages.length - 1 &&
+  return <>
+    {
+      liveMessages.map((m, i) => (
+        <ChatMessageItem
+          key={i}
+          message={{
+            ...m,
+            createdAt: m.created_at,
+            senderId: m.content.role === 'user' ? user?.id : 'AI',
+            contentType: 'text',
+            body: m.content.content,
+            // isLoading: i === liveMessages.length - 1 &&
+            //   m.content.role === "assistant" &&
+            //   isBotSpeaking
+          }}
+          participants={[]}
+          onOpenLightbox={() => []}
+        // isSpeaking={
+        //   i === liveMessages.length - 1 &&
         //   m.content.role === "assistant" &&
         //   isBotSpeaking
-      }}
-      participants={[]}
-      onOpenLightbox={() => []}
-    // isSpeaking={
-    //   i === liveMessages.length - 1 &&
-    //   m.content.role === "assistant" &&
-    //   isBotSpeaking
-    // }
-    />
-  ));
+        // }
+        />
+      ))
+    }
+    {audioUrl && (
+      <audio
+        controls
+        src={audioUrl}
+        autoPlay
+        style={{ width: 300, marginTop: 16 }}
+        onEnded={() => {
+          setAudioUrl(null);
+          URL.revokeObjectURL(audioUrl);
+        }}
+      >
+        <track kind="captions" src="" label="No captions" />
+      </audio>
+    )}
+  </>
 }

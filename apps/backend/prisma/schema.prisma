@@ -22,6 +22,7 @@ model User {
   conversations Conversation[]
   refreshTokens RefreshToken[]
   profile       Profile?
+  personal      Personal?
   files         File[]
   participants  Participant[]
   roleAssignments RoleAssignment[]
@@ -33,6 +34,19 @@ model Profile {
   photoURL  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Personal {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [id], references: [id])
+  prompt      String   // 角色设定/初始 prompt
+  llm         Json?
+  tts         Json?
+  stt         Json?
+  photoURL    String?  // 角色头像
+  description String?  // 角色简介
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 enum ScopeType {
@@ -209,3 +223,4 @@ model File {
   attachments Attachment[]
   @@index([createdBy])
 }
+

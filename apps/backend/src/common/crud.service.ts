@@ -3,7 +3,7 @@ import { User } from '@prisma/client';
 
 export class CrudService<T> {
   constructor(
-    private readonly prisma: PrismaService,
+    protected readonly prisma: PrismaService,
     private readonly modelName: string, // 比如 'user'
   ) {}
 

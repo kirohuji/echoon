@@ -19,12 +19,14 @@ import FileThumbnail from 'src/components/file-thumbnail';
 //
 import { zhCN } from 'date-fns/locale';
 
+import { usePipecatClient } from "@pipecat-ai/client-react";
+import { pipecatService } from 'src/composables/context-provider';
 import { useGetMessage } from './hooks';
 
 
 // ----------------------------------------------------------------------
 
-export default function ChatMessageItem({ message, participants, onOpenLightbox }: { message: any, participants: any[], onOpenLightbox: (body: string) => void}) {
+export default function ChatMessageItem({ message, participants, onOpenLightbox }: { message: any, participants: any[], onOpenLightbox: (body: string) => void }) {
   const { user } = useAuthContext();
 
   const { me, senderDetails, hasImage } = useGetMessage({
@@ -33,9 +35,12 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox 
     currentUserId: user?.id,
   });
 
+  const pipecatClient = usePipecatClient();
+
   const { username, photoURL } = senderDetails;
 
   const { body, attachments, contentType, createdAt, isLoading, isFailure } = message;
+
 
   const renderInfo = (
     <Typography
@@ -57,25 +62,40 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox 
     </Typography>
   );
 
+  const handleSendWsAudio = useCallback(async () => {
+    try {
+      pipecatClient?.sendClientMessage('tts', { text: message.body });
+  } catch (error) {
+      console.error("Error sending message to server:", error);
+  }
+  
+  }, [message.body, pipecatClient]);  
+
   const handleSendAudio = useCallback(async () => {
-    // rtviClient.params.requestData = {
-    //   ...(rtviClient.params.requestData ?? {}),
-    //   conversation_id: conversationId,
-    //   user_id: user?.id,
-    //   participant_id: participants[0]._id,
-    // };
-    // console.log('send audio');
-    // await rtviClient.action({
-    //   service: "tts",
-    //   action: "say",
-    //   arguments: [
-    //     {
-    //       name: "text",
-    //       value: message.body,
-    //     },
-    //   ],
-    // });
-  }, []);
+    await pipecatService.tts(pipecatClient, {
+      "conversation_id": "cmcsu3kuh00018yc8fdyeyyf9",
+      "bot_model": "gemini2_minimax",
+      "user_id": "kiro",
+      "bot_prompt": "你是名为 Lumi 的 AI 角色，拥有温和而坚定的性格。",
+      actions: [
+        {
+          "label": "rtvi-ai",
+          "type": "action",
+          "data": {
+            service: "tts",
+            action: "say",
+            arguments: [
+              {
+                name: "text",
+                value: message.body,
+              },
+            ],
+          },
+          "id": "440fc1db"
+        }
+      ]
+    })
+  }, [message.body, pipecatClient]);
 
 
   const renderBodyContent = ({ bodyContent, type }: { bodyContent: string, type: string }) => {
@@ -87,7 +107,7 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox 
       );
     }
     switch (type) {
-      case 'text':  
+      case 'text':
         if (bodyContent) {
           return me ? <Markdown sx={{}} children={bodyContent} /> : <Markdown sx={{}} children={bodyContent} />;
         }
@@ -96,14 +116,14 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox 
       case 'mp3':
         return (
           <Stack spacing={1} direction="row" alignItems="center">
-            <FileThumbnail file="audio" tooltip={false} imageView={false} onDownload={() => {}} sx={undefined} imgSx={undefined} />
+            <FileThumbnail file="audio" tooltip={false} imageView={false} onDownload={() => { }} sx={undefined} imgSx={undefined} />
             <Typography variant="body2">{attachments[0]?.name}</Typography>
           </Stack>
         );
       default:
         return (
           <Stack spacing={1} direction="row" alignItems="center">
-            <FileThumbnail file={type} tooltip={false} imageView={false} onDownload={() => {}} sx={undefined} imgSx={undefined} />
+            <FileThumbnail file={type} tooltip={false} imageView={false} onDownload={() => { }} sx={undefined} imgSx={undefined} />
             <Typography
               sx={{
                 whiteSpace: 'nowrap' /* 防止文本换行 */,
@@ -184,9 +204,14 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox 
     >
       {
         !me && (
-          <IconButton size="small" onClick={() => handleSendAudio()}>
-          <Iconify icon="solar:soundwave-broken" width={16} />
-        </IconButton>
+          <>
+            <IconButton size="small" onClick={() => handleSendAudio()}>
+              <Iconify icon="solar:soundwave-broken" width={16} />
+            </IconButton>
+            <IconButton size="small" onClick={() => handleSendWsAudio()}>
+              <Iconify icon="solar:microphone-bold" width={16} />
+            </IconButton>
+          </>
         )
       }
       {me && (

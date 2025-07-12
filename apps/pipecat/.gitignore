@@ -26,3 +26,4 @@ docker-compose.override.yml
 # 其他
 *.swp
 *.swo 
+recordings/

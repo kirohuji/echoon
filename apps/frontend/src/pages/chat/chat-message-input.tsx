@@ -204,6 +204,17 @@ export default function ChatMessageInput({
     // )
   }, [user, selectedConversationId, pipecatClient, message])
 
+  const handleMicrophone = useCallback(async () => {
+    pipecatClient.params.requestData = {
+      ...(pipecatClient.params.requestData ?? {}),
+      conversation_id: selectedConversationId,
+      user_id: user?.id,
+    };
+    await pipecatClient.connect({
+      ws_url: 'http://localhost:7860/api/bot/ws',
+    });
+  }, [user, selectedConversationId, pipecatClient])
+
   const handleSendMessage = useCallback(
     async (event: any) => {
       try {
@@ -302,9 +313,9 @@ export default function ChatMessageInput({
             {/* <IconButton onClick={handleAttach}>
                 <Iconify icon="eva:attach-2-fill" />
               </IconButton> */}
-            {/* <IconButton>
-                  <Iconify icon="solar:microphone-bold" />
-                </IconButton> */}
+            <IconButton onClick={handleMicrophone}>
+              <Iconify icon="solar:microphone-bold" />
+            </IconButton>
           </Stack>
         }
         sx={{

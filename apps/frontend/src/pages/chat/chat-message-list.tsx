@@ -7,7 +7,7 @@ import Lightbox, { useLightBox } from 'src/components/lightbox';
 //
 import { useMessagesScroll } from './hooks';
 import ChatMessageItem from './chat-message-item';
-import ChatLiveMessageList from './chat-live-message-list'
+import ChatLiveMessageList from './chat-live-message-list';
 
 // ----------------------------------------------------------------------
 const secretKey = 'future';
