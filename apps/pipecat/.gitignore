@@ -27,3 +27,4 @@ docker-compose.override.yml
 *.swp
 *.swo 
 recordings/
+sesame.db

@@ -4,3 +4,8 @@ resampy
 numpy
 hume[microphone]
 pipecat-ai[daily,google,openai,silero,websocket,deepgram,elevenlabs,cartesia,fish,deepseek,mem0,webrtc]==0.0.75
+langchain-postgres
+langchain
+langchain-core
+langchain-deepseek
+langchain-community

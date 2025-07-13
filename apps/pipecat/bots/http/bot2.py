@@ -29,37 +29,24 @@ from pipecat.processors.frameworks.rtvi import (
 )
 from pipecat.services.ai_services import OpenAILLMContext
 from pipecat.services.google import GoogleLLMContext, GoogleLLMService
-from langchain_community.chat_message_histories import SQLChatMessageHistory
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_deepseek import ChatDeepSeek
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from pipecat.processors.frameworks.langchain import LangchainProcessor
+# from pipecat.services.mem0.memory import Mem0MemoryService
 
-def get_chat_history_json(session_id, connection_string):
-    history = SQLChatMessageHistory(
-        session_id=session_id,
-        connection=connection_string
-    )
 
-    # 获取消息并转换为 JSON 数组
-    json_messages = []
-    for message in history.messages:
-        if isinstance(message, HumanMessage):
-            json_messages.append({
-                "role": "user",
-                "content": message.content
-            })
-        elif isinstance(message, AIMessage):
-            json_messages.append({
-                "role": "assistant",
-                "content": message.content
-            })
+message_store = {}
 
-    return (json_messages, history)
 
-def add_chat_history_to_db(history, messages):
-    for message in messages:
-        if message["role"] == "user":
-            history.add_user_message(message["content"])
-        elif message["role"] == "assistant":
-            history.add_ai_message(message["content"])
+def get_session_history(session_id: str) -> BaseChatMessageHistory:
+    if session_id not in message_store:
+        message_store[session_id] = ChatMessageHistory()
+    return message_store[session_id]
+
 
 async def http_bot_pipeline(
     params: BotParams,
@@ -80,14 +67,32 @@ async def http_bot_pipeline(
     #     model="gemini-2.0-flash-exp",
     # )
 
-    history, history_messages = get_chat_history_json(params.conversation_id, os.getenv("DATABASE_URL2"))
-
-    llm = DeepSeekLLMService(
-        api_key=os.getenv("DEEPSEEK_API_KEY"),
-        model="deepseek-chat",
+    # llm = DeepSeekLLMService(
+    #     api_key=os.getenv("DEEPSEEK_API_KEY"),
+    #     model="deepseek-chat",
+    # )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                "Be nice and helpful. Answer very briefly and without special characters like `#` or `*`. "
+                "Your response will be synthesized to voice and those characters will create unnatural sounds.",
+            ),
+            MessagesPlaceholder("chat_history"),
+            ("human", "{input}"),
+        ]
     )
+    chain = prompt | ChatDeepSeek(model="deepseek-chat",api_key=os.getenv("DEEPSEEK_API_KEY"))
+    history_chain = RunnableWithMessageHistory(
+        chain,
+        get_session_history,
+        history_messages_key="chat_history",
+        input_messages_key="input",
+    )
+    lc = LangchainProcessor(history_chain)
+
     tools = NOT_GIVEN
-    context = OpenAILLMContext(history_messages, tools)
+    context = OpenAILLMContext(messages, tools)
     context_aggregator = llm.create_context_aggregator(
         context
     )
@@ -133,7 +138,7 @@ async def http_bot_pipeline(
         rtvi,
         user_aggregator,
         storage.create_processor(),
-        llm,
+        lc,
         # memory,
         # tts,
         async_generator,
@@ -166,7 +171,6 @@ async def http_bot_pipeline(
                 }
             }
             default_publisher_factory.publish(json.dumps(payload))
-            add_chat_history_to_db(history, messages)
         except Exception as e:
             logger.error(f"Error storing messages: {e}")
             raise e
