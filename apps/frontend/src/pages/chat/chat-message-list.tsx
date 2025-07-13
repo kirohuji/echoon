@@ -67,7 +67,7 @@ export default function ChatMessageList({
               onOpenLightbox={() => lightbox.onOpen(message.body)}
             />
           ))}
-           <ChatLiveMessageList conversationId={conversationId} messages={messages} autoscroll/>
+           <ChatLiveMessageList conversationId={conversationId} messages={messages} participants={participants} autoscroll/>
         </Box>
       </Scrollbar>
 

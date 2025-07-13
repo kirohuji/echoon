@@ -54,7 +54,7 @@ export default function ChatMessageItem({ message, participants, onOpenLightbox 
         }),
       }}
     >
-      {!me && `${username || '对话教练'},`} &nbsp;
+      {!me && `${username},`} &nbsp;
       {formatDistanceToNowStrict(new Date(createdAt), {
         addSuffix: true,
         locale: zhCN,

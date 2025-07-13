@@ -55,13 +55,6 @@ async def http_bot_pipeline(
         model="deepseek-chat",
     )
     tools = NOT_GIVEN
-    # messages = [
-    #     {
-    #         "role": "system",
-    #         "content": "你是一个英语对话教练,你每次返回给我都是按照英语的语法和表达方式来回答我,要有中英文结合,先出现英文,然后 按照 markdown 的换行 再出现中文"
-    #     },
-    #     *messages
-    # ]
     context = OpenAILLMContext(messages, tools)
     context_aggregator = llm.create_context_aggregator(
         context
@@ -89,7 +82,6 @@ async def http_bot_pipeline(
     #
 
     tts = CartesiaTTSService(api_key=os.getenv("CARTESIA_API_KEY"), model="sonic-turbo-2025-03-07", voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02")
-    print(params.user_id)
     # memory = Mem0MemoryService(
     #     api_key=os.getenv("MEM0_API_KEY"),  # Your Mem0 API key
     #     user_id=params.user_id,  # Unique identifier for the user
@@ -132,6 +124,8 @@ async def http_bot_pipeline(
             default_publisher_factory = PublisherFactory()
             payload = {
                 "pattern": "message",
+                "sender_id": params.user_id,
+                "participant_id": params.participant_id,
                 "data": {
                     "language_code": language_code,
                     "conversation_id": params.conversation_id,

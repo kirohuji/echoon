@@ -37,6 +37,7 @@ interface Props {
   conversationId: string;
   isBotSpeaking?: boolean;
   messages: Message[];
+  participants: any[];
 }
 
 interface MessageChunk {
@@ -52,7 +53,8 @@ export default function ChatLiveMessageList({
   autoscroll,
   isBotSpeaking,
   messages,
-  conversationId
+  conversationId,
+  participants
 }: Props) {
   const [liveMessages, setLiveMessages] = useState<LiveMessage[]>([]);
 
@@ -64,6 +66,8 @@ export default function ChatLiveMessageList({
 
   const { user } = useAuthContext();
 
+  const participant = participants.find((p: any) => p.id !== user?.id);
+
   useEffect(() => {
     if (!client) return;
     client.params = {
@@ -71,10 +75,10 @@ export default function ChatLiveMessageList({
       requestData: {
         conversation_id: conversationId,
         // bot_model: model,
-        bot_prompt: prompt,
+        bot_prompt: participant?.prompt,
       },
     };
-  }, [client, conversationId]);
+  }, [client, conversationId, participant]);
 
   const addMessageChunk = useCallback(
     ({
@@ -416,14 +420,14 @@ export default function ChatLiveMessageList({
           message={{
             ...m,
             createdAt: m.created_at,
-            senderId: m.content.role === 'user' ? user?.id : 'AI',
+            senderId: m.content.role === 'user' ? user?.id : participant?.id,
             contentType: 'text',
             body: m.content.content,
             // isLoading: i === liveMessages.length - 1 &&
             //   m.content.role === "assistant" &&
             //   isBotSpeaking
           }}
-          participants={[]}
+          participants={participants}
           onOpenLightbox={() => []}
         // isSpeaking={
         //   i === liveMessages.length - 1 &&
@@ -438,7 +442,7 @@ export default function ChatLiveMessageList({
         controls
         src={audioUrl}
         autoPlay
-        style={{ width: 300, marginTop: 16 }}
+        style={{ width: 300, marginTop: 16, display: 'none' }}
         onEnded={() => {
           setAudioUrl(null);
           URL.revokeObjectURL(audioUrl);

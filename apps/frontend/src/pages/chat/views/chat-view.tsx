@@ -104,6 +104,8 @@ export function ChatView() {
 
   const [conversations, setConversations] = useState<any[]>([]);
 
+  const [messages, setMessages] = useState<any[]>([]);
+
   const isDesktop = useResponsive('up', 'md');
 
   const selectedConversationId = searchParams.get('id') || '';
@@ -148,13 +150,13 @@ export function ChatView() {
     >
       <ChatMessageList
         conversationId={selectedConversationId}
-        messages={[]}
+        messages={messages}
         participants={participants}
         onRefresh={() => { }}
       />
 
       <ChatMessageInput
-        recipients={[]}
+        participants={participants}
         onAddRecipients={() => { }}
         selectedConversationId={selectedConversationId}
         disabled={!selectedConversationId}
@@ -168,6 +170,11 @@ export function ChatView() {
     });
     setCurrentConversation(res.data);
     setParticipants(res.data.participants.map((participant: any) => participant.info));
+    setMessages(res.data.messages.data.map((message: any) => ({
+      ...message,
+      attachments: message.attachments || [],
+      contentType: message.contentType || 'text',
+    })) );
   }, []);
 
   const initialConversation = useCallback(async () => {

@@ -1,6 +1,7 @@
 import type { AxiosRequestConfig } from 'axios';
 
 import axios from 'axios';
+import { STORAGE_KEY } from 'src/auth/context/jwt/constant';
 
 import { CONFIG } from 'src/config-global';
 
@@ -12,16 +13,16 @@ export const service = axios.create({
   baseURL,
   timeout: 180000,
 });
-// service.interceptors.request.use(
-//   (config) => {
-//     const token = localStorage.getItem('accessToken');
-//     if (token) {
-//       config.headers['Authorization'] = token;
-//     }
-//     return config;
-//   },
-//   (error) => Promise.reject(error)
-// );
+service.interceptors.request.use(
+  (config) => {
+    const token = sessionStorage.getItem(STORAGE_KEY);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 service.interceptors.response.use(
   (response) => response.data,

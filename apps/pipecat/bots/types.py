@@ -16,6 +16,7 @@ class BotParams(BaseModel):
     bot_prompt: Optional[str] = None
     bot_profile: Optional[str] = None
     user_id: Optional[str] = None
+    participant_id: Optional[str] = None
     attachments: List[str] = []
 
 

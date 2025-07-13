@@ -85,12 +85,7 @@ async def stream_action(
         messages = [
             {
                 "role": "system",
-                "content": """
-                        You are an English conversation coach.
-                        Always reply using correct English grammar and natural expressions.
-                        Each response must be in **English first**, followed by a **Chinese translation after a Markdown line break** (`\\n\\n`).
-                        Keep replies clear, educational, and helpful. Correct any mistakes and suggest better expressions when needed.
-                """
+                "content": params.bot_prompt
             },
         ]
         # Run the single turn pipeline and yield text frames

@@ -27,12 +27,12 @@ import { type Message } from 'src/utils/messages';
 // ----------------------------------------------------------------------
 
 export default function ChatMessageInput({
-  recipients,
+  participants,
   onAddRecipients,
   disabled,
   selectedConversationId,
 }: {
-  recipients: any[],
+  participants: any[],
   onAddRecipients: () => void,
   disabled: boolean,
   selectedConversationId: string,
@@ -47,6 +47,8 @@ export default function ChatMessageInput({
   const { enqueueSnackbar } = useSnackbar();
 
   const { user } = useAuthContext();
+
+  const participant = participants.find((p: any) => p.id !== user?.id);
 
   const [message, setMessage] = useState('');
   const [sendingType, setSendingType] = useState('send');
@@ -84,34 +86,10 @@ export default function ChatMessageInput({
     [message, type, selectedConversationId, myContact._id]
   );
 
-  const conversationData = useMemo(
-    () => ({
-      id: uuidv4(),
-      messages: [messageData],
-      participants: [...recipients, myContact],
-      type: recipients.length > 1 ? 'GROUP' : 'ONE_TO_ONE',
-      unreadCount: 0,
-    }),
-    [messageData, myContact, recipients]
-  );
-
-
   const handleChangeMessage = useCallback((event: any) => {
     if (event.key !== 'Enter' || !event.shiftKey) {
       setMessage(event.target.value.replace(/\n/g, ''));
     }
-  }, []);
-
-  const createConversation = useCallback(async () => {
-    // let conversationKey = await messagingService.findExistingConversationWithUsers({
-    //   users: recipients.map((recipient) => recipient._id),
-    // });
-    // if (!conversationKey) {
-    //   conversationKey = await messagingService.room({
-    //     participants: recipients.map((recipient) => recipient._id),
-    //   });
-    // }
-    // return conversationKey;
   }, []);
 
   const handleRTVIMessage = useCallback(async (currentMessage: string) => {
@@ -133,10 +111,11 @@ export default function ChatMessageInput({
     ]);
 
     await pipecatService.action(pipecatClient, {
-      "conversation_id": "cmcsu3kuh00018yc8fdyeyyf9",
+      "conversation_id": selectedConversationId,
       "bot_model": "gemini2_minimax",
-      "user_id": "kiro",
-      "bot_prompt": "你是名为 Lumi 的 AI 角色，拥有温和而坚定的性格。",
+      "user_id": user?.id,
+      "participant_id": participant?.id,
+      "bot_prompt": participant?.prompt,
       actions: [
         {
           "label": "rtvi-ai",
@@ -160,49 +139,7 @@ export default function ChatMessageInput({
         }
       ]
     })
-    // await pipecatClient.action({
-    //   service: "llm",
-    //   action: "append_to_messages",
-    //   arguments: [
-    //     {
-    //       name: "messages",
-    //       value: [
-    //         {
-    //           role: "user",
-    //           content: currentMessage,
-    //         },
-    //       ],
-    //     },
-    //   ],
-    // });
-    // const params: RTVIClientParams = {
-    //   endpoints: {
-    //     connect: "/bot/offer",
-    //     action: "/bot/action",
-    //   },
-    //   requestData: pipecatClient.params.requestData
-    // }
-    // await httpActionGenerator(
-    //   "http://localhost:7860/api/bot/action",
-    //   new RTVIActionRequest({
-    //     service: "llm",
-    //     action: "append_to_messages",
-    //     arguments: [
-    //       {
-    //         name: "messages",
-    //         value: [
-    //           {
-    //             role: "user",
-    //             content: currentMessage,
-    //           },
-    //         ],
-    //       },
-    //     ],
-    //   }),
-    //   params,
-    //   ()=> {}
-    // )
-  }, [user, selectedConversationId, pipecatClient, message])
+  }, [user, selectedConversationId, pipecatClient, message, participant])
 
   const handleMicrophone = useCallback(async () => {
     pipecatClient.params.requestData = {
