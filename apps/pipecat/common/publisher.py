@@ -24,7 +24,15 @@ class PublisherFactory:
     def channel(self):
         return self._channel
 
+    def _ensure_connection(self):
+        if self._connection is None or self._connection.is_closed:
+            self._connection = pika.BlockingConnection(pika.ConnectionParameters("115.159.95.166"))
+        if self._channel is None or self._channel.is_closed:
+            self._channel = self._connection.channel()
+            self._channel.queue_declare(queue="pipecat", durable=True)
+
     def publish(self, body: str):
+        self._ensure_connection()
         self._channel.basic_publish(
             exchange="",
             routing_key="pipecat",
