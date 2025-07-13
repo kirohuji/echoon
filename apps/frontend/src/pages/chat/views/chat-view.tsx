@@ -45,7 +45,7 @@ const pipecatClient = new PipecatClient({
   //     action: "/bot/action",
   //   },
   // },
-  transport: new WebSocketTransport ({
+  transport: new WebSocketTransport({
     serializer: new ProtobufFrameSerializer(),
     recorderSampleRate: 24000,
     playerSampleRate: 24000,
@@ -113,9 +113,9 @@ export function ChatView() {
   const details = !!selectedConversationId;
 
   const handleClickConversation = useCallback((conversation: any) => {
-    if(isDesktop){
+    if (isDesktop) {
       router.push(`/main/chat?id=${conversation.id}`);
-    }else{
+    } else {
       router.push(`/chat?id=${conversation.id}`);
     }
   }, [router, isDesktop]);
@@ -170,17 +170,22 @@ export function ChatView() {
     });
     setCurrentConversation(res.data);
     setParticipants(res.data.participants.map((participant: any) => participant.info));
-    setMessages(res.data.messages.data.map((message: any) => ({
+    const { data } = await conversationService.getMessages(id, {
+      page: 1,
+      limit: 20,
+    });
+    setMessages(data.data.map((message: any) => ({
       ...message,
       attachments: message.attachments || [],
       contentType: message.contentType || 'text',
-    })) );
+      body: message.content || message.body,
+    })));
   }, []);
 
   const initialConversation = useCallback(async () => {
     const res = await conversationService.my();
     setConversations(res.data);
-    if(selectedConversationId){
+    if (selectedConversationId) {
       getConversation(selectedConversationId);
     }
   }, [selectedConversationId, getConversation]);

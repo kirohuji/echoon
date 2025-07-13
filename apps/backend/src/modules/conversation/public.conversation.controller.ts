@@ -12,20 +12,19 @@ export class PublicConversationController {
   @Public()
   @EventPattern('message')
   receiveMessage(@Payload() data: any) {
-    const { messages, conversation_id, language_code, sender_id, participant_id } = data;
+    const { messages, conversation_id, language_code, user_id, participant_id } = data;
     messages.forEach(async (message: any) => {
       if(message.role === 'user'){
-        message.senderId = sender_id;
+        message.senderId = user_id;
       }else{
         message.senderId = participant_id;
       }
-      console.log(message);
       this.messageService.create({
         conversationId: conversation_id,
         content: message.content,
         languageCode: language_code,
         extraMetadata: {},
-        senderId: message.senderId,
+        senderId: message.senderId || "",
       });
     });
   }

@@ -60,7 +60,7 @@ export class ConversationService extends CrudService<Conversation> {
         });
         return {
           ...conversation,
-          messages: latestMessage || [],
+          messages: latestMessage ? [latestMessage] : [],
         };
       })
     );
@@ -87,7 +87,7 @@ export class ConversationService extends CrudService<Conversation> {
     const [messages, total] = await Promise.all([
       this.prisma.message.findMany({
         where: { conversationId: id },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'asc' },
         skip,
         take: pageSize,
       }),
@@ -123,7 +123,7 @@ export class ConversationService extends CrudService<Conversation> {
     const [messages, total] = await Promise.all([
       this.prisma.message.findMany({
         where: { conversationId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'asc' },
         skip,
         take: pageSize,
       }),

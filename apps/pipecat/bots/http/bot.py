@@ -122,11 +122,12 @@ async def http_bot_pipeline(
         logger.debug(f"{len(messages)} message(s) received for storage: {str(messages)[:120]}...")
         try:
             default_publisher_factory = PublisherFactory()
+            print(params.user_id, params.participant_id)
             payload = {
                 "pattern": "message",
-                "sender_id": params.user_id,
-                "participant_id": params.participant_id,
                 "data": {
+                    "user_id": params.user_id,
+                    "participant_id": params.participant_id,
                     "language_code": language_code,
                     "conversation_id": params.conversation_id,
                     "messages": messages,
