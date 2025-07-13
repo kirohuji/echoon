@@ -15,15 +15,18 @@ import { useBoolean } from 'src/hooks/use-boolean';
 import { fToNow } from 'src/utils/format-time';
 // components
 import { Iconify } from 'src/components/iconify';
+import { useAuthContext } from 'src/auth/hooks';
 
 // ----------------------------------------------------------------------
 
 const Transition = forwardRef((props: any, ref: any) => <Slide direction="up" ref={ref} {...props} />);
 export default function ChatHeaderDetail({ participants }: { participants: any[] }) {
+  const { user } = useAuthContext();
   const dialog = useBoolean();
   const group = participants.length > 2;
-
-  const singleParticipant = participants[0] || {};
+  
+  console.log(participants);
+  const singleParticipant = participants.find((participant: any) => participant.id !== user?.id) || {};
 
   const renderGroup = (
     <AvatarGroup
@@ -47,11 +50,11 @@ export default function ChatHeaderDetail({ participants }: { participants: any[]
         variant={singleParticipant.status as any}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
-        <Avatar src={singleParticipant.photoURL} alt={singleParticipant.username} />
+        <Avatar src={singleParticipant.photoURL} alt={singleParticipant.name} />
       </Badge>
 
       <ListItemText
-        primary={`${singleParticipant.username || '对话教练'}`}
+        primary={`${singleParticipant.name || ''}`}
         secondary={
           singleParticipant.status === 'offline'
             ? fToNow(singleParticipant.lastActivity)

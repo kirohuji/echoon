@@ -3,7 +3,7 @@ import { MainContent } from 'src/layouts/main';
 import { Card, Stack, Typography } from '@mui/material';
 
 import { useResponsive } from 'src/hooks/use-responsive';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 // import { DailyTransport } from "@pipecat-ai/daily-transport";
 import { PipecatClient } from "@pipecat-ai/client-js";
@@ -15,6 +15,7 @@ import {
   WebSocketTransport,
   ProtobufFrameSerializer,
 } from "@pipecat-ai/websocket-transport";
+import { conversationService } from 'src/composables/context-provider';
 
 import ChatNavItem from '../chat-nav-item';
 import ChatNav from '../chat-nav';
@@ -22,7 +23,6 @@ import ChatHeaderDetail from '../chat-header-detail';
 import ChatMessageList from '../chat-message-list';
 import ChatMessageInput from '../chat-message-input';
 import ChatRoom from '../chat-room';
-import { mockConversations } from './mockConversations';
 
 function calcHeight(isDesktop: boolean, selectedConversationId: string) {
   if (isDesktop) {
@@ -100,7 +100,9 @@ export function ChatView() {
 
   const [participants, setParticipants] = useState<any[]>([]);
 
-  const [conversations, setConversations] = useState<any[]>(mockConversations);
+  const [currentConversation, setCurrentConversation] = useState<any>(null);
+
+  const [conversations, setConversations] = useState<any[]>([]);
 
   const isDesktop = useResponsive('up', 'md');
 
@@ -109,8 +111,12 @@ export function ChatView() {
   const details = !!selectedConversationId;
 
   const handleClickConversation = useCallback((conversation: any) => {
-    router.push(`/main/chat?id=${conversation.id}`);
-  }, [router]);
+    if(isDesktop){
+      router.push(`/main/chat?id=${conversation.id}`);
+    }else{
+      router.push(`/chat?id=${conversation.id}`);
+    }
+  }, [router, isDesktop]);
 
   const renderNav = (
     <ChatNav
@@ -155,6 +161,26 @@ export function ChatView() {
       />
     </Stack>
   );
+
+  const getConversation = useCallback(async (id: string) => {
+    const res = await conversationService.get({
+      id,
+    });
+    setCurrentConversation(res.data);
+    setParticipants(res.data.participants.map((participant: any) => participant.info));
+  }, []);
+
+  const initialConversation = useCallback(async () => {
+    const res = await conversationService.my();
+    setConversations(res.data);
+    if(selectedConversationId){
+      getConversation(selectedConversationId);
+    }
+  }, [selectedConversationId, getConversation]);
+
+  useEffect(() => {
+    initialConversation();
+  }, [initialConversation]);
 
   return (
     <MainContent

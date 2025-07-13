@@ -33,7 +33,7 @@ export class ConversationService extends CrudService<Conversation> {
 
   // 获取某用户参与的所有会话
   async getConversationsByUserId(userId: string) {
-    return await this.prisma.conversation.findMany({
+    const conversations = await this.prisma.conversation.findMany({
       where: {
         participants: {
           some: {
@@ -50,6 +50,22 @@ export class ConversationService extends CrudService<Conversation> {
         },
       },
     });
+
+    // 查询每个会话的最新一条消息
+    const conversationsWithLatestMessage = await Promise.all(
+      conversations.map(async (conversation) => {
+        const latestMessage = await this.prisma.message.findFirst({
+          where: { conversationId: conversation.id },
+          orderBy: { createdAt: 'desc' },
+        });
+        return {
+          ...conversation,
+          messages: latestMessage || [],
+        };
+      })
+    );
+
+    return conversationsWithLatestMessage;
   }
 
   // 根据会话id获取会话详情

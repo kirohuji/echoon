@@ -1,6 +1,7 @@
 import { Badge, Box, Avatar, ListItemButton, Stack, Typography, ListItemText } from "@mui/material";
 import { zhCN } from 'date-fns/locale';
 import { formatDistanceToNowStrict } from "date-fns";
+import { useAuthContext } from "src/auth/hooks";
 
 export default function ChatNavItem({
   conversation,
@@ -13,7 +14,14 @@ export default function ChatNavItem({
   collapse: boolean;
   onClick: (conversation: any) => void;
 }) {
-  const { username, photoURL, lastActivity, status, displayName, realName, displayText } = conversation;
+  const { user } = useAuthContext();
+  const { title, messages, participants } = conversation;
+  const participant = participants.find((p: any) => p.id !== user?.id);
+  const username = participant?.personal?.name
+  const displayText = messages[0]?.content;
+  const photoURL = participant?.personal?.photoURL
+  const lastActivity = messages[0]?.createdAt;
+
   return (
     <ListItemButton
       onClick={() => onClick(conversation)}
@@ -40,7 +48,7 @@ export default function ChatNavItem({
           <>
             <ListItemText
               sx={{ ml: 2 }}
-              primary={`${displayName}${realName ? `(${realName})` : ''}`}
+              primary={`${title}`}
               secondary={displayText}
               slotProps={{
                 primary: {

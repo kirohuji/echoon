@@ -49,7 +49,7 @@ export default function ChatNav({ conversations, selectedConversationId, onClick
 
   const renderContent = (
     <>
-      <Stack direction="row" alignItems="center" justifyContent="center" sx={{ p: 2.5, pb: 0 }}>
+      <Stack direction="row" alignItems="center" justifyContent="center" sx={{ p: 2.5, pb: 2.5 }}>
         {!collapseDesktop && (
           <>
             <ChatNavAccount />

@@ -19,11 +19,11 @@ export class Service {
   }
 
   delete(target: any) {
-    return this.api.delete(`${this.model}/${target._id}`, target)
+    return this.api.delete(`${this.model}/${target.id}`, target)
   }
 
   patch(target: any) {
-    return this.api.patch(`${this.model}/${target._id}`, target)
+    return this.api.patch(`${this.model}/${target.id}`, target)
   }
 
   post(target: any) {
@@ -46,11 +46,11 @@ export class Service {
   }
 
   put(target: any) {
-    return this.api.put(`${this.model}/${target._id}`, target)
+    return this.api.put(`${this.model}/${target.id}`, target)
   }
 
   get(target: any) {
-    return this.api.get(`${this.model}/${target._id}`, target)
+    return this.api.get(`${this.model}/${target.id}`, target)
   }
 
   getAll(target: any) {
