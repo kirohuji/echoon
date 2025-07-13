@@ -64,6 +64,7 @@ export class PersonalService extends CrudService<Personal> {
       const personal = await this.prisma.personal.create({
         data: {
           id: user.id,
+          name: role.name,
           prompt: role.prompt,
           llm: {},
           tts: {},

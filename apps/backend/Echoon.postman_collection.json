@@ -1,0 +1,483 @@
+{
+	"info": {
+		"_postman_id": "aead12af-3218-4a83-964d-45b6cdb9fc67",
+		"name": "Echoon",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "1533305",
+		"_collection_link": "https://speeding-firefly-415641.postman.co/workspace/My-Workspace~78140e5d-172b-44d8-81b3-a3857ced25d1/collection/1533305-aead12af-3218-4a83-964d-45b6cdb9fc67?action=share&source=collection_link&creator=1533305"
+	},
+	"item": [
+		{
+			"name": "Conversation",
+			"item": [
+				{
+					"name": "创建",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"python 测试\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/conversation",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"conversation"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "分页",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"page\": 1,\n    \"limit\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/conversation/pagination",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"conversation",
+								"pagination"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"python 测试\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/conversation",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"conversation"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "分页",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"page\": 1,\n    \"limit\": 10\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/conversation/pagination",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"conversation",
+								"pagination"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"python 测试\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/conversation",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"conversation"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n   \"phone\": \"13052202624\",\n   \"password\": \"123456\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:3000/api/auth/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "3000",
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "python(Bot/Action)",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "Hm_lvt_d9c8b87d10717013641458b300c552e4=1727503996,1728797126; _ga_R1FN4KJKJH=GS1.1.1730008340.26.1.1730008369.0.0.0; _ga=GA1.1.2132120978.1727599731; X-Auth-Token=364bccb1-f747-4cef-a675-106973850b5d; Hm_lvt_1cd9bcbaae133f03a6eb19da6579aaba=1741343193,1741920430; i18n_redirected=ch; __next_hmr_refresh_hash__=726e5b53452058e37d51cf72af3213df633457081244afec; better-auth.session_token=zafnseMDyVcXPmKkgTJ9gOlETyYyXK1s.exeA0JndF83fW0ujCAEXMPgIHAcwra%2F3Bjw0UW7CgS8%3D",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"conversation_id\": \"cmcsu3kuh00018yc8fdyeyyf9\",\n    \"bot_model\": \"gemini2_minimax\",\n    \"user_id\": \"kiro\",\n    \"bot_prompt\": \"你是名为 Lumi 的 AI 角色，拥有温和而坚定的性格。\",\n    \"actions\": [\n        {\n            \"label\": \"rtvi-ai\",\n            \"type\": \"action\",\n            \"data\": {\n                \"service\": \"llm\",\n                \"action\": \"append_to_messages\",\n                \"arguments\": [\n                    {\n                        \"name\": \"messages\",\n                        \"value\": [\n                            {\n                                \"role\": \"user\",\n                                \"content\": [\n                                    {\n                                        \"type\": \"text\",\n                                        \"text\": \"我喜欢吃海鲜\"\n                                    }\n                                ]\n                            }\n                        ]\n                    }\n                ]\n            },\n            \"id\": \"440fc1db\"\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:7860/api/bot/action",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "7860",
+					"path": [
+						"api",
+						"bot",
+						"action"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "python(Bot/TTS)",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Cookie",
+						"value": "Hm_lvt_d9c8b87d10717013641458b300c552e4=1727503996,1728797126; _ga_R1FN4KJKJH=GS1.1.1730008340.26.1.1730008369.0.0.0; _ga=GA1.1.2132120978.1727599731; X-Auth-Token=364bccb1-f747-4cef-a675-106973850b5d; Hm_lvt_1cd9bcbaae133f03a6eb19da6579aaba=1741343193,1741920430; i18n_redirected=ch; __next_hmr_refresh_hash__=726e5b53452058e37d51cf72af3213df633457081244afec; better-auth.session_token=zafnseMDyVcXPmKkgTJ9gOlETyYyXK1s.exeA0JndF83fW0ujCAEXMPgIHAcwra%2F3Bjw0UW7CgS8%3D",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"conversation_id\": \"cmcsu3kuh00018yc8fdyeyyf9\",\n    \"bot_model\": \"gemini2_minimax\",\n    \"user_id\": \"kiro\",\n    \"bot_prompt\": \"你是名为 Lumi 的 AI 角色，拥有温和而坚定的性格。\",\n    \"actions\": [\n        {\n            \"label\": \"rtvi-ai\",\n            \"type\": \"action\",\n            \"data\": {\n                \"service\": \"tts\",\n                \"action\": \"say\",\n                \"arguments\": [\n                    {\n                        \"name\": \"text\",\n                        \"value\": \"The Role of Artificial Intelligence in Healthcare\\n\\nIn recent years, artificial intelligence (AI) has begun to revolutionize the healthcare industry. From assisting in diagnosis to managing hospital workflows, AI technologies are being integrated into every aspect of medical care. These advancements are not only improving the quality of treatment but also making healthcare more efficient and accessible.\\n\\nOne of the most impactful uses of AI is in medical imaging. Algorithms can now analyze X-rays, MRIs, and CT scans with high accuracy. In some cases, AI systems can even detect diseases such as cancer earlier than human doctors. This early detection is critical, as it increases the chances of successful treatment and can save lives.\\n\\nAI is also transforming how patient data is managed. Electronic health records (EHRs) can be difficult and time-consuming for doctors to maintain. AI tools help by automatically organizing, summarizing, and even suggesting next steps based on the patient’s medical history. This allows doctors to focus more on patient care rather than paperwork.\\n\\nIn addition, AI-powered chatbots and virtual assistants are providing support to both patients and healthcare providers. Patients can use these tools to check symptoms, schedule appointments, or get medication reminders. For hospitals, AI systems help manage staff schedules, monitor equipment, and even predict patient admissions to optimize resources.\\n\\nHowever, the use of AI in healthcare also raises ethical concerns. Privacy and data security are major issues, especially when dealing with sensitive medical information. There is also a need to ensure that AI systems are fair and unbiased, as incorrect or discriminatory recommendations could lead to serious consequences.\\n\\nDespite these challenges, the potential benefits of AI in healthcare are enormous. As technology continues to advance, AI is likely to become an even more essential part of modern medicine. With the right balance of innovation and regulation, AI can help build a smarter, more responsive healthcare system for the future.\"\n                    }\n                ]\n            },\n            \"id\": \"440fc1cb\"\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:7860/api/bot/tts",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "7860",
+					"path": [
+						"api",
+						"bot",
+						"tts"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "python(Bot/TTS) Download",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Cookie",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"conversation_id\": \"cmcsu3kuh00018yc8fdyeyyf9\",\n    \"bot_model\": \"gemini2_minimax\",\n    \"user_id\": \"kiro\",\n    \"bot_prompt\": \"你是名为 Lumi 的 AI 角色，拥有温和而坚定的性格。\",\n    \"actions\": [\n        {\n            \"label\": \"rtvi-ai\",\n            \"type\": \"action\",\n            \"data\": {\n                \"service\": \"tts\",\n                \"action\": \"say\",\n                \"arguments\": [\n                    {\n                        \"name\": \"text\",\n                        \"value\": \"你好,很高兴认识你\"\n                    }\n                ]\n            },\n            \"id\": \"440fc1cb\"\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:7860/api/bot/download?filename=tts_20250711_213846",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "7860",
+					"path": [
+						"api",
+						"bot",
+						"download"
+					],
+					"query": [
+						{
+							"key": "filename",
+							"value": "tts_20250711_213846"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "profile",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{access_token}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"phone\": \"13052202624\",\n    \"password\": \"admin\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/auth",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"auth"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

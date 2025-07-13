@@ -87,6 +87,12 @@ async function main() {
       emails: [],
     },
   });
+  await prisma.profile.create({
+    data: {
+      id: adminUser.id,
+      name: 'admin',
+    },
+  });
 
   // 6. 创建角色分配（RoleAssignment）
   await prisma.roleAssignment.create({

@@ -23,20 +23,22 @@ model User {
   profile       Profile?
   personal      Personal?
   files         File[]
-  participants  Participant[]
   roleAssignments RoleAssignment[]
 }
 
 model Profile {
   id        String   @id
+  name      String?
   user      User     @relation(fields: [id], references: [id])
   photoURL  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  participants Participant[]
 }
 
 model Personal {
   id          String   @id @default(cuid())
+  name      String?
   user        User     @relation(fields: [id], references: [id])
   prompt      String   // 角色设定/初始 prompt
   llm         Json?
@@ -49,6 +51,7 @@ model Personal {
   description String?  // 角色简介
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  participants Participant[]
 }
 
 enum ScopeType {
@@ -173,14 +176,17 @@ model Conversation {
 model Participant {
   id              String   @id @default(cuid())
   conversationId  String
-  userId          String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  isPersonal      Boolean  @default(false)
   conversation    Conversation @relation(fields: [conversationId], references: [id])
-  user            User         @relation(fields: [userId], references: [id])
-  
+  profile         Profile?     @relation(fields: [profileUserId], references: [id])
+  personal        Personal?    @relation(fields: [personalUserId], references: [id])
+  profileUserId   String?
+  personalUserId  String?
   @@index([conversationId])
-  @@index([userId])
+  @@index([profileUserId])
+  @@index([personalUserId])
 }
 
 model Message {

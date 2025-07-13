@@ -18,8 +18,8 @@ export class ConversationController extends CrudController<Conversation> {
 
   // 1. 创建会话并添加参与者
   @Post('create')
-  async createConversationWithUser(@Body() body: { conversation: Conversation, userIds: string[] }) {
-    return this.conversationService.createConversationWithUser(body.conversation, body.userIds);
+  async createConversationWithUser(@Body() body: { conversation: Conversation, users: { userId: string, isPersonal: boolean }[] }) {
+    return this.conversationService.createConversationWithUser(body.conversation, body.users);
   }
 
   // 2. 获取当前用户的所有会话
@@ -35,13 +35,12 @@ export class ConversationController extends CrudController<Conversation> {
   }
 
   // 4. 根据会话id分页获取消息记录
-  @Get(':id/messages')
+  @Post(':id/messages')
   async getMessagesByConversationId(
     @Param('id') id: string,
-    @Query('page') page: number = 1,
-    @Query('pageSize') pageSize: number = 20,
+    @Body() body: { page: number, limit: number },
   ) {
-    return this.conversationService.getMessagesByConversationId(id, page, pageSize);
+    return this.conversationService.getMessagesByConversationId(id, body.page, body.limit);
   }
 
   @Post('personal/default/create')
