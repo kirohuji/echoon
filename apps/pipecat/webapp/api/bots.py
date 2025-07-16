@@ -14,6 +14,8 @@ from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from webapp import get_db
+from bots.lesson.tts_bot import lesson_tts_bot_pipeline
+import aiohttp
 
 from pipecat.transports.network.webrtc_connection import IceServer, SmallWebRTCConnection
 
@@ -103,6 +105,19 @@ async def tts(
     config = DEFAULT_BOT_CONFIG
     async def generate():
         gen, task = await tts_bot_pipeline(params, config)
+        async for chunk in gen:
+            yield chunk
+        await task
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+@router.post("/lesson/tts", response_class=StreamingResponse)
+async def lesson_tts(
+    params: BotParams,
+) -> StreamingResponse:
+    config = DEFAULT_BOT_CONFIG
+    session = aiohttp.ClientSession()
+    async def generate():
+        gen, task = await lesson_tts_bot_pipeline(params, config, session)
         async for chunk in gen:
             yield chunk
         await task

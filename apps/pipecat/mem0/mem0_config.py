@@ -2,8 +2,8 @@ import os
 from mem0 import Memory
 from dotenv import load_dotenv
 
-os.environ["DEEPSEEK_API_KEY"] = "sk-63b34fc51c79415a8208c61a38d5edd2"
-os.environ["GOOGLE_API_KEY"] = "AIzaSyDnmcknk5rbUI2rTYH0xhUJnIB10y41csg"
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
 load_dotenv()  # 加载 .env 文件中的 API key
 
@@ -20,6 +20,7 @@ config = {
         "provider": "deepseek",
         "config": {
             "model": "deepseek-chat",  # default model
+            "api_key": DEEPSEEK_API_KEY,
             "temperature": 0.2,
             "max_tokens": 2000,
             "top_p": 1.0
@@ -29,6 +30,7 @@ config = {
         "provider": "gemini",
         "config": {
             "model": "models/text-embedding-004",
+            "api_key": GOOGLE_API_KEY,
         }
     }
 }

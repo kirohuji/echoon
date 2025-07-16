@@ -18,6 +18,7 @@ class BotParams(BaseModel):
     user_id: Optional[str] = None
     participant_id: Optional[str] = None
     attachments: List[str] = []
+    voice_id: Optional[str] = None
 
 
 class BotCallbacks(BaseModel):

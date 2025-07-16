@@ -29,37 +29,70 @@ from pipecat.processors.frameworks.rtvi import (
 )
 from pipecat.services.ai_services import OpenAILLMContext
 from pipecat.services.google import GoogleLLMContext, GoogleLLMService
-from langchain_community.chat_message_histories import SQLChatMessageHistory
-from langchain_core.messages import HumanMessage, AIMessage
+from bots.mem0.memory import Mem0MemoryService
+# from langchain_community.chat_message_histories import SQLChatMessageHistory
+# from langchain_core.messages import HumanMessage, AIMessage
 
-def get_chat_history_json(session_id, connection_string):
-    history = SQLChatMessageHistory(
-        session_id=session_id,
-        connection=connection_string
-    )
+# def get_chat_history_json(session_id, connection_string):
+#     history = SQLChatMessageHistory(
+#         session_id=session_id,
+#         connection=connection_string
+#     )
 
-    # 获取消息并转换为 JSON 数组
-    json_messages = []
-    for message in history.messages:
-        if isinstance(message, HumanMessage):
-            json_messages.append({
-                "role": "user",
-                "content": message.content
-            })
-        elif isinstance(message, AIMessage):
-            json_messages.append({
-                "role": "assistant",
-                "content": message.content
-            })
+#     # 获取消息并转换为 JSON 数组
+#     json_messages = []
+#     for message in history.messages:
+#         if isinstance(message, HumanMessage):
+#             json_messages.append({
+#                 "role": "user",
+#                 "content": message.content
+#             })
+#         elif isinstance(message, AIMessage):
+#             json_messages.append({
+#                 "role": "assistant",
+#                 "content": message.content
+#             })
 
-    return (json_messages, history)
+#     return (json_messages, history)
 
-def add_chat_history_to_db(history, messages):
-    for message in messages:
-        if message["role"] == "user":
-            history.add_user_message(message["content"])
-        elif message["role"] == "assistant":
-            history.add_ai_message(message["content"])
+# def add_chat_history_to_db(history, messages):
+#     for message in messages:
+#         if message["role"] == "user":
+#             history.add_user_message(message["content"])
+#         elif message["role"] == "assistant":
+#             history.add_ai_message(message["content"])
+
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+
+memory_config = {
+    "vector_store": {
+        "provider": "qdrant",
+        "config": {
+            "collection_name": "test",
+            "host": "115.159.95.166",
+            "port": 6333,
+        }
+    },
+    "llm": {
+        "provider": "deepseek",
+        "config": {
+            "model": "deepseek-chat",  # default model
+            "api_key": DEEPSEEK_API_KEY,
+            "temperature": 0.2,
+            "max_tokens": 2000,
+            "top_p": 1.0
+        }
+    },
+    "embedder": {
+        "provider": "gemini",
+        "config": {
+            "model": "models/text-embedding-004",
+            "api_key": GOOGLE_API_KEY,
+        }
+    }
+}
+
 
 async def http_bot_pipeline(
     params: BotParams,
@@ -80,14 +113,14 @@ async def http_bot_pipeline(
     #     model="gemini-2.0-flash-exp",
     # )
 
-    history, history_messages = get_chat_history_json(params.conversation_id, os.getenv("DATABASE_URL2"))
+    # history, history_messages = get_chat_history_json(params.conversation_id, os.getenv("DATABASE_URL2"))
 
     llm = DeepSeekLLMService(
         api_key=os.getenv("DEEPSEEK_API_KEY"),
         model="deepseek-chat",
     )
     tools = NOT_GIVEN
-    context = OpenAILLMContext(history_messages, tools)
+    context = OpenAILLMContext(messages, tools)
     context_aggregator = llm.create_context_aggregator(
         context
     )
@@ -114,27 +147,28 @@ async def http_bot_pipeline(
     #
 
     tts = CartesiaTTSService(api_key=os.getenv("CARTESIA_API_KEY"), model="sonic-turbo-2025-03-07", voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02")
-    # memory = Mem0MemoryService(
-    #     api_key=os.getenv("MEM0_API_KEY"),  # Your Mem0 API key
-    #     user_id=params.user_id,  # Unique identifier for the user
-    #     # agent_id="agent1",  # Optional identifier for the agent
-    #     # run_id="session1",  # Optional identifier for the run
-    #     params=Mem0MemoryService.InputParams(
-    #         search_limit=10,
-    #         search_threshold=0.3,
-    #         api_version="v2",
-    #         system_prompt="Based on previous conversations, I recall: \n\n",
-    #         add_as_system_message=True,
-    #         position=1,
-    #     ),
-    # )
+    memory = Mem0MemoryService(
+        # api_key=os.getenv("MEM0_API_KEY"),  # Your Mem0 API key
+        local_config=memory_config,
+        user_id=params.user_id,  # Unique identifier for the user
+        agent_id="fastapi_memory_bot",  # Optional identifier for the agent
+        # run_id="session1",  # Optional identifier for the run
+        params=Mem0MemoryService.InputParams(
+            search_limit=2,
+            search_threshold=0.9,
+            api_version="v2",
+            system_prompt="Based on previous conversations, I recall: \n\n",
+            add_as_system_message=True,
+            position=1,
+        ),
+    )
 
     processors = [
         rtvi,
         user_aggregator,
+        memory,
         storage.create_processor(),
         llm,
-        # memory,
         # tts,
         async_generator,
         assistant_aggregator,
@@ -154,7 +188,6 @@ async def http_bot_pipeline(
         logger.debug(f"{len(messages)} message(s) received for storage: {str(messages)[:120]}...")
         try:
             default_publisher_factory = PublisherFactory()
-            print(params.user_id, params.participant_id)
             payload = {
                 "pattern": "message",
                 "data": {
@@ -166,7 +199,7 @@ async def http_bot_pipeline(
                 }
             }
             default_publisher_factory.publish(json.dumps(payload))
-            add_chat_history_to_db(history, messages)
+            # add_chat_history_to_db(history, messages)
         except Exception as e:
             logger.error(f"Error storing messages: {e}")
             raise e

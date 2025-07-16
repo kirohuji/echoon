@@ -11,6 +11,7 @@ import { LoadingScreen } from 'src/components/loading-screen';
 
 import { AuthGuard } from 'src/auth/guard';
 import ChatPage from 'src/pages/chat';
+import ReadingView from 'src/pages/reading/views/reading-view';
 
 const layoutContent = (
   <MainLayout>
@@ -29,6 +30,12 @@ export const mainRoutes = [
         path: 'chat',
         children: [
           { element: <ChatPage />, index: true },
+        ]
+      },
+      {
+        path: 'reading',
+        children: [
+          { element: <ReadingView />, index: true },
         ]
       }
     ]

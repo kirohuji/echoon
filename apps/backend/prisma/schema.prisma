@@ -239,5 +239,7 @@ model Document {
   updatedAt DateTime @updatedAt
   createdBy String
   updatedBy String?
+  fileId    String?
+  file      File?    @relation(fields: [fileId], references: [id])
 }
 
