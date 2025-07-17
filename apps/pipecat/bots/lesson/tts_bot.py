@@ -6,7 +6,7 @@ import aiofiles
 from typing import Any, AsyncGenerator, List, Tuple
 import os
 import json
-from pipecat.frames.frames import EndFrame, TTSSpeakFrame, TTSStartedFrame, Frame, TTSAudioRawFrame, TTSStoppedFrame, TransportMessageUrgentFrame, StartFrame, CancelFrame
+from pipecat.frames.frames import EndFrame, TTSSpeakFrame,TTSTextFrame,  TTSStartedFrame, Frame, TTSAudioRawFrame, TTSStoppedFrame, TransportMessageUrgentFrame, StartFrame, CancelFrame
 from bots.http.frame_serializer import BotFrameSerializer
 from bots.persistent_context import PersistentContext
 from common.publisher import PublisherFactory
@@ -66,6 +66,7 @@ class AudioBufferProcessor(FrameProcessor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._audio_buffer = []
+        self._word_timestamps_buffer = []
         self._sample_rate = 24000
         self._num_channels = 1
     async def process_frame(self, frame: Frame, direction: FrameDirection):
@@ -73,9 +74,16 @@ class AudioBufferProcessor(FrameProcessor):
         print(f"frame: {frame}")
         if isinstance(frame, TTSStartedFrame):
             self._audio_buffer = []
+            self._word_timestamps_buffer = []
         elif isinstance(frame, TTSAudioRawFrame):
             self._audio_buffer.append(frame.audio)
-        elif isinstance(frame, EndFrame):
+        elif isinstance(frame, TTSTextFrame):
+            # TTSTextFrame#44(pts: 0:00:01.817739, text: [l])
+            self._word_timestamps_buffer.append({
+                'text': frame.text,
+                'start_time': frame.pts
+            })
+        elif isinstance(frame, EndFrame) or isinstance(frame, TTSStoppedFrame):
             if self._audio_buffer:
                 await save_audio(
                     b"".join(self._audio_buffer),
@@ -83,8 +91,9 @@ class AudioBufferProcessor(FrameProcessor):
                     self._num_channels,
                     f"tts_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
                 )
-                await self.push_frame(TransportMessageUrgentFrame(message={'label': 'rtvi-ai', 'type': 'server-message', 'data': {'fileUrl': f"tts_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"}}), direction)
+                await self.push_frame(TransportMessageUrgentFrame(message={'label': 'rtvi-ai', 'type': 'server-message', 'data': {'fileUrl': f"tts_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}", 'word_timestamps': self._word_timestamps_buffer }}), direction)
                 await self.push_frame(EndFrame(), direction)
+                await self.push_frame(TTSStoppedFrame(), direction)
                 # await self.push_frame(CancelFrame(), direction)
         await self.push_frame(frame, direction)
 
@@ -102,11 +111,12 @@ async def lesson_tts_bot_pipeline(
     if session is None:
         session = aiohttp.ClientSession()
     try:
-        tts = ElevenLabsHttpTTSService(
-            api_key=os.getenv("ELEVENLABS_API_KEY", ""),
-            voice_id=params.voice_id,
-            aiohttp_session=session
-        )
+        # tts = ElevenLabsHttpTTSService(
+        #     api_key=os.getenv("ELEVENLABS_API_KEY", ""),
+        #     voice_id=params.voice_id,
+        #     aiohttp_session=session
+        # )
+        tts = CartesiaTTSService(api_key=os.getenv("CARTESIA_API_KEY"), model="sonic-turbo-2025-03-07", voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02")
         audiobuffer = AudioBufferProcessor()
         processors = [
             rtvi,

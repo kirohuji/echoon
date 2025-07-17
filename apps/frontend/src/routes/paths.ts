@@ -20,9 +20,6 @@ export const paths = {
   main: {
     chat: {
       root: '/chat'
-    },
-    reading: {
-      root: '/reading'
     }
   }
 };

@@ -43,6 +43,7 @@ export default function Header({ isOffset }: { isOffset: boolean }) {
         }}
       >
         <div>{pathname === '/chat' && 'Chat'}</div>
+        <div>{pathname === '/reading' && 'Reading'}</div>
         <div
           style={{
             position: 'absolute',

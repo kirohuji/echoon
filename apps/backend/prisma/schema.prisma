@@ -240,6 +240,5 @@ model Document {
   createdBy String
   updatedBy String?
   fileId    String?
-  file      File?    @relation(fields: [fileId], references: [id])
 }
 

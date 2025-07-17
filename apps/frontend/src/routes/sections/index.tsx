@@ -2,6 +2,7 @@ import { Navigate, useRoutes } from 'react-router-dom';
 import { CONFIG } from 'src/config-global';
 import ChatPage from 'src/pages/chat';
 import ReturnLayout from 'src/layouts/return/ReturnLayout';
+import Reading from 'src/pages/reading/index';
 
 import { authRoutes } from './auth';
 import { mainRoutes } from './main';
@@ -26,7 +27,14 @@ export function Router() {
     {
       element: <ReturnLayout />,
       children: [
-        { path: 'chat', element: <ChatPage /> }
+        { 
+          path: 'chat',
+          element: <ChatPage />
+        },
+        {
+          path: 'reading',
+          element: <Reading />
+        }
       ],
     },
 

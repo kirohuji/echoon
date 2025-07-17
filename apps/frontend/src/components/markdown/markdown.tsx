@@ -21,7 +21,7 @@ import StyledMarkdown from './styles';
 
 // ----------------------------------------------------------------------
 
-export default function Markdown({ sx, children, ...other }: { sx: any, children: any }) {
+export default function Markdown({ sx, children, ...other }: { sx?: any, children: any }) {
   return (
     <StyledMarkdown sx={sx}>
       <ReactMarkdown
