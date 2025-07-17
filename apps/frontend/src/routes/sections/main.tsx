@@ -10,8 +10,8 @@ import { MainLayout } from 'src/layouts/main';
 import { LoadingScreen } from 'src/components/loading-screen';
 
 import { AuthGuard } from 'src/auth/guard';
+import ReadingList from 'src/pages/reading/list';
 import ChatPage from 'src/pages/chat';
-import ReadingView from 'src/pages/reading/views/reading-view';
 
 const layoutContent = (
   <MainLayout>
@@ -35,7 +35,7 @@ export const mainRoutes = [
       {
         path: 'reading',
         children: [
-          { element: <ReadingView />, index: true },
+          { element: <ReadingList />, path: 'list' },
         ]
       }
     ]

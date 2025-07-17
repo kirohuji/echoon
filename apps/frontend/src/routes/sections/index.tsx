@@ -2,7 +2,7 @@ import { Navigate, useRoutes } from 'react-router-dom';
 import { CONFIG } from 'src/config-global';
 import ChatPage from 'src/pages/chat';
 import ReturnLayout from 'src/layouts/return/ReturnLayout';
-import Reading from 'src/pages/reading/index';
+import Reading from 'src/pages/reading/detail';
 
 import { authRoutes } from './auth';
 import { mainRoutes } from './main';

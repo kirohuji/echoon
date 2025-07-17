@@ -18,8 +18,8 @@ const bottomNavigationAction = [
     icon: <Iconify width={32} icon="solar:hashtag-chat-outline" />
   },
   {
-    label: 'Library',
-    to: '/main/library',
+    label: 'Reading',
+    to: '/main/reading/list',
     icon: <Iconify width={32} icon="solar:music-library-line-duotone" />
   },
   {
