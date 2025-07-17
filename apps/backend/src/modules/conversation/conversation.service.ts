@@ -107,7 +107,7 @@ export class ConversationService extends CrudService<Conversation> {
         data: messages,
         total,
         page,
-        pageSize,
+        limit: pageSize,
         totalPages: Math.ceil(total / pageSize),
       },
     };

@@ -1,12 +1,29 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Grid } from '@mui/material';
 import { MainContent } from 'src/layouts/main';
+
+import { documentService } from 'src/composables/context-provider';
 import { ArticleItemSkeleton } from '../article-skeleton';
 import ArticleItem from '../article-item';
 
-
 export default function ReadingListView() {
   const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+  });
+
+  const refresh = useCallback(async () => {
+    const res = await documentService.pagination({ page: 1, limit: 10 });
+    setDocuments(res.data);
+    setPagination(res.pagination);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const renderSkeleton = (
     <>

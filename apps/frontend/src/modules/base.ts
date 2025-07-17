@@ -61,10 +61,8 @@ export class Service {
     return this.api.get(`${this.model}/model`)
   }
 
-  pagination(selector: any, options: any) {
-    return this.api.post(`${this.model}/pagination`, {
-      selector, options
-    })
+  pagination(target: any) {
+    return this.api.post(`${this.model}/pagination`, target)
   }
 
   search(selector: any, options: any) {

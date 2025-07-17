@@ -9,9 +9,9 @@ export class CrudService<T> {
 
   async create(data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>, user?: User) {
     if(user){
-      return this.prisma[this.modelName].create({ data: { ...data, createdBy: user.id, userId: user.id } });
+      return this.prisma[this.modelName].create({ data: { ...data, createdBy: user.id, userId: user.id, updatedBy: user.id, createdAt: new Date(), updatedAt: new Date() } });
     } else {
-      return this.prisma[this.modelName].create({ data });
+      return this.prisma[this.modelName].create({ data: { ...data, createdAt: new Date(), updatedAt: new Date(), createdBy: 'system', updatedBy: 'system' } });
     }
   }
 
@@ -31,12 +31,12 @@ export class CrudService<T> {
     return this.prisma[this.modelName].delete({ where: { id } });
   }
   
-  async paginate(page: number, limit: number) {
+  async paginate(page: number, limit: number, mine: boolean, user: User) {
     const skip = (page - 1) * limit;
     const [data, total] = await Promise.all([
-      this.prisma[this.modelName].findMany({ skip, take: limit }),
-      this.prisma[this.modelName].count(),
+      this.prisma[this.modelName].findMany({ skip, take: limit, where: { ...(mine ? { userId: user.id } : {}) } }),
+      this.prisma[this.modelName].count({ where: { ...(mine ? { userId: user.id } : {}) } }),
     ]);
-    return { data, total };
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 }

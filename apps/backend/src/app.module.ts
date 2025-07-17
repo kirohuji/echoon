@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { ConversationModule } from './modules/conversation/conversation.module';
 import { PersonalModule } from './modules/personal/personal.module';
+import { DocumentModule } from './modules/document/document.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PersonalModule } from './modules/personal/personal.module';
     UserModule,
     ConversationModule,
     PersonalModule,
+    DocumentModule,
   ],
   controllers: [],
 })

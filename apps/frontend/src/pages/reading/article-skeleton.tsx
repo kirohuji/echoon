@@ -52,7 +52,7 @@ export function ArticleItemSkeleton({ variant = 'vertical', sx, ...other }: {
       {...other}
     >
       <Stack sx={{ p: 1 }}>
-        <Skeleton sx={{ paddingTop: '100%' }} />
+        <Skeleton sx={{ paddingTop: '60px' }} />
       </Stack>
 
       <Stack spacing={2} direction="row" alignItems="center" sx={{ p: 3, pt: 2 }}>
