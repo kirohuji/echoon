@@ -33,7 +33,12 @@ export function Router() {
         },
         {
           path: 'reading',
-          element: <Reading />
+          children: [
+            {
+              path: ':id',
+              element: <Reading />
+            }
+          ]
         }
       ],
     },

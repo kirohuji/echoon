@@ -17,8 +17,8 @@ export class CrudController<T> {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: number) {
-    return this.service.findOne(Number(id));
+  findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
   }
 
   @Put(':id')

@@ -19,7 +19,7 @@ export class CrudService<T> {
     return this.prisma[this.modelName].findMany();
   }
 
-  async findOne(id: number) {
+  async findOne(id: string) {
     return this.prisma[this.modelName].findUnique({ where: { id } });
   }
 

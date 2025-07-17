@@ -3,22 +3,38 @@ import { Fab, Grid } from '@mui/material';
 import { MainContent } from 'src/layouts/main';
 import AddIcon from '@mui/icons-material/Add';
 import { documentService } from 'src/composables/context-provider';
+import { useRouter } from 'src/routes/hooks';
 import { ArticleItemSkeleton } from '../article-skeleton';
 import ArticleItem from '../article-item';
 
 export default function ReadingListView() {
   const [loading, setLoading] = useState(true);
+
   const [documents, setDocuments] = useState([]);
+
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
     total: 0,
   });
 
+  const router = useRouter();
+
   const refresh = useCallback(async () => {
-    const res = await documentService.pagination({ page: 1, limit: 10 });
-    setDocuments(res.data);
-    setPagination(res.pagination);
+    setLoading(true);
+    try {
+      const res = await documentService.pagination({ page: 1, limit: 10, mine: true });
+      setDocuments(res.data.data);
+      setPagination({
+        page: res.data.page,
+        limit: res.data.limit,
+        total: res.data.total,
+      });
+    } catch (error) {
+      console.error('获取文档列表失败:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -36,9 +52,11 @@ export default function ReadingListView() {
   );
   const renderList = (
     <>
-      {[...Array(16)].map((_, index) => (
+      {documents.map((document: any, index: number) => (
         <Grid key={index} size={{ xs: 12, sm: 6, md: 3 }}>
-          <ArticleItem article={{}} index={index} />
+          <ArticleItem article={document} onClick={() => {
+            router.push(`/reading/${document?.id}`);
+          }} />
         </Grid>
       ))}
     </>

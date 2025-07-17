@@ -240,8 +240,9 @@ model Document {
   updatedAt DateTime @updatedAt
   createdBy String
   updatedBy String?
-  fileId    String?
+  fileUrl   String?
   userId    String
+  wordTimestamps Json?
   profile   Profile?   @relation(fields: [userId], references: [id])
 }
 

@@ -65,13 +65,13 @@ async def save_audio(audio: bytes, sample_rate: int, num_channels: int, name: st
 class AudioBufferProcessor(FrameProcessor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._params = kwargs.get("params")
         self._audio_buffer = []
         self._word_timestamps_buffer = []
         self._sample_rate = 24000
         self._num_channels = 1
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
-        print(f"frame: {frame}")
         if isinstance(frame, TTSStartedFrame):
             self._audio_buffer = []
             self._word_timestamps_buffer = []
@@ -91,7 +91,19 @@ class AudioBufferProcessor(FrameProcessor):
                     self._num_channels,
                     f"tts_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
                 )
-                await self.push_frame(TransportMessageUrgentFrame(message={'label': 'rtvi-ai', 'type': 'server-message', 'data': {'fileUrl': f"tts_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}", 'word_timestamps': self._word_timestamps_buffer }}), direction)
+                await self.push_frame(TransportMessageUrgentFrame(message={'label': 'rtvi-ai', 'type': 'server-message', 'data': {'fileUrl': f"tts_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}", 'word_timestamps': self._word_timestamps_buffer, 'userId': self._params.user_id }}), direction)
+                default_publisher_factory = PublisherFactory()
+                print(f"self._word_timestamps_buffer: {self._params.actions[0].data}")
+                payload = {
+                    "pattern": "document",
+                    "data": {
+                        "content": self._params.actions[0].data['arguments'][0]['value'],
+                        "fileUrl": f"tts_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                        "wordTimestamps": self._word_timestamps_buffer,
+                        "userId": self._params.user_id
+                    }
+                }
+                default_publisher_factory.publish(json.dumps(payload))
                 await self.push_frame(EndFrame(), direction)
                 await self.push_frame(TTSStoppedFrame(), direction)
                 # await self.push_frame(CancelFrame(), direction)
@@ -116,8 +128,15 @@ async def lesson_tts_bot_pipeline(
         #     voice_id=params.voice_id,
         #     aiohttp_session=session
         # )
-        tts = CartesiaTTSService(api_key=os.getenv("CARTESIA_API_KEY"), model="sonic-turbo-2025-03-07", voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02")
-        audiobuffer = AudioBufferProcessor()
+        tts = CartesiaTTSService(
+            api_key=os.getenv("CARTESIA_API_KEY"), 
+            model="sonic-turbo-2025-03-07", 
+            voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02",
+            # params=CartesiaTTSService.InputParams(
+            #     speed=0.8,
+            # )
+        )
+        audiobuffer = AudioBufferProcessor(params=params)
         processors = [
             rtvi,
             tts,

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MainContent } from 'src/layouts/main';
 import { Box, Stack, Typography } from '@mui/material';
 import Scrollbar from 'src/components/scrollbar';
+import { useParams } from 'src/routes/hooks';
+import { documentService, pipecatService } from "src/composables/context-provider";
 import { ArticleListeningPreview } from '../article-listening-preview';
 import { ArticleListeningWave } from '../article-listening-wave';
 import { ArticleListeningProcess } from '../article-listening-process';
@@ -9,6 +11,8 @@ import { ArticleListeningToolbar } from '../article-listening-toolbar';
 import { ArticleListeningPlayer } from '../article-listening-player';
 
 export default function ReadingView() {
+  const { id } = useParams();
+
   const [loading, setLoading] = useState(false);
 
   const [article, setArticle] = useState({
@@ -23,11 +27,49 @@ export default function ReadingView() {
 
   const [playbackRate, setPlaybackRate] = useState(1);
 
-  const audioRef = useRef(null);
+  const audioRef = useRef<any>(null);
+
+  const [document, setDocument] = useState({});
+
+  const [audioUrl, setAudioUrl] = useState('');
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await documentService.get({
+        id
+      });
+      setDocument(res.data);
+      const fullAudioUrl = await pipecatService.downloadAudio(res.data.fileUrl);
+      setAudioUrl(fullAudioUrl);
+    } catch (error) {
+      console.error('获取文档失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  const handlePlay = () => {
+    if (audioRef.current) {
+      audioRef.current.audioEl.current.play();
+      setPlaying(true);
+    }
+  };
+
+  const handlePause = () => {
+    if (audioRef.current) {
+      audioRef.current.audioEl.current.pause();
+      setPlaying(false);
+    }
+  };
+
+  const handleTimeUpdate = (value: number) => {
+    setCurrentTime(value);
+  };
 
   useEffect(() => {
-    console.log("ReadingView");
-  }, []);
+    refresh()
+  }, [refresh]);
 
   return (
     <MainContent
@@ -52,7 +94,7 @@ export default function ReadingView() {
           <Stack>
             <ArticleListeningWave
               loading={loading}
-              audioUrl="https://hope.lourd.top/storage/manages/storage:manages/DpTsNvHiP9tMWWihd/original/DpTsNvHiP9tMWWihd.mp3"
+              audioUrl={audioUrl}
               currentTime={currentTime}
               playbackRate={playbackRate}
             />
@@ -64,15 +106,15 @@ export default function ReadingView() {
             <ArticleListeningPlayer
               loading={loading}
               playing={playing}
-              // onPlay={handlePlay}
-              // onPause={handlePause}
+              onPlay={handlePlay}
+              onPause={handlePause}
               onPreviousSentence={() => { }}
               onNextSentence={() => { }}
               // onRewind10={handleRewind10}
               // onForward10={handleForward10}
-              audioUrl="https://hope.lourd.top/storage/manages/storage:manages/DpTsNvHiP9tMWWihd/original/DpTsNvHiP9tMWWihd.mp3"
+              audioUrl={audioUrl}
               ref={audioRef}
-              // onTimeUpdate={handleTimeUpdate}
+              onTimeUpdate={handleTimeUpdate}
               // onLoadedMetadata={handleLoadedMetadata}
             />
             <ArticleListeningToolbar
