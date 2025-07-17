@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Grid } from '@mui/material';
+import { Fab, Grid } from '@mui/material';
 import { MainContent } from 'src/layouts/main';
-
+import AddIcon from '@mui/icons-material/Add';
 import { documentService } from 'src/composables/context-provider';
 import { ArticleItemSkeleton } from '../article-skeleton';
 import ArticleItem from '../article-item';
@@ -44,11 +44,13 @@ export default function ReadingListView() {
     </>
   );
   return (
-    <MainContent>
-      <Grid container spacing={3}>
+    <MainContent sx={{ p: 0, overflow: 'hidden' }}>
+      <Grid container spacing={3} sx={{ position: 'relative', height: '100vh', overflow: 'auto', p: 2 }}>
         {loading ? renderSkeleton : renderList}
       </Grid>
-
+      <Fab color="primary" aria-label="add" sx={{ position: 'absolute', bottom: 80, right: 20 }}>
+        <AddIcon />
+      </Fab>
     </MainContent>
   );
 }
