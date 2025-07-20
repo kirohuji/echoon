@@ -4,8 +4,8 @@ import { Box, Stack, Typography } from '@mui/material';
 import Scrollbar from 'src/components/scrollbar';
 import { useParams } from 'src/routes/hooks';
 import { documentService, pipecatService } from "src/composables/context-provider";
-import { ArticleListeningPreview } from '../article-listening-preview';
-import { ArticleListeningWave } from '../article-listening-wave';
+// import { ArticleListeningPreview } from '../article-listening-preview';
+// import { ArticleListeningWave } from '../article-listening-wave';
 import { ArticleListeningProcess } from '../article-listening-process';
 import { ArticleListeningToolbar } from '../article-listening-toolbar';
 import { ArticleListeningPlayer } from '../article-listening-player';
@@ -15,13 +15,11 @@ export default function ReadingView() {
 
   const [loading, setLoading] = useState(false);
 
-  const [article, setArticle] = useState({
-    content: 'Reading'
-  });
-
   const [playing, setPlaying] = useState(false);
 
   const [currentTime, setCurrentTime] = useState(0);
+
+  const [currentIndex, setCurrentIndex] = useState(-1);
 
   const [duration, setDuration] = useState(0);
 
@@ -29,7 +27,10 @@ export default function ReadingView() {
 
   const audioRef = useRef<any>(null);
 
-  const [document, setDocument] = useState({});
+  const [document, setDocument] = useState({
+    content: '',
+    wordTimestamps: []
+  });
 
   const [audioUrl, setAudioUrl] = useState('');
 
@@ -39,7 +40,15 @@ export default function ReadingView() {
       const res = await documentService.get({
         id
       });
-      setDocument(res.data);
+      const baseTime = res.data.wordTimestamps[0].start_time;
+      const wordTimestamps = res.data.wordTimestamps.map((item: any) => ({
+        ...item,
+        start_time: (item.start_time - baseTime)
+      }));
+      setDocument({
+        ...res.data,
+        wordTimestamps
+      });
       const fullAudioUrl = await pipecatService.downloadAudio(res.data.fileUrl);
       setAudioUrl(fullAudioUrl);
     } catch (error) {
@@ -60,16 +69,43 @@ export default function ReadingView() {
     if (audioRef.current) {
       audioRef.current.audioEl.current.pause();
       setPlaying(false);
+      setCurrentIndex(-1);
+      const highlightedElements = window.document.querySelectorAll('.highlight');
+      highlightedElements.forEach((el: any) => el.classList.remove('highlight'));
     }
   };
 
   const handleTimeUpdate = (value: number) => {
     setCurrentTime(value);
+    const currentTimeInMicro = Math.floor(value * 1000000000);
+    highlightWord(document?.wordTimestamps || [], currentTimeInMicro);
   };
 
   useEffect(() => {
     refresh()
   }, [refresh]);
+
+  function renderWords(wordTimestamps: any[]) {
+    return wordTimestamps.map((word, index) =>  <span className="word" data-start={word.start_time} id={`word-${index}`} key={index}>{word.text} </span>)
+  }
+
+  function highlightWord(wordTimestamps: any[], currentPlayTime: number) {
+    const next = wordTimestamps[currentIndex + 1];
+    if (next && currentPlayTime >= next.start_time) {
+      const newIndex = currentIndex + 1;
+      setCurrentIndex(newIndex);
+  
+      const currentSpan = window.document.querySelector(`#word-${newIndex}`);
+      if (currentSpan) currentSpan.classList.add('highlight');
+    } else if (!next) {
+      const currentWord = wordTimestamps[currentIndex];
+      if (currentPlayTime >= currentWord.start_time) {
+        const currentSpan = window.document.querySelector(`#word-${currentIndex}`);
+        if (currentSpan) currentSpan.classList.add('highlight');
+      }
+    }
+  }
+  
 
   return (
     <MainContent
@@ -79,10 +115,13 @@ export default function ReadingView() {
       <Typography variant="h6" sx={{ mb: { xs: 3, md: 5 } }}>
         Reading
       </Typography>
-      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+      <Box sx={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', p: 2 }}>
+        <Box sx={{ flexGrow: 1, overflow: 'hidden', height: '100%' }}>
           <Scrollbar sx={{ height: '100%' }}>
-            <ArticleListeningPreview loading={loading} text={article?.content || ''} />
+            {
+              renderWords(document?.wordTimestamps || [])
+            }
+            {/* <ArticleListeningPreview loading={loading} text={document?.content || ''} /> */}
           </Scrollbar>
         </Box>
 
@@ -92,12 +131,12 @@ export default function ReadingView() {
           bgcolor: 'background.paper',
         }}>
           <Stack>
-            <ArticleListeningWave
+            {/* <ArticleListeningWave
               loading={loading}
               audioUrl={audioUrl}
               currentTime={currentTime}
               playbackRate={playbackRate}
-            />
+            /> */}
             <ArticleListeningProcess
               loading={loading}
               currentTime={currentTime}
@@ -115,7 +154,7 @@ export default function ReadingView() {
               audioUrl={audioUrl}
               ref={audioRef}
               onTimeUpdate={handleTimeUpdate}
-              // onLoadedMetadata={handleLoadedMetadata}
+            // onLoadedMetadata={handleLoadedMetadata}
             />
             <ArticleListeningToolbar
               loading={loading}

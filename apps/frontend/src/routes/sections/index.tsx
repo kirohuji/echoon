@@ -3,6 +3,7 @@ import { CONFIG } from 'src/config-global';
 import ChatPage from 'src/pages/chat';
 import ReturnLayout from 'src/layouts/return/ReturnLayout';
 import Reading from 'src/pages/reading/detail';
+import ReadingEdit from 'src/pages/reading/edit';
 
 import { authRoutes } from './auth';
 import { mainRoutes } from './main';
@@ -37,9 +38,17 @@ export function Router() {
             {
               path: ':id',
               element: <Reading />
+            },
+            {
+              path: 'create',
+              element: <ReadingEdit />
+            },
+            {
+              path: 'edit/:id',
+              element: <ReadingEdit />
             }
           ]
-        }
+        },
       ],
     },
 

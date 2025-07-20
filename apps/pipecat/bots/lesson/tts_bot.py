@@ -38,6 +38,7 @@ from pipecat.services.ai_services import OpenAILLMContext
 from pipecat.services.google import GoogleLLMContext, GoogleLLMService
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.services.elevenlabs.tts import ElevenLabsHttpTTSService
+from pipecat.services.rime.tts import RimeHttpTTSService
 import aiohttp
 
 os.makedirs("recordings", exist_ok=True)
@@ -72,6 +73,7 @@ class AudioBufferProcessor(FrameProcessor):
         self._num_channels = 1
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
+        # print(f"frame: {frame}")
         if isinstance(frame, TTSStartedFrame):
             self._audio_buffer = []
             self._word_timestamps_buffer = []
@@ -132,10 +134,19 @@ async def lesson_tts_bot_pipeline(
             api_key=os.getenv("CARTESIA_API_KEY"), 
             model="sonic-turbo-2025-03-07", 
             voice_id="f786b574-daa5-4673-aa0c-cbe3e8534c02",
-            # params=CartesiaTTSService.InputParams(
-            #     speed=0.8,
-            # )
+            params=CartesiaTTSService.InputParams(
+                speed="slow"
+            )
         )
+        # tts = RimeHttpTTSService(
+        #     api_key=os.getenv("RIME_API_KEY", ""),
+        #     voice_id="luna",
+        #     model="arcana",
+        #     aiohttp_session=session,
+        #     params=RimeHttpTTSService.InputParams(
+        #         speed=0.7
+        #     )
+        # )
         audiobuffer = AudioBufferProcessor(params=params)
         processors = [
             rtvi,

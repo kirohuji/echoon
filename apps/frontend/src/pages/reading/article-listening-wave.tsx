@@ -1,4 +1,4 @@
-// import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Box from '@mui/material/Box';
 import Skeleton from '@mui/material/Skeleton';
 import WaveSurfer from '@wavesurfer/react';
@@ -10,43 +10,43 @@ export function ArticleListeningWave({ loading, audioUrl, currentTime, onSeek, p
   onSeek?: (progress: number) => void;
   playbackRate: number;
 }) {
-  // const [wavesurfer, setWavesurfer] = useState(null);
-  // const isSeeking = useRef(false);
+  const [wavesurfer, setWavesurfer] = useState<any>(null);
+  const isSeeking = useRef(false);
 
-  // const handleReady = (ws: any) => {
-  //   setWavesurfer(ws);
-  // };
+  const handleReady = (ws: any) => {
+    setWavesurfer(ws);
+  };
 
   // 手动同步当前播放时间
-  // useEffect(() => {
-  //   if (wavesurfer && currentTime !== undefined && !isSeeking.current) {
-  //     const duration = wavesurfer.getDuration() as number;
-  //     if (duration) {
-  //       const progress = currentTime / duration;
-  //       wavesurfer.seekTo(progress);
-  //     }
-  //   }
-  // }, [currentTime, wavesurfer]);
+  useEffect(() => {
+    if (wavesurfer && currentTime !== undefined && !isSeeking.current) {
+      const duration = wavesurfer.getDuration() as number;
+      if (duration) {
+        const progress = currentTime / duration;
+        wavesurfer.seekTo(progress);
+      }
+    }
+  }, [currentTime, wavesurfer]);
 
   // 同步播放速度
-  // useEffect(() => {
-  //   if (wavesurfer) {
-  //     wavesurfer.setPlaybackRate(playbackRate);
-  //     console.log('playbackRate', playbackRate);
-  //   }
-  // }, [playbackRate, wavesurfer]);
+  useEffect(() => {
+    if (wavesurfer) {
+      wavesurfer.setPlaybackRate(playbackRate);
+      console.log('playbackRate', playbackRate);
+    }
+  }, [playbackRate, wavesurfer]);
 
   // 用户点击波形跳转
-  // const handleSeek = (progress: number) => {
-  //   if (wavesurfer && onSeek) {
-  //     isSeeking.current = true;
-  //     const duration = wavesurfer.getDuration() as number;
-  //     onSeek(progress * duration);
-  //     setTimeout(() => {
-  //       isSeeking.current = false;
-  //     }, 100);
-  //   }
-  // };
+  const handleSeek = (progress: number) => {
+    if (wavesurfer && onSeek) {
+      isSeeking.current = true;
+      const duration = wavesurfer.getDuration() as number;
+      onSeek(progress * duration);
+      setTimeout(() => {
+        isSeeking.current = false;
+      }, 100);
+    }
+  };
 
   if (loading) {
     return (
@@ -75,17 +75,17 @@ export function ArticleListeningWave({ loading, audioUrl, currentTime, onSeek, p
           cursorColor="transparent"
           progressColor="#000000"
           url={audioUrl}
-          barWidth={3}
-          barGap={3}
+          barWidth={2}
+          barGap={2}
           barHeight={1}
-          barRadius={8}
+          barRadius={4}
           // responsive
           normalize
           fillParent
           autoCenter
           interact
           // onSeek={handleSeek}
-          // onReady={handleReady}
+          onReady={handleReady}
         />
       )}
     </Box>

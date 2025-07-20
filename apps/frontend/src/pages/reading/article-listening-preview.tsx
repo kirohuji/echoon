@@ -13,7 +13,7 @@ export function ArticleListeningPreview({ loading, text, ...other }: {
 }) {
   if (loading) {
     return (
-      <Paper sx={{ p: 3 }} {...other}>
+      <Paper sx={{ p: 1, boxShadow: 'none'  }} {...other}>
         <Stack spacing={2}>
           <Skeleton height={20} width="80%" />
           <Skeleton height={20} width="90%" />
@@ -24,7 +24,7 @@ export function ArticleListeningPreview({ loading, text, ...other }: {
   }
 
   return (
-    <Paper sx={{ p: 3 }} {...other}>
+    <Paper sx={{ p: 1, boxShadow: 'none' }} {...other}>
       <Markdown children={text} />
     </Paper>
   );

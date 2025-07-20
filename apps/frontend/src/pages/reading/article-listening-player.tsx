@@ -112,7 +112,7 @@ export const ArticleListeningPlayer = forwardRef(({
             onLoadedMetadata(e.target.duration);
           }
         }}
-        listenInterval={1000}
+        listenInterval={200}
         style={{ display: 'none' }}
       />
     </Stack>

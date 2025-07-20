@@ -18,7 +18,19 @@ export default function ArticleItem({ article, onClick }: { article: any, onClic
         <Typography variant="caption" color="text.secondary" gutterBottom>
           {fDate(article.createdAt)}
         </Typography>
-        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+        <Typography 
+          variant="body1" 
+          sx={{ 
+            whiteSpace: 'pre-line',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: 1.5,
+            maxHeight: '4.5em' // 3行 * 1.5行高
+          }}
+        >
           {article.content}
         </Typography>
       </CardContent>

@@ -19,7 +19,12 @@ export const paths = {
   },
   main: {
     chat: {
-      root: '/chat'
+      root: '/main/chat'
+    },
+    reading: {
+      root: '/main/reading',
+      create: 'reading/create',
+      edit: 'reading/edit/:id'
     }
   }
 };

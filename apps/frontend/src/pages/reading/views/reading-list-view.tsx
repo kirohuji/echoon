@@ -63,7 +63,7 @@ export default function ReadingListView() {
   );
   return (
     <MainContent sx={{ p: 0, overflow: 'hidden' }}>
-      <Grid container spacing={3} sx={{ position: 'relative', height: '100vh', overflow: 'auto', p: 2 }}>
+      <Grid container spacing={3} sx={{ position: 'relative', height: '100vh', overflow: 'auto', p: 2, pb: '80px' }}>
         {loading ? renderSkeleton : renderList}
       </Grid>
       <Fab color="primary" aria-label="add" sx={{ position: 'absolute', bottom: 80, right: 20 }}>
