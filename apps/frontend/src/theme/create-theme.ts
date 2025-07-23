@@ -1,10 +1,8 @@
 import type { Theme } from '@mui/material/styles';
-import {  extendTheme } from '@mui/material/styles';
+import { extendTheme } from '@mui/material/styles';
 
-// import { setFont } from './styles/utils';
 import { overridesTheme } from './overrides-theme';
 import { typography, components, colorSchemes } from './core';
-// import { updateCoreWithSettings, updateComponentsWithSettings } from './with-settings/update-theme';
 
 import type { ThemeLocaleComponents } from './types';
 
