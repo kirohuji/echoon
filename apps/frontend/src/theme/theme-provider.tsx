@@ -10,8 +10,9 @@ import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 
 import { useTranslate } from 'src/locales';
 
+import { defaultSettings } from 'src/components/settings/config-settings';
 import { createTheme } from './create-theme';
-// import { schemeConfig } from './color-scheme-script';
+import { schemeConfig } from './color-scheme-script';
 
 // ----------------------------------------------------------------------
 
@@ -22,16 +23,16 @@ type Props = {
 export function ThemeProvider({ children }: Props) {
   const { currentLang } = useTranslate();
 
-  const theme = createTheme(currentLang?.systemValue);
+  const theme = createTheme(currentLang?.systemValue, defaultSettings);
 
   return (
     <MuiThemeProvider
       theme={theme}
-      // defaultMode={schemeConfig.defaultMode}
-      // modeStorageKey={schemeConfig.modeStorageKey}
+      defaultMode={schemeConfig.defaultMode as 'light' | 'dark' | 'system'}
+      modeStorageKey={schemeConfig.modeStorageKey}
     >
       <CssBaseline />
-
+      {children}
     </MuiThemeProvider>
   );
 }

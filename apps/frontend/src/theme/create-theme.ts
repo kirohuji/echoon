@@ -1,15 +1,18 @@
 import type { Theme } from '@mui/material/styles';
 import { extendTheme } from '@mui/material/styles';
 
+import type { SettingsState } from 'src/components/settings/index';
 import { overridesTheme } from './overrides-theme';
 import { typography, components, colorSchemes } from './core';
+import { updateComponentsWithSettings, updateCoreWithSettings } from './with-settings/update-theme';
 
 import type { ThemeLocaleComponents } from './types';
 
 // ----------------------------------------------------------------------
 
 export function createTheme(
-  localeComponents: ThemeLocaleComponents
+  localeComponents: ThemeLocaleComponents,
+  settings: SettingsState
 ): Theme {
   const initialTheme = {
     colorSchemes,
@@ -29,15 +32,18 @@ export function createTheme(
   /**
    * 1.Update values from settings before creating theme.
    */
-  // const updateTheme = updateCoreWithSettings(initialTheme, settings);
+  const updateTheme = updateCoreWithSettings(initialTheme, settings);
 
   /**
    * 2.Create theme + add locale + update component with settings.
    */
   const theme = extendTheme(
-    // updateTheme,
+    {
+      ...updateTheme,
+      typography: updateTheme.typography as any, // 类型断言以解决类型不匹配问题
+    },
     localeComponents,
-    // updateComponentsWithSettings(settings),
+    updateComponentsWithSettings(settings),
     overridesTheme
   );
 

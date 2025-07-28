@@ -77,6 +77,10 @@ export function createPaletteChannel(hexPalette: Record<string, string>) {
  * Color with alpha channel
  */
 export function varAlpha(color: string, opacity = 1) {
+  if (!color) {
+    return color;
+  }
+
   const unsupported =
     color.startsWith('#') ||
     color.startsWith('rgb') ||
