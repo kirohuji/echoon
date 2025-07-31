@@ -5,8 +5,8 @@ import type {} from '@mui/x-date-pickers/themeAugmentation';
 import type {} from '@mui/material/themeCssVarsAugmentation';
 
 import CssBaseline from '@mui/material/CssBaseline';
-import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-// import { Experimental_CssVarsProvider as CssVarsProvider } from '@mui/material/styles';
+// import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
+import { Experimental_CssVarsProvider as CssVarsProvider } from '@mui/material/styles';
 
 import { useTranslate } from 'src/locales';
 
@@ -26,13 +26,13 @@ export function ThemeProvider({ children }: Props) {
   const theme = createTheme(currentLang?.systemValue, defaultSettings);
 
   return (
-    <MuiThemeProvider
+    <CssVarsProvider
       theme={theme}
       defaultMode={schemeConfig.defaultMode as 'light' | 'dark' | 'system'}
       modeStorageKey={schemeConfig.modeStorageKey}
     >
       <CssBaseline />
       {children}
-    </MuiThemeProvider>
+    </CssVarsProvider>
   );
 }

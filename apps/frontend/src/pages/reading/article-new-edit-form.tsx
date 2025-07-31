@@ -98,22 +98,17 @@ export default function ArticleNewEditForm({ currentData }: { currentData: NewSc
           </Typography>
           <Field.Upload
             name="file"
-            accept={{ 
-              'application/pdf': ['.pdf'],
-              'text/plain': ['.txt'],
-              'application/msword': ['.doc'],
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-            }}
+            // accept={{ 
+            //   'application/pdf': ['.pdf'],
+            //   'text/plain': ['.txt'],
+            //   'application/msword': ['.doc'],
+            //   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+            // }}
             maxSize={10 * 1024 * 1024} // 10MB
             helperText="支持 PDF、TXT、DOC、DOCX 文件，最大 10MB"
             sx={{ minHeight: 120 }}
           />
         </Box>
-
-        {/* <Stack spacing={1.5}>
-          <Typography variant="subtitle2">Content</Typography>
-          <Field.Editor name="content" sx={{ maxHeight: 480 }} />
-        </Stack> */}
       </Stack>
     </Card>
   );
