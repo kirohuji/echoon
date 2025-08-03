@@ -21,6 +21,7 @@ export const ArticleListeningPlayer = forwardRef(({
   audioUrl,
   onTimeUpdate,
   onLoadedMetadata,
+  onEnded,
   ...other 
 }: {
   loading: boolean;
@@ -34,6 +35,7 @@ export const ArticleListeningPlayer = forwardRef(({
   audioUrl: string;
   onTimeUpdate?: (value: number) => void;
   onLoadedMetadata?: (value: number) => void;
+  onEnded?: () => void;
   other?: any;
 }, ref: any) => {
   if (loading) {
@@ -112,6 +114,7 @@ export const ArticleListeningPlayer = forwardRef(({
             onLoadedMetadata(e.target.duration);
           }
         }}
+        onEnded={onEnded}
         listenInterval={200}
         style={{ display: 'none' }}
       />

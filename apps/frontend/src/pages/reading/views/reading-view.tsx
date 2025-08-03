@@ -58,6 +58,18 @@ export default function ReadingView() {
     }
   }, [id]);
 
+  // 清除所有高亮
+  const clearHighlights = useCallback(() => {
+    const highlightedElements = window.document.querySelectorAll('.highlight');
+    highlightedElements.forEach((el: any) => el.classList.remove('highlight'));
+  }, []);
+
+  // 重置播放状态
+  const resetPlayback = useCallback(() => {
+    setCurrentIndex(-1);
+    clearHighlights();
+  }, [clearHighlights]);
+
   const handlePlay = () => {
     if (audioRef.current) {
       audioRef.current.audioEl.current.play();
@@ -69,11 +81,66 @@ export default function ReadingView() {
     if (audioRef.current) {
       audioRef.current.audioEl.current.pause();
       setPlaying(false);
-      setCurrentIndex(-1);
-      const highlightedElements = window.document.querySelectorAll('.highlight');
-      highlightedElements.forEach((el: any) => el.classList.remove('highlight'));
+      // 暂停时不清除高亮，保持当前状态
     }
   };
+
+  // 快退10秒
+  const handleRewind10 = () => {
+    if (audioRef.current) {
+      const audio = audioRef.current.audioEl.current;
+      const newTime = Math.max(0, audio.currentTime - 10);
+      audio.currentTime = newTime;
+      setCurrentTime(newTime);
+
+      // 重新计算当前应该高亮的单词
+      const currentTimeInMicro = Math.floor(newTime * 1000000000);
+      updateHighlightForTime(currentTimeInMicro);
+    }
+  };
+
+  // 快进10秒
+  const handleForward10 = () => {
+    if (audioRef.current) {
+      const audio = audioRef.current.audioEl.current;
+      const newTime = Math.min(audio.duration, audio.currentTime + 10);
+      audio.currentTime = newTime;
+      setCurrentTime(newTime);
+
+      // 重新计算当前应该高亮的单词
+      const currentTimeInMicro = Math.floor(newTime * 1000000000);
+      updateHighlightForTime(currentTimeInMicro);
+    }
+  };
+
+  // 根据时间更新高亮
+  const updateHighlightForTime = useCallback((currentPlayTime: number) => {
+    const wordTimestamps = document?.wordTimestamps || [];
+    if (wordTimestamps.length === 0) return;
+
+    // 清除所有高亮
+    clearHighlights();
+
+    // 找到当前时间对应的单词索引
+    let targetIndex = -1;
+    for (let i = 0; i < wordTimestamps.length; i+=1) {
+      const word = wordTimestamps[i] as any;
+      if (currentPlayTime >= word.start_time) {
+        targetIndex = i;
+      } else {
+        break;
+      }
+    }
+
+    // 设置当前索引并高亮对应单词
+    if (targetIndex >= 0) {
+      setCurrentIndex(targetIndex);
+      const currentSpan = window.document.querySelector(`#word-${targetIndex}`);
+      if (currentSpan) currentSpan.classList.add('highlight');
+    } else {
+      setCurrentIndex(-1);
+    }
+  }, [document?.wordTimestamps, clearHighlights]);
 
   const handleTimeUpdate = (value: number) => {
     setCurrentTime(value);
@@ -81,12 +148,26 @@ export default function ReadingView() {
     highlightWord(document?.wordTimestamps || [], currentTimeInMicro);
   };
 
+  // 音频加载完成时的处理
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      const audio = audioRef.current.audioEl.current;
+      setDuration(audio.duration);
+    }
+  };
+
+  // 音频播放结束时的处理
+  const handleEnded = () => {
+    setPlaying(false);
+    resetPlayback();
+  };
+
   useEffect(() => {
     refresh()
   }, [refresh]);
 
   function renderWords(wordTimestamps: any[]) {
-    return wordTimestamps.map((word, index) =>  <span className="word" data-start={word.start_time} id={`word-${index}`} key={index}>{word.text} </span>)
+    return wordTimestamps.map((word, index) => <span className="word" data-start={word.start_time} id={`word-${index}`} key={index}>{word.text} </span>)
   }
 
   function highlightWord(wordTimestamps: any[], currentPlayTime: number) {
@@ -94,7 +175,7 @@ export default function ReadingView() {
     if (next && currentPlayTime >= next.start_time) {
       const newIndex = currentIndex + 1;
       setCurrentIndex(newIndex);
-  
+
       const currentSpan = window.document.querySelector(`#word-${newIndex}`);
       if (currentSpan) currentSpan.classList.add('highlight');
     } else if (!next) {
@@ -105,7 +186,7 @@ export default function ReadingView() {
       }
     }
   }
-  
+
 
   return (
     <MainContent
@@ -149,12 +230,13 @@ export default function ReadingView() {
               onPause={handlePause}
               onPreviousSentence={() => { }}
               onNextSentence={() => { }}
-              // onRewind10={handleRewind10}
-              // onForward10={handleForward10}
+              onRewind10={handleRewind10}
+              onForward10={handleForward10}
               audioUrl={audioUrl}
               ref={audioRef}
               onTimeUpdate={handleTimeUpdate}
-            // onLoadedMetadata={handleLoadedMetadata}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={handleEnded}
             />
             <ArticleListeningToolbar
               loading={loading}
