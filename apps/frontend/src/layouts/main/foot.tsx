@@ -22,11 +22,11 @@ const bottomNavigationAction = [
     to: '/main/reading/list',
     icon: <Iconify width={32} icon="solar:music-library-line-duotone" />
   },
-  {
-    label: 'Settings',
-    to: '/main/settings',
-    icon: <Iconify width={32} icon="solar:settings-broken" />
-  }
+  // {
+  //   label: 'Settings',
+  //   to: '/main/settings',
+  //   icon: <Iconify width={32} icon="solar:settings-broken" />
+  // }
 ]
 
 export function MainFooter({ layoutQuery }: FooterProps) {

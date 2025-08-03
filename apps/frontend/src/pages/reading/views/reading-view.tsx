@@ -115,7 +115,7 @@ export default function ReadingView() {
       <Typography variant="h6" sx={{ mb: { xs: 3, md: 5 } }}>
         Reading
       </Typography>
-      <Box sx={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', p: 2 }}>
+      <Box sx={{ height: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column', p: 2 }}>
         <Box sx={{ flexGrow: 1, overflow: 'hidden', height: '100%' }}>
           <Scrollbar sx={{ height: '100%' }}>
             {

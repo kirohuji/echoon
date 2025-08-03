@@ -1,6 +1,6 @@
 import { useRouter, useSearchParams } from 'src/routes/hooks';
 import { MainContent } from 'src/layouts/main';
-import { Card, Stack, Typography } from '@mui/material';
+import { Card, Stack } from '@mui/material';
 
 import { useResponsive } from 'src/hooks/use-responsive';
 import { useCallback, useEffect, useState } from 'react';
@@ -28,7 +28,7 @@ function calcHeight(isDesktop: boolean, selectedConversationId: string) {
   if (isDesktop) {
     return '72vh';
   }
-  return selectedConversationId ? 'calc(100vh - 70px)' : 'calc(100vh - 140px)';
+  return selectedConversationId ? 'calc(100vh - 48px)' : 'calc(100vh - 140px)';
 }
 
 // const transport = new DailyTransport()
@@ -199,9 +199,9 @@ export function ChatView() {
       disablePadding
       maxWidth={false}
     >
-      <Typography variant="h6" sx={{ mb: { xs: 3, md: 5 } }}>
+      {/* <Typography variant="h6" sx={{ mb: { xs: 3, md: 5 } }}>
         Chat
-      </Typography>
+      </Typography> */}
       {
         (isDesktop || selectedConversationId) && (
           <PipecatClientProvider client={pipecatClient}>
