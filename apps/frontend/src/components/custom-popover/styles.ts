@@ -5,7 +5,7 @@ import { styled, alpha } from '@mui/material/styles';
 
 // ----------------------------------------------------------------------
 
-export const StyledArrow = styled('span')(({ arrow, theme }: { arrow: any, theme: any }) => {
+export const StyledArrow = styled('span')<{ arrow: any }>(({ arrow, theme }) => {
   const SIZE = 14;
 
   const POSITION = -(SIZE / 2) + 0.5;

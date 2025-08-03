@@ -32,8 +32,14 @@ export default function CustomPopover({
       open={Boolean(open)}
       anchorEl={open}
       onClose={onClose}
-      // anchorOrigin={anchorOrigin}
-      // transformOrigin={transformOrigin}
+      anchorOrigin={{
+        vertical: anchorOrigin.vertical as 'top' | 'center' | 'bottom',
+        horizontal: anchorOrigin.horizontal as 'left' | 'center' | 'right'
+      }}
+      transformOrigin={{
+        vertical: transformOrigin.vertical as 'top' | 'center' | 'bottom',
+        horizontal: transformOrigin.horizontal as 'left' | 'center' | 'right'
+      }}
       slotProps={{
         paper: {
           sx: {
@@ -52,7 +58,7 @@ export default function CustomPopover({
       }}
       {...other}
     >
-      {!hiddenArrow && <StyledArrow arrow={arrow} theme={theme} />}
+      {!hiddenArrow && <StyledArrow arrow={arrow} />}
 
       {children}
     </Popover>
