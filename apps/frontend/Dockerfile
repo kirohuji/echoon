@@ -2,7 +2,12 @@ FROM node:22-alpine AS build
 
 WORKDIR /repo
 
+ARG PNPM_REGISTRY=https://registry.npmmirror.com
+ENV NPM_CONFIG_REGISTRY=$PNPM_REGISTRY
+
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+
+RUN pnpm config set registry "$PNPM_REGISTRY"
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY .npmrc ./

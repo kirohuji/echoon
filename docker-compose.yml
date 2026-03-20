@@ -55,6 +55,8 @@ services:
     build:
       context: .
       dockerfile: apps/backend/Dockerfile
+      args:
+        PNPM_REGISTRY: ${PNPM_REGISTRY:-https://registry.npmmirror.com}
     image: echoon-backend:local
     depends_on:
       postgres:
@@ -79,6 +81,7 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
       args:
+        PNPM_REGISTRY: ${PNPM_REGISTRY:-https://registry.npmmirror.com}
         VITE_SERVER_URL: ${VITE_SERVER_URL:-http://localhost:3000}
         VITE_ASSET_URL: ${VITE_ASSET_URL:-}
         VITE_BASE_PATH: ${VITE_BASE_PATH:-}

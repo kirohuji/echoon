@@ -2,7 +2,12 @@ FROM node:22-alpine AS build
 
 WORKDIR /repo
 
+ARG PNPM_REGISTRY=https://registry.npmmirror.com
+ENV NPM_CONFIG_REGISTRY=$PNPM_REGISTRY
+
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+
+RUN pnpm config set registry "$PNPM_REGISTRY"
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY .npmrc ./
@@ -21,6 +26,8 @@ RUN pnpm --filter echoon-backend prisma:generate \
 FROM node:22-alpine AS runtime
 
 WORKDIR /repo
+ARG PNPM_REGISTRY=https://registry.npmmirror.com
+ENV NPM_CONFIG_REGISTRY=$PNPM_REGISTRY
 RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
 
 ENV NODE_ENV=production
@@ -31,5 +38,5 @@ COPY --from=build /repo/apps/backend/dist ./apps/backend/dist
 COPY --from=build /repo/apps/backend/package.json ./apps/backend/package.json
 COPY --from=build /repo/apps/backend/prisma ./apps/backend/prisma
 
-CMD ["pnpm", "--filter", "echoon-backend", "start:prod"]
+CMD ["node", "apps/backend/dist/src/main.js"]
 
