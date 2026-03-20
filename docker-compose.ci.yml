@@ -2,9 +2,12 @@ version: "2.4"
 
 services:
   postgres:
-    ports: []
+    ports:
+      - "15432:5432"
   backend:
-    ports: []
+    ports:
+      - "13000:3000"
   frontend:
-    ports: []
+    ports:
+      - "18080:80"
 
