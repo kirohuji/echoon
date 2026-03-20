@@ -7,9 +7,20 @@ on:
 jobs:
   compose-build-and-run:
     runs-on: self-hosted
+    env:
+      GIT_HTTP_VERSION: HTTP/1.1
     steps:
+      - name: Configure git transport
+        run: |
+          git config --global http.version HTTP/1.1
+          git config --global http.postBuffer 524288000
+          git config --global core.compression 0
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          submodules: false
 
       - name: Build images
         run: docker compose build backend backend-migrate frontend
