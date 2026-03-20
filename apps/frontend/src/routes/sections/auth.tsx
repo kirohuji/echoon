@@ -1,8 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 
-import { AuthCenteredLayout } from 'src/layouts/auth';
-
 import { SplashScreen } from 'src/components/loading-screen';
 
 import { GuestGuard } from 'src/auth/guard';
@@ -24,9 +22,7 @@ const authJwt = {
       path: 'sign-in',
       element: (
         <GuestGuard>
-          <AuthCenteredLayout>
-            <Jwt.SignInPage />
-          </AuthCenteredLayout>
+          <Jwt.SignInPage />
         </GuestGuard>
       ),
     },
@@ -34,9 +30,7 @@ const authJwt = {
       path: 'sign-up',
       element: (
         <GuestGuard>
-          <AuthCenteredLayout>
-            <Jwt.SignUpPage />
-          </AuthCenteredLayout>
+          <Jwt.SignUpPage />
         </GuestGuard>
       ),
     },

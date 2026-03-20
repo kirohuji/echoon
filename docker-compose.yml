@@ -1,0 +1,93 @@
+version: "2.4"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: echoon
+      POSTGRES_USER: echoon
+      POSTGRES_PASSWORD: echoon
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U echoon -d echoon"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend-migrate:
+    image: echoon-backend:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://echoon:echoon@postgres:5432/echoon?schema=public
+      JWT_SECRET: dev-change-me
+      RMQ_URL: amqp://guest:guest@rabbitmq:5672
+      RMQ_QUEUE: pipecat
+      RMQ_ROUTING_KEY: pipecat
+    command:
+      - sh
+      - -c
+      - >-
+        pnpm --filter echoon-backend prisma:generate
+        && pnpm --filter echoon-backend prisma:push -- --accept-data-loss
+        && pnpm --filter echoon-backend prisma:seed
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    image: echoon-backend:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      backend-migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://echoon:echoon@postgres:5432/echoon?schema=public
+      JWT_SECRET: dev-change-me
+      RMQ_URL: amqp://guest:guest@rabbitmq:5672
+      RMQ_QUEUE: pipecat
+      RMQ_ROUTING_KEY: pipecat
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        VITE_SERVER_URL: ${VITE_SERVER_URL:-http://localhost:3000}
+        VITE_ASSET_URL: ${VITE_ASSET_URL:-}
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-}
+        VITE_PIPETCAT_URL: ${VITE_PIPETCAT_URL:-}
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  postgres_data:
+

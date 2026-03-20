@@ -1,0 +1,14 @@
+**/.git
+**/.github
+**/node_modules
+**/dist
+**/build
+**/.cache
+**/.next
+**/.turbo
+**/.env
+**/*.log
+**/coverage
+apps/pipecat
+**/apps/pipecat
+

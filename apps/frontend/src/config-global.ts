@@ -38,7 +38,7 @@ export const CONFIG: ConfigValue = {
   auth: {
     method: 'jwt',
     skip: false,
-    redirectPath: paths.main.chat.root,
+    redirectPath: paths.main.users.root,
   }
 };
 

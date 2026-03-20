@@ -5,20 +5,15 @@ import { Outlet } from 'react-router-dom';
 
 import { CONFIG } from 'src/config-global';
 
-import { MainLayout } from 'src/layouts/main';
-
-import { LoadingScreen } from 'src/components/loading-screen';
-
 import { AuthGuard } from 'src/auth/guard';
-import ReadingList from 'src/pages/reading/list';
-import ChatPage from 'src/pages/chat';
+import UsersPage from 'src/pages/users';
+import ConversationsPage from 'src/pages/conversations';
+import ConversationDetailPage from 'src/pages/conversations/detail';
 
 const layoutContent = (
-  <MainLayout>
-    <Suspense fallback={<LoadingScreen />}>
-      <Outlet />
-    </Suspense>
-  </MainLayout>
+  <Suspense fallback={<div className="p-4 text-sm text-gray-500">Loading...</div>}>
+    <Outlet />
+  </Suspense>
 );
 
 export const mainRoutes = [
@@ -27,17 +22,16 @@ export const mainRoutes = [
     element: CONFIG.auth.skip ? <>{layoutContent}</> : <AuthGuard>{layoutContent}</AuthGuard>,
     children: [
       {
-        path: 'chat',
-        children: [
-          { element: <ChatPage />, index: true },
-        ]
+        path: 'users',
+        element: <UsersPage />,
       },
       {
-        path: 'reading',
+        path: 'conversations',
         children: [
-          { element: <ReadingList />, path: 'list' },
-        ]
-      }
+          { element: <ConversationsPage />, index: true },
+          { element: <ConversationDetailPage />, path: ':id' },
+        ],
+      },
     ]
   },
 ];

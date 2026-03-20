@@ -1,37 +1,18 @@
-import type { BoxProps } from '@mui/material/Box';
+import { createPortal } from 'react-dom';
 
-import Box from '@mui/material/Box';
-import Portal from '@mui/material/Portal';
-import LinearProgress from '@mui/material/LinearProgress';
-
-// ----------------------------------------------------------------------
-
-type Props = BoxProps & {
+type Props = {
   portal?: boolean;
 };
 
-export function LoadingScreen({ portal, sx, ...other }: Props) {
+export function LoadingScreen({ portal = true }: Props) {
   const content = (
-    <Box
-      sx={{
-        px: 5,
-        width: 1,
-        flexGrow: 1,
-        minHeight: 1,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...sx,
-      }}
-      {...other}
-    >
-      <LinearProgress color="inherit" sx={{ width: 1, maxWidth: 360 }} />
-    </Box>
+    <div className="flex w-full flex-col items-center justify-center gap-2 p-4">
+      <div className="h-2 w-64 animate-pulse rounded bg-black/10" />
+      <div className="text-sm text-gray-500">Loading...</div>
+    </div>
   );
 
-  if (portal) {
-    return <Portal>{content}</Portal>;
-  }
-
-  return content;
+  if (!portal) return content;
+  return createPortal(content, document.body);
 }
+

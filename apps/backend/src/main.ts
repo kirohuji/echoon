@@ -13,13 +13,19 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   });
 
+  // RMQ connection should be configurable for local/dev/CI environments.
+  // Defaults keep backwards compatibility with the previous hard-coded values.
+  const rmqUrl = process.env.RMQ_URL ?? 'amqp://115.159.95.166:5672';
+  const rmqQueue = process.env.RMQ_QUEUE ?? 'pipecat';
+  const rmqRoutingKey = process.env.RMQ_ROUTING_KEY ?? rmqQueue;
+
   app.connectMicroservice<MicroserviceOptions>(
     {
       transport: Transport.RMQ,
       options: {
-        urls: ['amqp://115.159.95.166:5672'],
-        queue: 'pipecat',
-        routingKey: 'pipecat',
+        urls: [rmqUrl],
+        queue: rmqQueue,
+        routingKey: rmqRoutingKey,
         queueOptions: {
           durable: true,
         },

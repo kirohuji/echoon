@@ -1,0 +1,28 @@
+name: Docker Compose CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  compose-build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose build backend backend-migrate frontend
+
+      - name: Start dependencies
+        run: docker compose up -d postgres rabbitmq
+
+      - name: Run backend migrations/seed
+        run: docker compose run --rm backend-migrate
+
+      - name: Start backend
+        run: docker compose up -d backend
+
+      - name: Show backend container status
+        run: docker compose ps
+

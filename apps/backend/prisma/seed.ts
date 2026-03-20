@@ -8,6 +8,9 @@ async function main() {
   await prisma.roleAssignment.deleteMany({});
   await prisma.permission.deleteMany({});
   await prisma.role.deleteMany({});
+  // Profile's primary key is also a foreign key to User(id).
+  // Delete Profile before deleting User to avoid FK constraint errors on re-seed.
+  await prisma.profile.deleteMany({});
   await prisma.user.deleteMany({});
 
   // 1. 创建顶级权限

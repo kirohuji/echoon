@@ -1,43 +1,20 @@
-import type { BoxProps } from '@mui/material/Box';
+import { createPortal } from 'react-dom';
 
-import Box from '@mui/material/Box';
-import Portal from '@mui/material/Portal';
-
-// import { AnimateLogo1 } from 'src/components/animate';
-
-// ----------------------------------------------------------------------
-
-type Props = BoxProps & {
+type Props = {
   portal?: boolean;
 };
 
-export function SplashScreen({ portal = true, sx, ...other }: Props) {
+export function SplashScreen({ portal = true }: Props) {
   const content = (
-    <Box sx={{ overflow: 'hidden' }}>
-      <Box
-        sx={{
-          right: 0,
-          width: 1,
-          bottom: 0,
-          height: 1,
-          zIndex: 9998,
-          display: 'flex',
-          position: 'fixed',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: 'background.default',
-          ...sx,
-        }}
-        {...other}
-      >
-        <div>Loading...</div>
-      </Box>
-    </Box>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/70 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-2 w-64 animate-pulse rounded bg-black/10" />
+        <div className="text-sm text-gray-600">Loading...</div>
+      </div>
+    </div>
   );
 
-  if (portal) {
-    return <Portal>{content}</Portal>;
-  }
-
-  return content;
+  if (!portal) return content;
+  return createPortal(content, document.body);
 }
+

@@ -25,6 +25,12 @@ export const paths = {
       root: '/main/reading',
       create: 'reading/create',
       edit: 'reading/edit/:id'
-    }
+    },
+    users: {
+      root: '/main/users',
+    },
+    conversations: {
+      root: '/main/conversations',
+    },
   }
 };

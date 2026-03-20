@@ -1,0 +1,28 @@
+{
+  "name": "echoon-client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@wavesurfer/react": "^1.0.11",
+    "axios": "^1.8.4",
+    "react": "^19.1.0",
+    "react-audio-player": "^0.17.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.3",
+    "wavesurfer.js": "^7.10.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/react-router-dom": "^5.3.3",
+    "typescript": "^5.5.4",
+    "vite": "^7.0.2"
+  }
+}
+
