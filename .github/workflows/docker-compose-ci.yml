@@ -22,18 +22,25 @@ jobs:
           lfs: false
           submodules: false
 
+      - name: Cleanup previous stack
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down --remove-orphans -v || true
+
       - name: Build images
-        run: docker compose build backend backend-migrate frontend
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build backend backend-migrate frontend
 
       - name: Start dependencies
-        run: docker compose up -d postgres rabbitmq
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d postgres rabbitmq
 
       - name: Run backend migrations/seed
-        run: docker compose run --rm backend-migrate
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm backend-migrate
 
       - name: Start backend
-        run: docker compose up -d backend
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d backend
 
       - name: Show backend container status
-        run: docker compose ps
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml ps
+
+      - name: Cleanup after job
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down --remove-orphans -v || true
 
