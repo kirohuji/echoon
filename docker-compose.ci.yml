@@ -1,13 +1,7 @@
 version: "2.4"
 
 services:
-  postgres:
-    ports:
-      - "15432:5432"
-  backend:
-    ports:
-      - "13000:3000"
-  frontend:
-    ports:
-      - "18080:80"
+  postgres: {}
+  backend: {}
+  frontend: {}
 

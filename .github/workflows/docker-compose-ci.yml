@@ -9,6 +9,10 @@ jobs:
     runs-on: self-hosted
     env:
       GIT_HTTP_VERSION: HTTP/1.1
+      POSTGRES_HOST_PORT: 15432
+      BACKEND_HOST_PORT: 2604
+      FRONTEND_HOST_PORT: 2605
+      CLIENT_HOST_PORT: 2606
     steps:
       - name: Configure git transport
         run: |
@@ -26,7 +30,7 @@ jobs:
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down --remove-orphans -v || true
 
       - name: Build images
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build backend backend-migrate frontend
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build backend backend-migrate frontend client
 
       - name: Start dependencies
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d postgres rabbitmq
@@ -36,6 +40,9 @@ jobs:
 
       - name: Start backend
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d backend
+
+      - name: Start frontend/client
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d frontend client
 
       - name: Show backend container status
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml ps

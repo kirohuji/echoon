@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U echoon -d echoon"]
       interval: 5s
@@ -74,7 +74,7 @@ services:
       RMQ_QUEUE: pipecat
       RMQ_ROUTING_KEY: pipecat
     ports:
-      - "3000:3000"
+      - "127.0.0.1:${BACKEND_HOST_PORT:-2604}:3000"
 
   frontend:
     build:
@@ -82,14 +82,26 @@ services:
       dockerfile: apps/frontend/Dockerfile
       args:
         PNPM_REGISTRY: ${PNPM_REGISTRY:-https://registry.npmmirror.com}
-        VITE_SERVER_URL: ${VITE_SERVER_URL:-http://localhost:3000}
+        VITE_SERVER_URL: ${VITE_SERVER_URL:-http://backend:3000}
         VITE_ASSET_URL: ${VITE_ASSET_URL:-}
         VITE_BASE_PATH: ${VITE_BASE_PATH:-}
         VITE_PIPETCAT_URL: ${VITE_PIPETCAT_URL:-}
     depends_on:
       - backend
     ports:
-      - "8080:80"
+      - "127.0.0.1:${FRONTEND_HOST_PORT:-2605}:80"
+
+  client:
+    build:
+      context: .
+      dockerfile: apps/client/Dockerfile
+      args:
+        PNPM_REGISTRY: ${PNPM_REGISTRY:-https://registry.npmmirror.com}
+        VITE_SERVER_URL: ${VITE_SERVER_URL:-http://backend:3000}
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:${CLIENT_HOST_PORT:-2606}:80"
 
 volumes:
   postgres_data:
