@@ -4,12 +4,20 @@ import * as crypto from 'crypto';
 const prisma = new PrismaClient();
 
 async function main() {
-  // 清空相关表
+  // 清空相关表（按外键依赖从子表到父表删除，保证可重复 seed）
+  await prisma.attachment.deleteMany({});
+  await prisma.message.deleteMany({});
+  await prisma.participant.deleteMany({});
+  await prisma.conversation.deleteMany({});
+  await prisma.document.deleteMany({});
+  await prisma.file.deleteMany({});
+  await prisma.refreshToken.deleteMany({});
+  await prisma.verificationCode.deleteMany({});
+  await prisma.personal.deleteMany({});
   await prisma.roleAssignment.deleteMany({});
   await prisma.permission.deleteMany({});
   await prisma.role.deleteMany({});
-  // Profile's primary key is also a foreign key to User(id).
-  // Delete Profile before deleting User to avoid FK constraint errors on re-seed.
+  // Profile.id 同时是 User.id 外键，需先删 Profile 再删 User。
   await prisma.profile.deleteMany({});
   await prisma.user.deleteMany({});
 
