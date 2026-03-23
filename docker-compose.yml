@@ -1,5 +1,10 @@
-# 默认：使用「外部」PostgreSQL / Redis（通过 .env 里的 DATABASE_URL、REDIS_URL）。
-# 本地 docker 里的 postgres / rabbitmq 仅作备用：启动时加 --profile docker-infra
+# 默认：业务数据走「外部」PostgreSQL —— 在 .env 里配置 DATABASE_URL 指向你的服务器即可。
+#       Compose 里的 postgres 服务仅在 profile docker-infra 下启用（本地/CI 备用），平时不用起。
+#
+# Redis：.env 里可配 REDIS_URL（你服务器上的 Redis:6379）；当前后端代码若尚未接入 Bull/缓存，该变量仅为预留。
+#
+# RabbitMQ（与 Redis 不是同一个东西）：仅当 ENABLE_RMQ=true 且配置了 RMQ_URL 时，Nest 才会连 AMQP。
+#       默认 ENABLE_RMQ=false。CI 里用 profile docker-infra 起的 rabbitmq 只给流水线用。
 #
 # 在外部 Postgres 上新建库（示例，在 psql 里执行）:
 #   CREATE DATABASE echoon OWNER lourd;
