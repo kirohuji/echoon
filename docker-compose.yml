@@ -5,8 +5,6 @@
 #   CREATE DATABASE echoon OWNER lourd;
 #   GRANT ALL PRIVILEGES ON DATABASE echoon TO lourd;
 
-version: "2.4"
-
 services:
   # 可选：仅当需要本地容器数据库时使用
   postgres:

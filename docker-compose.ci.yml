@@ -1,5 +1,5 @@
 # CI：使用 profile docker-infra 启动本地 postgres/rabbitmq，并补上依赖顺序。
-version: "2.4"
+# 需在环境中设置 COMPOSE_PROFILES=docker-infra（见 GitHub Actions workflow）。
 
 services:
   backend-migrate:
