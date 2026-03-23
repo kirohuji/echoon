@@ -17,6 +17,7 @@ export default function TagsPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -37,14 +38,30 @@ export default function TagsPage() {
   }, [loadData]);
 
   const createTag = async () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setError('请输入标签名');
+      return;
+    }
     try {
-      await tagService.post({ name: name.trim(), description: description.trim() || undefined });
+      setCreating(true);
+      setError(null);
+      await tagService.post({
+        name: name.trim(),
+        description: description.trim() || undefined,
+      });
       setName('');
       setDescription('');
-      loadData();
+      await loadData();
     } catch (e) {
+      // axios error -> response.data.error.message
+      const message =
+        e?.response?.data?.error?.message ??
+        e?.message ??
+        'Failed to create tag';
+      setError(message);
       console.error(e);
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -79,12 +96,13 @@ export default function TagsPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <Button type="button" onClick={createTag}>
+          <Button type="button" onClick={createTag} disabled={creating || !name.trim()}>
             新增标签
           </Button>
         </div>
 
         {loading ? <div className="text-sm text-gray-500">Loading...</div> : null}
+        {creating ? <div className="text-sm text-gray-500">Creating...</div> : null}
         {error ? <div className="text-sm text-red-600">{error}</div> : null}
 
         {!loading && !error ? (

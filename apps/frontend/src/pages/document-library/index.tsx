@@ -26,6 +26,7 @@ export default function DocumentLibraryPage() {
   const [keyword, setKeyword] = useState('');
   const [selectedTagId, setSelectedTagId] = useState('');
   const [openUpload, setOpenUpload] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
 
   const loadTags = useCallback(async () => {
     const res = await tagService.getAll({});
@@ -103,59 +104,137 @@ export default function DocumentLibraryPage() {
           <Button type="button" variant="outline" onClick={loadData}>
             筛选
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={viewMode === 'table' ? 'default' : 'outline'}
+            onClick={() => setViewMode('table')}
+          >
+            表格
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={viewMode === 'card' ? 'default' : 'outline'}
+            onClick={() => setViewMode('card')}
+          >
+            卡片
+          </Button>
         </div>
 
         {loading ? <div className="text-sm text-gray-500">Loading...</div> : null}
         {error ? <div className="text-sm text-red-600">{error}</div> : null}
 
         {!loading && !error ? (
-          <div className="overflow-x-auto rounded border border-black/10">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-black/5">
-                <tr>
-                  <th className="px-3 py-2 font-medium">标题</th>
-                  <th className="px-3 py-2 font-medium">文件</th>
-                  <th className="px-3 py-2 font-medium">标签</th>
-                  <th className="px-3 py-2 font-medium">模型</th>
-                  <th className="px-3 py-2 font-medium">音频状态</th>
-                  <th className="px-3 py-2 font-medium">创建时间</th>
-                  <th className="px-3 py-2 font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-black/10">
-                    <td className="px-3 py-2">{row.title}</td>
-                    <td className="px-3 py-2">{row.fileName}</td>
-                    <td className="px-3 py-2">
-                      {row.tags.map((item) => item.tag.name).join(' / ') || '-'}
-                    </td>
-                    <td className="px-3 py-2">{row.modelName}</td>
-                    <td className="px-3 py-2">{row.audioStatus}</td>
-                    <td className="px-3 py-2">{new Date(row.createdAt).toLocaleString()}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-2">
-                        <Button type="button" size="sm" onClick={() => onGenerateAudio(row.id)}>
-                          生成音频
-                        </Button>
-                        {row.audioStatus === 'success' ? (
-                          <a
-                            className="inline-flex h-8 items-center rounded-md border border-black/20 px-3 text-xs hover:bg-black/5"
-                            href={`${import.meta.env.VITE_SERVER_URL}/document-library/${row.id}/audio`}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            音频
-                          </a>
-                        ) : null}
-                      </div>
-                    </td>
+          viewMode === 'table' ? (
+            <div className="overflow-x-auto rounded border border-black/10">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-black/5">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">标题</th>
+                    <th className="px-3 py-2 font-medium">文件</th>
+                    <th className="px-3 py-2 font-medium">标签</th>
+                    <th className="px-3 py-2 font-medium">模型</th>
+                    <th className="px-3 py-2 font-medium">音频状态</th>
+                    <th className="px-3 py-2 font-medium">创建时间</th>
+                    <th className="px-3 py-2 font-medium">操作</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {rows.length === 0 ? <div className="p-3 text-sm text-gray-500">暂无资料</div> : null}
-          </div>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id} className="border-t border-black/10">
+                      <td className="px-3 py-2">{row.title}</td>
+                      <td className="px-3 py-2">{row.fileName}</td>
+                      <td className="px-3 py-2">
+                        {row.tags.map((item) => item.tag.name).join(' / ') || '-'}
+                      </td>
+                      <td className="px-3 py-2">{row.modelName}</td>
+                      <td className="px-3 py-2">{row.audioStatus}</td>
+                      <td className="px-3 py-2">{new Date(row.createdAt).toLocaleString()}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => onGenerateAudio(row.id)}
+                            disabled={row.audioStatus === 'processing'}
+                          >
+                            生成音频
+                          </Button>
+                          {row.audioStatus === 'success' ? (
+                            <a
+                              className="inline-flex h-8 items-center rounded-md border border-black/20 px-3 text-xs hover:bg-black/5"
+                              href={`${import.meta.env.VITE_SERVER_URL}/document-library/${row.id}/audio`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              音频
+                            </a>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {rows.length === 0 ? <div className="p-3 text-sm text-gray-500">暂无资料</div> : null}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {rows.map((row) => (
+                <div
+                  key={row.id}
+                  className="rounded border border-black/10 bg-white p-4 shadow-sm"
+                >
+                  <div className="space-y-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-black/90">{row.title}</div>
+                      <div className="truncate text-xs text-gray-600">{row.fileName}</div>
+                    </div>
+
+                    <div className="text-xs text-gray-700">
+                      <span className="font-medium text-gray-900">标签：</span>
+                      {row.tags.map((item) => item.tag.name).join(' / ') || '-'}
+                    </div>
+                    <div className="text-xs text-gray-700">
+                      <span className="font-medium text-gray-900">模型：</span>
+                      {row.modelName}
+                    </div>
+                    <div className="text-xs text-gray-700">
+                      <span className="font-medium text-gray-900">音频状态：</span>
+                      {row.audioStatus}
+                    </div>
+                    <div className="text-xs text-gray-700">
+                      <span className="font-medium text-gray-900">创建时间：</span>
+                      {new Date(row.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => onGenerateAudio(row.id)}
+                      disabled={row.audioStatus === 'processing'}
+                    >
+                      生成音频
+                    </Button>
+                    {row.audioStatus === 'success' ? (
+                      <a
+                        className="inline-flex h-8 items-center rounded-md border border-black/20 px-3 text-xs hover:bg-black/5"
+                        href={`${import.meta.env.VITE_SERVER_URL}/document-library/${row.id}/audio`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        音频
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+              {rows.length === 0 ? <div className="p-3 text-sm text-gray-500">暂无资料</div> : null}
+            </div>
+          )
         ) : null}
       </div>
 
