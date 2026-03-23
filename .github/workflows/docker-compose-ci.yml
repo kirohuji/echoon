@@ -16,6 +16,8 @@ jobs:
       FRONTEND_HOST_PORT: 2605
       CLIENT_HOST_PORT: 2606
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
     steps:
       - name: Configure git transport
         run: |
@@ -64,6 +66,8 @@ jobs:
       FRONTEND_HOST_PORT: 2605
       CLIENT_HOST_PORT: 2606
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
     steps:
       - name: Configure git transport
         run: |
