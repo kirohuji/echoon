@@ -8,6 +8,8 @@ import { UserModule } from './modules/user/user.module';
 import { ConversationModule } from './modules/conversation/conversation.module';
 import { PersonalModule } from './modules/personal/personal.module';
 import { DocumentModule } from './modules/document/document.module';
+import { TagModule } from './modules/tag/tag.module';
+import { DocumentLibraryModule } from './modules/document-library/document-library.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { DocumentModule } from './modules/document/document.module';
     ConversationModule,
     PersonalModule,
     DocumentModule,
+    TagModule,
+    DocumentLibraryModule,
   ],
   controllers: [],
 })

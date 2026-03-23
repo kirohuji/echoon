@@ -39,39 +39,41 @@ export function JwtSignInView() {
   const passwordId = 'password';
 
   return (
-    <div className="mx-auto w-full max-w-sm">
-      <h2 className="mb-4 text-xl font-semibold">Sign in</h2>
+    <div className="flex min-h-[100dvh] w-full items-center justify-center px-4 py-6">
+      <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 className="mb-4 text-xl font-semibold">Sign in</h2>
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1 text-sm">
-          <div>Phone</div>
-          <Input
-            id={phoneId}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
+        <form onSubmit={onSubmit} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1 text-sm">
+            <div>Phone</div>
+            <Input
+              id={phoneId}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1 text-sm">
+            <div>Password</div>
+            <Input
+              id={passwordId}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
+          {errorMsg ? <div className="text-sm text-red-600">{errorMsg}</div> : null}
+
+          <Button type="submit" disabled={submitting}>
+            {submitting ? 'Signing in...' : 'Sign in'}
+          </Button>
+        </form>
+
+        <div className="mt-4 text-xs text-gray-500">
+          Demo: <span className="font-medium">13052202624</span> /{' '}
+          <span className="font-medium">123456</span>
         </div>
-
-        <div className="flex flex-col gap-1 text-sm">
-          <div>Password</div>
-          <Input
-            id={passwordId}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-
-        {errorMsg ? <div className="text-sm text-red-600">{errorMsg}</div> : null}
-
-        <Button type="submit" disabled={submitting}>
-          {submitting ? 'Signing in...' : 'Sign in'}
-        </Button>
-      </form>
-
-      <div className="mt-4 text-xs text-gray-500">
-        Demo: <span className="font-medium">13052202624</span> /{' '}
-        <span className="font-medium">123456</span>
       </div>
     </div>
   );

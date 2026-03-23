@@ -32,7 +32,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
 export function Button({ className, variant, size, type: _type, ...props }: ButtonProps) {
   return (
     <button
-      type="button"
+      type={_type === 'submit' ? 'submit' : 'button'}
       className={cn(buttonVariants({ variant, size }), className)}
       {...props}
     />

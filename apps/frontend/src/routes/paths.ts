@@ -32,5 +32,11 @@ export const paths = {
     conversations: {
       root: '/main/conversations',
     },
+    documentLibrary: {
+      root: '/main/document-library',
+    },
+    tags: {
+      root: '/main/tags',
+    },
   }
 };

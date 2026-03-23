@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { InvalidCredentialsException, InvalidTokenException, TokenExpiredException, UserNotFoundException, InvalidVerificationCodeException, UserAlreadyExistsException } from './exceptions';
 import { User } from '@prisma/client';
 import * as crypto from 'crypto';
-import { REFRESH_TOKEN_CONFIG } from './constants';
 
 interface JwtPayload {
   id: string;
@@ -15,6 +15,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -64,9 +65,12 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload);
+    const refreshTokenSecret = this.configService.get<string>('JWT_SECRET');
+    const refreshTokenExpiresIn =
+      this.configService.get<string>('REFRESH_TOKEN_EXPIRATION') || '7d';
     const refreshToken = this.jwtService.sign(payload, {
-      secret: REFRESH_TOKEN_CONFIG.secret,
-      expiresIn: REFRESH_TOKEN_CONFIG.signOptions.expiresIn,
+      secret: refreshTokenSecret,
+      expiresIn: refreshTokenExpiresIn,
     });
     // Store refresh token in database
     await this.prisma.refreshToken.create({
@@ -108,8 +112,9 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     try {
       // Verify refresh token
+      const refreshTokenSecret = this.configService.get<string>('JWT_SECRET');
       this.jwtService.verify<JwtPayload>(refreshToken, {
-        secret: REFRESH_TOKEN_CONFIG.secret,
+        secret: refreshTokenSecret,
       });
 
       // Check if token exists in database

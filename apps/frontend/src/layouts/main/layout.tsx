@@ -1,18 +1,15 @@
-import type { Breakpoint } from '@mui/material/styles';
 import { LayoutSection } from '../core/layout-section';
-import { MainFooter } from './foot';
 import { Main } from './main';
+import { MainSidebar } from './sidebar';
 
 export type MainLayoutProps = {
   children: React.ReactNode;
 };
 
 export function MainLayout({ children }: MainLayoutProps) {
-  const layoutQuery: Breakpoint = 'md';
-
   return (
     <LayoutSection
-      footerSection={<MainFooter layoutQuery={layoutQuery} />}
+      sidebarSection={<MainSidebar />}
     >
       <Main isNavHorizontal={false}>{children}</Main>
     </LayoutSection>

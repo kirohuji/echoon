@@ -24,6 +24,7 @@ model User {
   personal      Personal?
   files         File[]
   roleAssignments RoleAssignment[]
+  documentLibraries DocumentLibrary[]
 }
 
 model Profile {
@@ -244,5 +245,59 @@ model Document {
   userId    String
   wordTimestamps Json?
   profile   Profile?   @relation(fields: [userId], references: [id])
+}
+
+enum AudioStatus {
+  pending
+  processing
+  success
+  failed
+}
+
+model DocumentLibrary {
+  id          String   @id @default(cuid())
+  title       String
+  fileName    String
+  fileType    String
+  mimeType    String
+  fileSize    Int
+  filePath    String
+  modelName   String
+  audioStatus AudioStatus @default(pending)
+  audioPath   String?
+  audioError  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+  updatedBy   String?
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  tags        DocumentLibraryTag[]
+
+  @@index([userId])
+  @@index([audioStatus])
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+  updatedBy   String?
+  documents   DocumentLibraryTag[]
+}
+
+model DocumentLibraryTag {
+  id                String          @id @default(cuid())
+  documentLibraryId String
+  tagId             String
+  createdAt         DateTime        @default(now())
+  documentLibrary   DocumentLibrary @relation(fields: [documentLibraryId], references: [id], onDelete: Cascade)
+  tag               Tag             @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([documentLibraryId, tagId])
+  @@index([tagId])
 }
 
