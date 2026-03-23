@@ -5,6 +5,7 @@ import { Input } from 'src/components/ui/input';
 import { CONFIG } from 'src/config-global';
 import { documentLibraryService, tagService } from 'src/composables/context-provider';
 import { UploadWizardDialog } from './components/upload-wizard-dialog';
+import { AudioPreviewDialog } from './components/audio-preview-dialog';
 
 type TagItem = { id: string; name: string };
 type LibraryItem = {
@@ -27,6 +28,8 @@ export default function DocumentLibraryPage() {
   const [selectedTagId, setSelectedTagId] = useState('');
   const [openUpload, setOpenUpload] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewDocumentId, setPreviewDocumentId] = useState<string | null>(null);
 
   const loadTags = useCallback(async () => {
     const res = await tagService.getAll({});
@@ -59,11 +62,35 @@ export default function DocumentLibraryPage() {
     loadData();
   }, [loadData]);
 
+  const openAudioPreview = (id: string) => {
+    setPreviewDocumentId(id);
+    setPreviewOpen(true);
+  };
+
   const onGenerateAudio = async (id: string) => {
+    openAudioPreview(id);
     try {
       await documentLibraryService.generateAudio(id);
       loadData();
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+    }
+  };
+
+  const onRemove = async (id: string) => {
+    const ok = window.confirm('确认删除该资料？（会同时删除原 PDF 与生成的音频文件）');
+    if (!ok) return;
+
+    try {
+      await documentLibraryService.delete({ id });
+      if (previewDocumentId === id) {
+        setPreviewOpen(false);
+        setPreviewDocumentId(null);
+      }
+      await loadData();
+    } catch (e) {
+      // eslint-disable-next-line no-console
       console.error(e);
     }
   };
@@ -159,18 +186,20 @@ export default function DocumentLibraryPage() {
                             onClick={() => onGenerateAudio(row.id)}
                             disabled={row.audioStatus === 'processing'}
                           >
-                            生成音频
+                            {row.audioStatus === 'failed' ? '重试生成音频' : '生成音频'}
                           </Button>
-                          {row.audioStatus === 'success' ? (
-                            <a
-                              className="inline-flex h-8 items-center rounded-md border border-black/20 px-3 text-xs hover:bg-black/5"
-                              href={`${import.meta.env.VITE_SERVER_URL}/document-library/${row.id}/audio`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              音频
-                            </a>
-                          ) : null}
+                          <Button type="button" size="sm" variant="outline" onClick={() => openAudioPreview(row.id)}>
+                            播放
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-red-600/50 text-red-700 hover:bg-red-50"
+                            onClick={() => onRemove(row.id)}
+                          >
+                            删除
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -217,18 +246,25 @@ export default function DocumentLibraryPage() {
                       onClick={() => onGenerateAudio(row.id)}
                       disabled={row.audioStatus === 'processing'}
                     >
-                      生成音频
+                      {row.audioStatus === 'failed' ? '重试生成音频' : '生成音频'}
                     </Button>
-                    {row.audioStatus === 'success' ? (
-                      <a
-                        className="inline-flex h-8 items-center rounded-md border border-black/20 px-3 text-xs hover:bg-black/5"
-                        href={`${import.meta.env.VITE_SERVER_URL}/document-library/${row.id}/audio`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        音频
-                      </a>
-                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openAudioPreview(row.id)}
+                    >
+                      播放
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="border-red-600/50 text-red-700 hover:bg-red-50"
+                      onClick={() => onRemove(row.id)}
+                    >
+                      删除
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -237,6 +273,12 @@ export default function DocumentLibraryPage() {
           )
         ) : null}
       </div>
+
+      <AudioPreviewDialog
+        open={previewOpen}
+        documentId={previewDocumentId}
+        onClose={() => setPreviewOpen(false)}
+      />
 
       <UploadWizardDialog
         open={openUpload}

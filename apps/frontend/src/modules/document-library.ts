@@ -9,7 +9,19 @@ export default class DocumentLibraryService extends Service {
     });
   }
 
+  createText(data: { title?: string; modelName: string; tagIds?: string[]; text: string }) {
+    return this.api.post(`${this.model}/create-text`, data);
+  }
+
   generateAudio(id: string) {
     return this.api.post(`${this.model}/${id}/generate-audio`);
+  }
+
+  generateAudioFromText(id: string, text: string) {
+    return this.api.post(`${this.model}/${id}/generate-audio-text`, { text });
+  }
+
+  getAudioBlob(id: string) {
+    return this.api.get(`${this.model}/${id}/audio`, { responseType: 'blob' });
   }
 }

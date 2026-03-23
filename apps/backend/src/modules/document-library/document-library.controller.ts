@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -68,6 +69,53 @@ export class DocumentLibraryController {
     );
   }
 
+  @Post('create-text')
+  async createText(
+    @Body()
+    body: {
+      title?: string;
+      modelName: string;
+      text: string;
+      tagIds?: string | string[];
+    },
+    @CurrentUser() user: User,
+  ) {
+    const text = body.text?.toString() ?? '';
+    if (!text.trim()) {
+      // 这里不引入额外 HttpExceptionFilter，直接抛错会被全局异常过滤器包装
+      throw new BadRequestException('text is empty');
+    }
+
+    await fs.mkdir(this.uploadDir, { recursive: true });
+
+    const safeName = `${Date.now()}-custom-text.txt`;
+    const filePath = path.join(this.uploadDir, safeName);
+    await fs.writeFile(filePath, text);
+
+    const tagIds = Array.isArray(body.tagIds)
+      ? body.tagIds
+      : typeof body.tagIds === 'string' && body.tagIds.length > 0
+        ? JSON.parse(body.tagIds)
+        : [];
+
+    const fileName = body.title?.trim() || safeName;
+    const fileSize = Buffer.byteLength(text, 'utf8');
+
+    return this.documentLibraryService.create(
+      {
+        title: body.title?.trim() || fileName,
+        fileName,
+        fileType: 'txt',
+        mimeType: 'text/plain',
+        fileSize,
+        filePath,
+        modelName: body.modelName || 'speech-01-hd',
+        tagIds,
+      },
+      user,
+    );
+  }
+
   @Get()
   findAll() {
     return this.documentLibraryService.findAll();
@@ -98,8 +146,28 @@ export class DocumentLibraryController {
   }
 
   @Post(':id/generate-audio')
-  generateAudio(@Param('id') id: string, @CurrentUser() user: User) {
-    return this.documentLibraryService.generateAudio(id, user);
+  async generateAudio(@Param('id') id: string, @CurrentUser() user: User) {
+    // 先立即返回“开始生成”的记录，前端即可轮询进度。
+    const record = await this.documentLibraryService.startGenerateAudio(id, user);
+    // 后台异步执行：解析PDF -> minimax TTS -> 写入音频文件。
+    void this.documentLibraryService.generateAudioPipeline(id, user);
+    return record;
+  }
+
+  @Post(':id/generate-audio-text')
+  async generateAudioFromText(
+    @Param('id') id: string,
+    @Body() body: { text: string },
+    @CurrentUser() user: User,
+  ) {
+    const text = body?.text?.toString?.() ?? '';
+    if (!text.trim()) {
+      throw new Error('text is empty');
+    }
+
+    const record = await this.documentLibraryService.startGenerateAudioFromText(id, text, user);
+    void this.documentLibraryService.generateAudioTextPipeline(id, text, user);
+    return record;
   }
 
   @Get(':id/audio')

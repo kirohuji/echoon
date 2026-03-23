@@ -13,8 +13,13 @@
   "dependencies": {
     "@capacitor/core": "^7.4.2",
     "@capacitor/ios": "^7.4.2",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^5.1.1",
     "@iconify/react": "^6.0.0",
+    "@mui/icons-material": "^7.3.9",
+    "@mui/lab": "7.0.1-beta.23",
+    "@mui/material": "^7.3.9",
     "@radix-ui/react-dialog": "^1.1.15",
     "@tiptap/core": "^2.4.0",
     "@tiptap/extension-code-block": "^2.4.0",
@@ -29,13 +34,13 @@
     "@wavesurfer/react": "^1.0.11",
     "add": "^2.0.6",
     "axios": "^1.8.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "crypto-js": "^4.2.0",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "eslint-plugin-unused-imports": "^4.1.4",
-    "class-variance-authority": "^0.7.1",
     "events": "^3.3.0",
-    "clsx": "^2.1.1",
     "framer-motion": "^12.23.0",
     "highlight.js": "^11.11.1",
     "i18next": "^25.3.1",
@@ -67,14 +72,15 @@
     "remark-math": "^6.0.0",
     "simplebar-react": "^3.3.2",
     "stylis-plugin-rtl": "^2.1.1",
+    "tailwind-merge": "^3.5.0",
     "uuid": "^11.1.0",
     "wavesurfer.js": "^7.10.0",
     "yet-another-react-lightbox": "^3.24.0",
-    "zod": "^3.24.2",
-    "tailwind-merge": "^3.5.0"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.2",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.16.0",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
@@ -95,7 +101,6 @@
     "prettier": "^3.4.2",
     "typescript": "^5.5.4",
     "vite": "^7.0.2",
-    "vite-plugin-checker": "^0.10.0",
-    "@tailwindcss/vite": "^4.2.2"
+    "vite-plugin-checker": "^0.10.0"
   }
 }

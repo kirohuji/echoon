@@ -264,6 +264,9 @@ model DocumentLibrary {
   filePath    String
   modelName   String
   audioStatus AudioStatus @default(pending)
+  extractedText String?
+  audioProgress Int @default(0)
+  audioStage String?
   audioPath   String?
   audioError  String?
   createdAt   DateTime @default(now())
