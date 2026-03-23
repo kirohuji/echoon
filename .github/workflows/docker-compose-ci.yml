@@ -8,7 +8,7 @@ jobs:
   compose-build-and-run:
     runs-on: self-hosted
     env:
-      # 与 docker-compose.yml 里 postgres 的 profile docker-infra 一致
+      # 启用 docker-compose.yml 里的 postgres（profile docker-infra）
       COMPOSE_PROFILES: docker-infra
       GIT_HTTP_VERSION: HTTP/1.1
       POSTGRES_HOST_PORT: 15432
@@ -30,26 +30,36 @@ jobs:
           submodules: false
 
       - name: Cleanup previous stack
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down --remove-orphans -v || true
+        run: docker compose -f docker-compose.yml down --remove-orphans -v || true
 
       - name: Build images
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build backend backend-migrate frontend client
+        run: docker compose -f docker-compose.yml build backend backend-migrate frontend client
 
-      - name: Start dependencies
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d postgres
+      - name: Start Postgres
+        run: docker compose -f docker-compose.yml up -d postgres
+
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 60); do
+            if docker compose -f docker-compose.yml exec -T postgres pg_isready -U echoon -d echoon; then
+              echo "Postgres is ready"
+              exit 0
+            fi
+            echo "waiting... ($i)"
+            sleep 2
+          done
+          echo "Postgres failed to become ready"
+          exit 1
 
       - name: Run backend migrations/seed
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm backend-migrate
+        run: docker compose -f docker-compose.yml run --rm backend-migrate
 
-      - name: Start backend
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d backend
+      - name: Start backend and frontends
+        run: docker compose -f docker-compose.yml up -d backend frontend client
 
-      - name: Start frontend/client
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d frontend client
-
-      - name: Show backend container status
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml ps
+      - name: Show container status
+        run: docker compose -f docker-compose.yml ps
 
       - name: Cleanup after job
         if: always()
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down --remove-orphans -v || true
+        run: docker compose -f docker-compose.yml down --remove-orphans -v || true
