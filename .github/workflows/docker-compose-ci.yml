@@ -13,6 +13,9 @@ jobs:
       BACKEND_HOST_PORT: 2604
       FRONTEND_HOST_PORT: 2605
       CLIENT_HOST_PORT: 2606
+      DATABASE_URL: postgresql://echoon:echoon@postgres:5432/echoon?schema=public
+      ENABLE_RMQ: "true"
+      RMQ_URL: amqp://guest:guest@rabbitmq:5672
     steps:
       - name: Configure git transport
         run: |
@@ -33,7 +36,7 @@ jobs:
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build backend backend-migrate frontend client
 
       - name: Start dependencies
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d postgres rabbitmq
+        run: docker compose --profile docker-infra -f docker-compose.yml -f docker-compose.ci.yml up -d postgres rabbitmq
 
       - name: Run backend migrations/seed
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm backend-migrate

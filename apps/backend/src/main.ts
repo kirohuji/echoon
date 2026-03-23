@@ -13,25 +13,29 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   });
 
-  // RMQ connection should be configurable for local/dev/CI environments.
-  // Defaults keep backwards compatibility with the previous hard-coded values.
-  const rmqUrl = process.env.RMQ_URL ?? 'amqp://115.159.95.166:5672';
-  const rmqQueue = process.env.RMQ_QUEUE ?? 'pipecat';
-  const rmqRoutingKey = process.env.RMQ_ROUTING_KEY ?? rmqQueue;
+  // RMQ is optional: set ENABLE_RMQ=false when you don't use RabbitMQ (e.g. only HTTP API + external DB).
+  const enableRmq =
+    process.env.ENABLE_RMQ !== 'false' && process.env.ENABLE_RMQ !== '0';
 
-  app.connectMicroservice<MicroserviceOptions>(
-    {
-      transport: Transport.RMQ,
-      options: {
-        urls: [rmqUrl],
-        queue: rmqQueue,
-        routingKey: rmqRoutingKey,
-        queueOptions: {
-          durable: true,
+  if (enableRmq) {
+    const rmqUrl = process.env.RMQ_URL ?? 'amqp://115.159.95.166:5672';
+    const rmqQueue = process.env.RMQ_QUEUE ?? 'pipecat';
+    const rmqRoutingKey = process.env.RMQ_ROUTING_KEY ?? rmqQueue;
+
+    app.connectMicroservice<MicroserviceOptions>(
+      {
+        transport: Transport.RMQ,
+        options: {
+          urls: [rmqUrl],
+          queue: rmqQueue,
+          routingKey: rmqRoutingKey,
+          queueOptions: {
+            durable: true,
+          },
         },
       },
-    },
-  );
+    );
+  }
   app.useBodyParser('json', { limit: '15mb' });
 
   app.useGlobalPipes(
@@ -57,7 +61,9 @@ async function bootstrap() {
   app.useGlobalInterceptors(new SuccessResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  await app.startAllMicroservices();
+  if (enableRmq) {
+    await app.startAllMicroservices();
+  }
   await app.listen(process.env.PORT ?? 3000);
 }
 

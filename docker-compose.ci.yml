@@ -1,7 +1,24 @@
+# CI：使用 profile docker-infra 启动本地 postgres/rabbitmq，并补上依赖顺序。
 version: "2.4"
 
 services:
-  postgres: {}
-  backend: {}
-  frontend: {}
+  backend-migrate:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
+  backend:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      backend-migrate:
+        condition: service_completed_successfully
+
+  postgres: {}
+  rabbitmq: {}
+  frontend: {}
+  client: {}
