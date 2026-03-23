@@ -8,14 +8,11 @@ jobs:
   compose-build-and-run:
     runs-on: self-hosted
     env:
-      # 启用 docker-compose.yml 里的 postgres（profile docker-infra）
-      COMPOSE_PROFILES: docker-infra
       GIT_HTTP_VERSION: HTTP/1.1
-      POSTGRES_HOST_PORT: 15432
       BACKEND_HOST_PORT: 2604
       FRONTEND_HOST_PORT: 2605
       CLIENT_HOST_PORT: 2606
-      DATABASE_URL: postgresql://echoon:echoon@postgres:5432/echoon?schema=public
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - name: Configure git transport
         run: |
@@ -35,21 +32,12 @@ jobs:
       - name: Build images
         run: docker compose -f docker-compose.yml build backend backend-migrate frontend client
 
-      - name: Start Postgres
-        run: docker compose -f docker-compose.yml up -d postgres
-
-      - name: Wait for Postgres
+      - name: Check required secrets
         run: |
-          for i in $(seq 1 60); do
-            if docker compose -f docker-compose.yml exec -T postgres pg_isready -U echoon -d echoon; then
-              echo "Postgres is ready"
-              exit 0
-            fi
-            echo "waiting... ($i)"
-            sleep 2
-          done
-          echo "Postgres failed to become ready"
-          exit 1
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL is empty. Please set repository secret DATABASE_URL."
+            exit 1
+          fi
 
       - name: Run backend migrations/seed
         run: docker compose -f docker-compose.yml run --rm backend-migrate
