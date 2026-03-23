@@ -3,15 +3,12 @@
 #
 # Redis：.env 里可配 REDIS_URL（你服务器上的 Redis:6379）；当前后端代码若尚未接入 Bull/缓存，该变量仅为预留。
 #
-# RabbitMQ（与 Redis 不是同一个东西）：仅当 ENABLE_RMQ=true 且配置了 RMQ_URL 时，Nest 才会连 AMQP。
-#       默认 ENABLE_RMQ=false。CI 里用 profile docker-infra 起的 rabbitmq 只给流水线用。
-#
 # 在外部 Postgres 上新建库（示例，在 psql 里执行）:
 #   CREATE DATABASE echoon OWNER lourd;
 #   GRANT ALL PRIVILEGES ON DATABASE echoon TO lourd;
 
 services:
-  # 可选：仅当需要本地容器数据库时使用
+  # 可选：仅当需要本地容器数据库时使用（CI 会启用 profile docker-infra）
   postgres:
     profiles: [docker-infra]
     image: postgres:16-alpine
@@ -29,31 +26,11 @@ services:
       timeout: 3s
       retries: 20
 
-  # 可选：仅当需要本地 RabbitMQ 时使用
-  rabbitmq:
-    profiles: [docker-infra]
-    image: rabbitmq:3-management-alpine
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
   backend-migrate:
     image: echoon-backend:local
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env (external Postgres URL)}
       JWT_SECRET: ${JWT_SECRET:-dev-change-me}
-      ENABLE_RMQ: ${ENABLE_RMQ:-false}
-      RMQ_URL: ${RMQ_URL:-amqp://guest:guest@rabbitmq:5672}
-      RMQ_QUEUE: ${RMQ_QUEUE:-pipecat}
-      RMQ_ROUTING_KEY: ${RMQ_ROUTING_KEY:-pipecat}
       REDIS_URL: ${REDIS_URL:-}
     command:
       - sh
@@ -79,10 +56,6 @@ services:
       PORT: 3000
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       JWT_SECRET: ${JWT_SECRET:-dev-change-me}
-      ENABLE_RMQ: ${ENABLE_RMQ:-false}
-      RMQ_URL: ${RMQ_URL:-}
-      RMQ_QUEUE: ${RMQ_QUEUE:-pipecat}
-      RMQ_ROUTING_KEY: ${RMQ_ROUTING_KEY:-pipecat}
       REDIS_URL: ${REDIS_URL:-}
     ports:
       - "127.0.0.1:${BACKEND_HOST_PORT:-2604}:3000"

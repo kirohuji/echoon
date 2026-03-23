@@ -66,9 +66,6 @@ importers:
       '@nestjs/jwt':
         specifier: ^10.2.0
         version: 10.2.0(@nestjs/common@11.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))
-      '@nestjs/microservices':
-        specifier: ^11.1.3
-        version: 11.1.3(@grpc/grpc-js@1.13.4)(@nestjs/common@11.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.3)(amqp-connection-manager@4.1.14(amqplib@0.10.8))(amqplib@0.10.8)(cache-manager@6.4.3)(ioredis@5.6.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/passport':
         specifier: ^10.0.3
         version: 10.0.3(@nestjs/common@11.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(passport@0.7.0)
@@ -105,12 +102,6 @@ importers:
       ai:
         specifier: ^4.2.10
         version: 4.3.16(react@19.1.0)(zod@3.25.74)
-      amqp-connection-manager:
-        specifier: ^4.1.14
-        version: 4.1.14(amqplib@0.10.8)
-      amqplib:
-        specifier: ^0.10.8
-        version: 0.10.8
       axios:
         specifier: ^1.8.4
         version: 1.10.0
@@ -9653,6 +9644,7 @@ snapshots:
       amqplib: 0.10.8
       cache-manager: 6.4.3
       ioredis: 5.6.1
+    optional: true
 
   '@nestjs/passport@10.0.3(@nestjs/common@11.1.3(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(passport@0.7.0)':
     dependencies:
@@ -11417,11 +11409,13 @@ snapshots:
     dependencies:
       amqplib: 0.10.8
       promise-breaker: 6.0.0
+    optional: true
 
   amqplib@0.10.8:
     dependencies:
       buffer-more-ints: 1.0.0
       url-parse: 1.5.10
+    optional: true
 
   ansi-colors@4.1.3: {}
 
@@ -11744,7 +11738,8 @@ snapshots:
 
   buffer-from@1.1.2: {}
 
-  buffer-more-ints@1.0.0: {}
+  buffer-more-ints@1.0.0:
+    optional: true
 
   buffer@5.7.1:
     dependencies:
@@ -15448,7 +15443,8 @@ snapshots:
 
   process-warning@5.0.0: {}
 
-  promise-breaker@6.0.0: {}
+  promise-breaker@6.0.0:
+    optional: true
 
   prompts@2.4.2:
     dependencies:
@@ -15606,7 +15602,8 @@ snapshots:
 
   qs@6.5.3: {}
 
-  querystringify@2.2.0: {}
+  querystringify@2.2.0:
+    optional: true
 
   queue-microtask@1.2.3: {}
 
@@ -15915,7 +15912,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  requires-port@1.0.0: {}
+  requires-port@1.0.0:
+    optional: true
 
   resolve-alpn@1.2.1: {}
 
@@ -16976,6 +16974,7 @@ snapshots:
     dependencies:
       querystringify: 2.2.0
       requires-port: 1.0.0
+    optional: true
 
   use-callback-ref@1.3.3(@types/react@19.1.8)(react@19.1.0):
     dependencies:

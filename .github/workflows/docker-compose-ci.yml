@@ -8,7 +8,7 @@ jobs:
   compose-build-and-run:
     runs-on: self-hosted
     env:
-      # 与 docker-compose.yml 里 postgres/rabbitmq 的 profiles 一致，否则 ci 覆盖里的 depends_on 会引用未定义服务
+      # 与 docker-compose.yml 里 postgres 的 profile docker-infra 一致
       COMPOSE_PROFILES: docker-infra
       GIT_HTTP_VERSION: HTTP/1.1
       POSTGRES_HOST_PORT: 15432
@@ -16,8 +16,6 @@ jobs:
       FRONTEND_HOST_PORT: 2605
       CLIENT_HOST_PORT: 2606
       DATABASE_URL: postgresql://echoon:echoon@postgres:5432/echoon?schema=public
-      ENABLE_RMQ: "true"
-      RMQ_URL: amqp://guest:guest@rabbitmq:5672
     steps:
       - name: Configure git transport
         run: |
@@ -38,7 +36,7 @@ jobs:
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml build backend backend-migrate frontend client
 
       - name: Start dependencies
-        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d postgres rabbitmq
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d postgres
 
       - name: Run backend migrations/seed
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml run --rm backend-migrate
@@ -55,4 +53,3 @@ jobs:
       - name: Cleanup after job
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down --remove-orphans -v || true
-

@@ -1,24 +1,18 @@
-# CI：使用 profile docker-infra 启动本地 postgres/rabbitmq，并补上依赖顺序。
-# 需在环境中设置 COMPOSE_PROFILES=docker-infra（见 GitHub Actions workflow）。
+# CI：启用 profile docker-infra 时才有本地 postgres；需设置 COMPOSE_PROFILES=docker-infra（见 GitHub Actions）。
 
 services:
   backend-migrate:
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
 
   backend:
     depends_on:
       postgres:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
       backend-migrate:
         condition: service_completed_successfully
 
   postgres: {}
-  rabbitmq: {}
   frontend: {}
   client: {}
