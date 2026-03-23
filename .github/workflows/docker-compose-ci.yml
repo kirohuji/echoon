@@ -2,10 +2,13 @@ name: Docker Compose CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 jobs:
-  compose-build-and-run:
+  ci-check:
+    if: github.event_name == 'pull_request'
     runs-on: self-hosted
     env:
       GIT_HTTP_VERSION: HTTP/1.1
@@ -26,8 +29,53 @@ jobs:
           lfs: false
           submodules: false
 
+      - name: Check required secrets
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "DATABASE_URL is empty. Please set repository secret DATABASE_URL."
+            exit 1
+          fi
+
       - name: Cleanup previous stack
         run: docker compose -f docker-compose.yml down --remove-orphans -v || true
+
+      - name: Build images
+        run: docker compose -f docker-compose.yml build backend backend-migrate frontend client
+
+      - name: Run backend migrations/seed
+        run: docker compose -f docker-compose.yml run --rm backend-migrate
+
+      - name: Start backend and frontends for smoke check
+        run: docker compose -f docker-compose.yml up -d backend frontend client
+
+      - name: Show container status
+        run: docker compose -f docker-compose.yml ps
+
+      - name: Cleanup after PR check
+        if: always()
+        run: docker compose -f docker-compose.yml down --remove-orphans -v || true
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: self-hosted
+    env:
+      GIT_HTTP_VERSION: HTTP/1.1
+      BACKEND_HOST_PORT: 2604
+      FRONTEND_HOST_PORT: 2605
+      CLIENT_HOST_PORT: 2606
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: Configure git transport
+        run: |
+          git config --global http.version HTTP/1.1
+          git config --global http.postBuffer 524288000
+          git config --global core.compression 0
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+          submodules: false
 
       - name: Build images
         run: docker compose -f docker-compose.yml build backend backend-migrate frontend client
@@ -42,12 +90,8 @@ jobs:
       - name: Run backend migrations/seed
         run: docker compose -f docker-compose.yml run --rm backend-migrate
 
-      - name: Start backend and frontends
+      - name: Start backend and frontends (keep running)
         run: docker compose -f docker-compose.yml up -d backend frontend client
 
       - name: Show container status
         run: docker compose -f docker-compose.yml ps
-
-      - name: Cleanup after job
-        if: always()
-        run: docker compose -f docker-compose.yml down --remove-orphans -v || true
