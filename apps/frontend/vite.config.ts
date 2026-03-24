@@ -8,9 +8,12 @@ import tailwindcss from '@tailwindcss/vite';
 const PORT = 8080;
 
 const env = loadEnv('all', process.cwd());
+const basePath = env.VITE_BASE_PATH && env.VITE_BASE_PATH.trim().length > 0
+  ? env.VITE_BASE_PATH
+  : '/';
 
 export default defineConfig({
-  base: env.VITE_BASE_PATH,
+  base: basePath,
   plugins: [
     tailwindcss(),
     checker({
