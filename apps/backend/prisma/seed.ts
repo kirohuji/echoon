@@ -10,6 +10,9 @@ async function main() {
   await prisma.participant.deleteMany({});
   await prisma.conversation.deleteMany({});
   await prisma.document.deleteMany({});
+  await prisma.documentLibraryTag.deleteMany({});
+  await prisma.documentLibrary.deleteMany({});
+  await prisma.tag.deleteMany({});
   await prisma.file.deleteMany({});
   await prisma.refreshToken.deleteMany({});
   await prisma.verificationCode.deleteMany({});
