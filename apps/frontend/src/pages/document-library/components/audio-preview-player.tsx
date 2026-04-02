@@ -166,6 +166,13 @@ function buildPhraseCandidates(sentenceWords: WordTimestamp[], focusIdx: number)
   return candidates;
 }
 
+function tokenizeLookupPhrase(phrase: string) {
+  return phrase
+    .split(/\s+/)
+    .map((item) => sanitizeLookupWord(item).toLowerCase())
+    .filter(Boolean);
+}
+
 export function AudioPreviewPlayer({
   audioUrl,
   wordTimestamps,
@@ -186,6 +193,10 @@ export function AudioPreviewPlayer({
 
   const normalizedWords = useMemo(() => normalizeWordTimestamps(wordTimestamps), [wordTimestamps]);
   const normalizedActiveLookupWord = (activeLookupWord || '').toLowerCase();
+  const activeLookupTokens = useMemo(
+    () => tokenizeLookupPhrase(normalizedActiveLookupWord),
+    [normalizedActiveLookupWord]
+  );
   const sentenceSegments = useMemo(
     () => buildSentenceSegments(normalizedWords),
     [normalizedWords]
@@ -392,36 +403,62 @@ export function AudioPreviewPlayer({
                       onClick={() => seekToTime(sentence.startTimeNs / NANOSECONDS_PER_SECOND)}
                     >
                       <span className="block whitespace-normal text-left">
-                        {sentence.words.map((word, wordIdx) => {
-                          const globalWordIndex = sentence.startWordIndex + wordIdx;
-                          const isActiveWord = globalWordIndex === activeWordIndex;
-                          const normalizedCurrentWord = sanitizeLookupWord(word.text).toLowerCase();
-                          const isLookupWordActive =
-                            Boolean(normalizedActiveLookupWord) &&
-                            normalizedCurrentWord === normalizedActiveLookupWord;
-                          const prev = sentence.words[wordIdx - 1];
-                          const prependSpace = shouldPrependSpace(word.text, prev?.text);
-                          return (
-                            <span
-                              key={`${word.start_time}-${wordIdx}`}
-                              className={cn(
-                                'rounded px-0.5',
-                                isActiveWord ? 'bg-yellow-300 text-black' : '',
-                                isLookupWordActive
-                                  ? 'bg-amber-100 text-black underline decoration-1 decoration-wavy decoration-amber-500'
-                                  : ''
-                              )}
-                              onPointerDown={(event) =>
-                                startLongPress(word.text, sentence.words, wordIdx, event)
+                        {(() => {
+                          const highlightedIndices = new Set<number>();
+                          if (activeLookupTokens.length > 1) {
+                            for (
+                              let start = 0;
+                              start <= sentence.words.length - activeLookupTokens.length;
+                              start += 1
+                            ) {
+                              const matched = activeLookupTokens.every((token, offset) => {
+                                const target = sanitizeLookupWord(sentence.words[start + offset]?.text).toLowerCase();
+                                return target === token;
+                              });
+                              if (matched) {
+                                for (let k = 0; k < activeLookupTokens.length; k += 1) {
+                                  highlightedIndices.add(sentence.startWordIndex + start + k);
+                                }
                               }
-                              onPointerUp={cancelLongPress}
-                              onPointerLeave={cancelLongPress}
-                              onPointerCancel={cancelLongPress}
-                            >
-                              {prependSpace ? ` ${word.text}` : word.text}
-                            </span>
-                          );
-                        })}
+                            }
+                          }
+                          return sentence.words.map((word, wordIdx) => {
+                            const globalWordIndex = sentence.startWordIndex + wordIdx;
+                            const isActiveWord = globalWordIndex === activeWordIndex;
+                            const normalizedCurrentWord = sanitizeLookupWord(word.text).toLowerCase();
+                            const isLookupWordActive =
+                              (activeLookupTokens.length <= 1 &&
+                                Boolean(normalizedActiveLookupWord) &&
+                                normalizedCurrentWord === normalizedActiveLookupWord) ||
+                              highlightedIndices.has(globalWordIndex);
+                            const prev = sentence.words[wordIdx - 1];
+                            const prependSpace = shouldPrependSpace(word.text, prev?.text);
+                            const candidates = buildPhraseCandidates(sentence.words, wordIdx);
+                            return (
+                              <span
+                                key={`${word.start_time}-${wordIdx}`}
+                                className={cn(
+                                  'rounded px-0.5',
+                                  isActiveWord ? 'bg-yellow-300 text-black' : '',
+                                  isLookupWordActive
+                                    ? 'bg-amber-100 text-black underline decoration-1 decoration-wavy decoration-amber-500'
+                                    : ''
+                                )}
+                                onClick={() =>
+                                  onWordLongPress?.({ word: normalizedCurrentWord || word.text.toLowerCase(), candidates })
+                                }
+                                onPointerDown={(event) =>
+                                  startLongPress(word.text, sentence.words, wordIdx, event)
+                                }
+                                onPointerUp={cancelLongPress}
+                                onPointerLeave={cancelLongPress}
+                                onPointerCancel={cancelLongPress}
+                              >
+                                {prependSpace ? ` ${word.text}` : word.text}
+                              </span>
+                            );
+                          });
+                        })()}
                       </span>
                     </button>
                     {index === activeSentenceIndex ? (
