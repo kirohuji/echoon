@@ -33,6 +33,8 @@ type AudioPreviewDialogProps = {
   onClose: () => void;
 };
 
+const ALL_PROVIDERS: AudioProvider[] = ['minimax', 'cartesia', 'hume', 'elevenlabs', 'deepgram'];
+
 export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDialogProps) {
   const [doc, setDoc] = useState<AudioPreviewDocument | null>(null);
   const [audioUrl, setAudioUrl] = useState<string>('');
@@ -186,7 +188,8 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const providerSchema = schema.find((item) => item.provider === selectedProvider);
   const modelSchema =
     providerSchema?.models.find((item) => item.model === selectedModel) || providerSchema?.models[0];
-  const voiceOptions = DOCUMENT_AUDIO_PROVIDER_OPTIONS[selectedProvider].filter(
+  const providerVoiceOptions = DOCUMENT_AUDIO_PROVIDER_OPTIONS[selectedProvider] || [];
+  const voiceOptions = providerVoiceOptions.filter(
     (item) => item.model === (selectedModel || modelSchema?.model)
   );
   const requiresVoiceId = Boolean(modelSchema?.requiresVoiceId);
@@ -234,7 +237,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[96vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg bg-white p-4 shadow-lg">
           <div className="flex items-center justify-between">
-            <Dialog.Title className="text-base font-semibold">音频预览</Dialog.Title>
+            <Dialog.Title className="text-base font-semibold">音频管理</Dialog.Title>
             <Dialog.Close asChild>
               <button
                 type="button"
@@ -323,8 +326,11 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                             setAdvancedParams(defaults);
                           }}
                         >
-                          <option value="minimax">Minimax</option>
-                          <option value="cartesia">Cartesia</option>
+                          {ALL_PROVIDERS.map((provider) => (
+                            <option key={provider} value={provider}>
+                              {provider}
+                            </option>
+                          ))}
                         </select>
                         <select
                           className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
@@ -377,6 +383,20 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                                       {item.label}
                                     </option>
                                   ))}
+                                </select>
+                              ) : field.type === 'boolean' ? (
+                                <select
+                                  className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
+                                  value={String(advancedParams[field.key] ?? field.defaultValue ?? false)}
+                                  onChange={(e) =>
+                                    setAdvancedParams((prev) => ({
+                                      ...prev,
+                                      [field.key]: e.target.value === 'true',
+                                    }))
+                                  }
+                                >
+                                  <option value="true">true</option>
+                                  <option value="false">false</option>
                                 </select>
                               ) : (
                                 <input

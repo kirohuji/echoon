@@ -1,4 +1,4 @@
-export type AudioProvider = 'minimax' | 'cartesia';
+export type AudioProvider = 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
 
 export type AudioProviderOption = {
   provider: AudioProvider;
@@ -76,5 +76,43 @@ export const DOCUMENT_AUDIO_PROVIDER_OPTIONS: Record<AudioProvider, AudioProvide
       voiceId: '26403c37-80c1-4a1a-8692-540551ca2ae5',
       voiceLabel: 'Marian',
     },
+  ],
+  hume: [
+    { provider: 'hume', label: 'Octave TTS', model: 'octave-tts' },
+    { provider: 'hume', label: 'Octave TTS 2', model: 'octave-tts-v2' },
+  ],
+  elevenlabs: [
+    {
+      provider: 'elevenlabs',
+      label: 'Eleven v3 / Rachel',
+      model: 'eleven_v3',
+      voiceId: '21m00Tcm4TlvDq8ikWAM',
+      voiceLabel: 'Rachel',
+    },
+    {
+      provider: 'elevenlabs',
+      label: 'Eleven v3 / George',
+      model: 'eleven_v3',
+      voiceId: 'JBFqnCBsd6RMkjVDRZzb',
+      voiceLabel: 'George',
+    },
+    {
+      provider: 'elevenlabs',
+      label: 'Eleven Multilingual v2 / George',
+      model: 'eleven_multilingual_v2',
+      voiceId: 'JBFqnCBsd6RMkjVDRZzb',
+      voiceLabel: 'George',
+    },
+    {
+      provider: 'elevenlabs',
+      label: 'Eleven Flash v2.5 / George',
+      model: 'eleven_flash_v2_5',
+      voiceId: 'JBFqnCBsd6RMkjVDRZzb',
+      voiceLabel: 'George',
+    },
+  ],
+  deepgram: [
+    { provider: 'deepgram', label: 'Aura-2 Thalia', model: 'aura-2-thalia-en' },
+    { provider: 'deepgram', label: 'Aura-2 Asteria', model: 'aura-2-asteria-en' },
   ],
 };

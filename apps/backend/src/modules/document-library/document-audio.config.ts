@@ -60,6 +60,19 @@ export const DOCUMENT_AUDIO_PROVIDER_OPTIONS: Record<AudioProvider, ProviderOpti
       voiceId: '26403c37-80c1-4a1a-8692-540551ca2ae5',
     },
   ],
+  hume: [
+    { label: 'octave-tts', model: 'octave-tts', voiceId: null },
+    { label: 'octave-tts-v2', model: 'octave-tts-v2', voiceId: null },
+  ],
+  elevenlabs: [
+    { label: 'eleven_v3', model: 'eleven_v3', voiceId: 'JBFqnCBsd6RMkjVDRZzb' },
+    { label: 'eleven_multilingual_v2', model: 'eleven_multilingual_v2', voiceId: 'JBFqnCBsd6RMkjVDRZzb' },
+    { label: 'eleven_flash_v2_5', model: 'eleven_flash_v2_5', voiceId: 'JBFqnCBsd6RMkjVDRZzb' },
+  ],
+  deepgram: [
+    { label: 'aura-2-thalia-en', model: 'aura-2-thalia-en', voiceId: null },
+    { label: 'aura-2-asteria-en', model: 'aura-2-asteria-en', voiceId: null },
+  ],
 };
 
 const DEFAULT_PROVIDER = AudioProvider.minimax;

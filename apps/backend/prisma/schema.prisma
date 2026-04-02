@@ -257,6 +257,9 @@ enum AudioStatus {
 enum AudioProvider {
   minimax
   cartesia
+  hume
+  elevenlabs
+  deepgram
 }
 
 model DocumentLibrary {

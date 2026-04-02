@@ -1,8 +1,8 @@
 import { Service } from './base';
 
 type AudioConfigPayload = {
-  audioModel: string;
-  audioProvider: 'minimax' | 'cartesia';
+  audioModel?: string;
+  audioProvider?: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
   audioVoiceId?: string;
   modelName?: string;
 };
@@ -28,13 +28,13 @@ export type AudioParamsSchemaModel = {
 };
 
 export type AudioParamsSchema = {
-  provider: 'minimax' | 'cartesia';
+  provider: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
   models: AudioParamsSchemaModel[];
 };
 
 type GenerateAudioFromTextPayload = {
   text: string;
-  audioProvider?: 'minimax' | 'cartesia';
+  audioProvider?: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
   audioModel?: string;
   audioVoiceId?: string;
   params?: Record<string, string | number | boolean>;
