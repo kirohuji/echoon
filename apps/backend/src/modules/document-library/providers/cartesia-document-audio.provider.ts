@@ -90,7 +90,10 @@ export class CartesiaDocumentAudioProvider extends DocumentAudioProvider {
       });
 
       const audioChunks: Buffer[] = [];
-      let wordTimestamps: DocumentWordTimestamp[] | null = null;
+      // Cartesia 会多次下发 `timestamps` 事件；每次事件可能只包含部分/单个词。
+      // 如果这里覆盖会导致最终只剩最后一个词。
+      let wordTimestamps: DocumentWordTimestamp[] = [];
+      const wordTimestampKeySet = new Set<string>();
       let settled = false;
 
       const fail = (error: Error) => {
@@ -130,7 +133,15 @@ export class CartesiaDocumentAudioProvider extends DocumentAudioProvider {
           }
 
           if (message.type === 'timestamps') {
-            wordTimestamps = normalizeWordTimestamps(message.word_timestamps);
+            const normalized = normalizeWordTimestamps(message.word_timestamps);
+            if (normalized) {
+              for (const item of normalized) {
+                const key = `${item.text}|${item.start_time}|${item.end_time ?? ''}`;
+                if (wordTimestampKeySet.has(key)) continue;
+                wordTimestampKeySet.add(key);
+                wordTimestamps.push(item);
+              }
+            }
             return;
           }
 
@@ -150,11 +161,14 @@ export class CartesiaDocumentAudioProvider extends DocumentAudioProvider {
               return;
             }
 
+            // 前端会对 `wordTimestamps` 做二分搜索，要求 start_time 升序。
+            wordTimestamps.sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0));
+
             resolve({
               audioBuffer: pcmFloat32LeToWav(pcmBuffer, sampleRate, 1),
               fileExtension: 'wav',
               mimeType: 'audio/wav',
-              wordTimestamps,
+              wordTimestamps: wordTimestamps.length ? wordTimestamps : null,
               providerMeta: { requestId: message.request_id, voiceId: input.voiceId },
             });
           }

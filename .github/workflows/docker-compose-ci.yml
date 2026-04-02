@@ -18,6 +18,10 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
+      MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+      MINIMAX_GROUP_ID: ${{ secrets.MINIMAX_GROUP_ID }}
+      CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
+      CARTERSIA_API_KEY: ${{ secrets.CARTERSIA_API_KEY }}
     steps:
       - name: Configure git transport
         run: |
@@ -68,6 +72,10 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
+      MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+      MINIMAX_GROUP_ID: ${{ secrets.MINIMAX_GROUP_ID }}
+      CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
+      CARTERSIA_API_KEY: ${{ secrets.CARTERSIA_API_KEY }}
     steps:
       - name: Configure git transport
         run: |

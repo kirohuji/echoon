@@ -32,6 +32,11 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env (external Postgres URL)}
       JWT_SECRET: ${JWT_SECRET:-dev-change-me}
       REDIS_URL: ${REDIS_URL:-}
+      # TTS providers (optional for CI smoke check, but needed for runtime audio generation)
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
+      MINIMAX_GROUP_ID: ${MINIMAX_GROUP_ID:-}
+      CARTESIA_API_KEY: ${CARTESIA_API_KEY:-}
+      CARTERSIA_API_KEY: ${CARTERSIA_API_KEY:-}
     command:
       - sh
       - -c
@@ -57,6 +62,11 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       JWT_SECRET: ${JWT_SECRET:-dev-change-me}
       REDIS_URL: ${REDIS_URL:-}
+      # TTS providers (used by /document-library audio generation)
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
+      MINIMAX_GROUP_ID: ${MINIMAX_GROUP_ID:-}
+      CARTESIA_API_KEY: ${CARTESIA_API_KEY:-}
+      CARTERSIA_API_KEY: ${CARTERSIA_API_KEY:-}
     ports:
       - "127.0.0.1:${BACKEND_HOST_PORT:-2604}:3000"
 

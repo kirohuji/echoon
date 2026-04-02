@@ -31,11 +31,14 @@ function formatTime(seconds: number) {
 function normalizeWordTimestamps(wordTimestamps?: WordTimestamp[] | null) {
   if (!wordTimestamps?.length) return [];
 
-  const baseTime = wordTimestamps[0]?.start_time ?? 0;
-  return wordTimestamps.map((item) => ({
-    text: item.text,
-    start_time: Math.max(0, (item.start_time ?? 0) - baseTime),
-  }));
+  // Cartesia 的 word_timestamps.start/end 是“秒”为单位（且通常以音频从 0s 开始为基准）。
+  // 前端不要再对首词做减法归一化，否则会造成音频播放与逐词定位整体偏移。
+  return [...wordTimestamps]
+    .sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0))
+    .map((item) => ({
+      text: item.text,
+      start_time: Math.max(0, item.start_time ?? 0),
+    }));
 }
 
 function findActiveWordIndex(words: WordTimestamp[], currentTime: number) {
