@@ -10,7 +10,8 @@ export class MinimaxDocumentAudioProvider extends DocumentAudioProvider {
 
   private guessVoiceId(text: string): string {
     const hasCJK = /[\u4E00-\u9FFF]/.test(text);
-    return hasCJK ? 'female-chengshu' : 'English_expressive_narrator';
+    // 中文默认成熟女声；英文使用官方系统音色 ID（见 https://platform.minimaxi.com/docs/faq/system-voice-id）
+    return hasCJK ? 'female-chengshu' : 'English_Trustworthy_Man';
   }
 
   async generateAudio(input: GenerateDocumentAudioInput): Promise<GenerateDocumentAudioResult> {

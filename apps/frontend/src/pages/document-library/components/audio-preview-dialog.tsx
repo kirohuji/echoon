@@ -47,6 +47,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
   const [advancedParams, setAdvancedParams] = useState<Record<string, string | number | boolean>>({});
+  const [audioConfigDirty, setAudioConfigDirty] = useState(false);
   const [showExtractedText, setShowExtractedText] = useState(false);
 
   const objectUrlRef = useRef<string>('');
@@ -85,7 +86,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   }, [doc, textDirty]);
 
   useEffect(() => {
-    if (!doc) return;
+    if (!doc || audioConfigDirty) return;
     const provider = (doc.audioProvider ?? 'minimax') as AudioProvider;
     const providerSchema = schema.find((item) => item.provider === provider);
     const model = doc.audioModel || providerSchema?.models[0]?.model || '';
@@ -98,7 +99,16 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
     });
     setAdvancedParams(defaults);
-  }, [doc?.audioProvider, doc?.audioModel, doc?.audioVoiceId, schema, doc]);
+  }, [doc?.audioProvider, doc?.audioModel, doc?.audioVoiceId, schema, doc, audioConfigDirty]);
+
+  useEffect(() => {
+    if (open) return;
+    setAudioConfigDirty(false);
+  }, [open]);
+
+  useEffect(() => {
+    setAudioConfigDirty(false);
+  }, [documentId]);
 
   // 当重新开始生成时，清空“已手动编辑”的标记
   useEffect(() => {
@@ -350,6 +360,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                         className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
                         value={selectedProvider}
                         onChange={(e) => {
+                            setAudioConfigDirty(true);
                           const provider = e.target.value as AudioProvider;
                           const nextSchema = schema.find((item) => item.provider === provider);
                           const nextModel = nextSchema?.models[0]?.model || '';
@@ -373,6 +384,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                         className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
                         value={selectedModel}
                         onChange={(e) => {
+                            setAudioConfigDirty(true);
                           const nextModel = e.target.value;
                           setSelectedModel(nextModel);
                           const nextModelSchema = providerSchema?.models.find((item) => item.model === nextModel);
@@ -392,7 +404,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                       <select
                         className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
                         value={selectedVoiceId}
-                        onChange={(e) => setSelectedVoiceId(e.target.value)}
+                        onChange={(e) => {
+                          setAudioConfigDirty(true);
+                          setSelectedVoiceId(e.target.value);
+                        }}
                       >
                         <option value="">{requiresVoiceId ? '请选择人声' : '默认人声'}</option>
                         {voiceOptions.map((item) => (
@@ -412,7 +427,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                                 className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
                                 value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
                                 onChange={(e) =>
-                                  setAdvancedParams((prev) => ({ ...prev, [field.key]: e.target.value }))
+                                  setAdvancedParams((prev) => {
+                                    setAudioConfigDirty(true);
+                                    return { ...prev, [field.key]: e.target.value };
+                                  })
                                 }
                               >
                                 {(field.options || []).map((item) => (
@@ -426,10 +444,13 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                                 className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
                                 value={String(advancedParams[field.key] ?? field.defaultValue ?? false)}
                                 onChange={(e) =>
-                                  setAdvancedParams((prev) => ({
-                                    ...prev,
-                                    [field.key]: e.target.value === 'true',
-                                  }))
+                                  setAdvancedParams((prev) => {
+                                    setAudioConfigDirty(true);
+                                    return {
+                                      ...prev,
+                                      [field.key]: e.target.value === 'true',
+                                    };
+                                  })
                                 }
                               >
                                 <option value="true">true</option>
@@ -446,6 +467,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                                 onChange={(e) => {
                                   const raw = e.target.value;
                                   const value = field.type === 'number' ? Number(raw) : raw;
+                                  setAudioConfigDirty(true);
                                   setAdvancedParams((prev) => ({ ...prev, [field.key]: value }));
                                 }}
                               />

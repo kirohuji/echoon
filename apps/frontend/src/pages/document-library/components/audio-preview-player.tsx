@@ -22,7 +22,7 @@ type AudioPreviewPlayerProps = {
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
 const SENTENCE_END_RE = /[.!?。！？；;:]$/;
 const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5];
-const IPHONE_VIEW_WIDTH = 390;
+const IPHONE_VIEW_WIDTH = '100%';
 const IPHONE_VIEW_HEIGHT = 720;
 
 function formatTime(seconds: number) {
@@ -296,7 +296,7 @@ export function AudioPreviewPlayer({
                     key={`${sentence.startTimeNs}-${sentence.index}`}
                     data-lyric-index={index}
                     className={cn(
-                      'w-full text-center text-base leading-7 transition-all break-words',
+                      'w-full text-left text-base leading-7 transition-all break-normal',
                       index === activeSentenceIndex
                         ? 'scale-[1.02] font-semibold text-black'
                         : 'text-gray-400 hover:text-gray-600'
@@ -304,27 +304,29 @@ export function AudioPreviewPlayer({
                   >
                     <button
                       type="button"
-                      className="mb-1 block w-full whitespace-normal break-words"
+                      className="mb-1 block w-full"
                       onClick={() => seekToTime(sentence.startTimeNs / NANOSECONDS_PER_SECOND)}
                     >
-                      {sentence.words.map((word, wordIdx) => {
-                        const globalWordIndex = sentence.startWordIndex + wordIdx;
-                        const isActiveWord = globalWordIndex === activeWordIndex;
-                        return (
-                          <span
-                            key={`${word.start_time}-${wordIdx}`}
-                            className={cn(
-                              'mr-1 rounded px-0.5',
-                              isActiveWord ? 'bg-yellow-300 text-black' : ''
-                            )}
-                          >
-                            {word.text}
-                          </span>
-                        );
-                      })}
+                      <span className="flex flex-wrap justify-start gap-x-1">
+                        {sentence.words.map((word, wordIdx) => {
+                          const globalWordIndex = sentence.startWordIndex + wordIdx;
+                          const isActiveWord = globalWordIndex === activeWordIndex;
+                          return (
+                            <span
+                              key={`${word.start_time}-${wordIdx}`}
+                              className={cn(
+                                'rounded px-0.5',
+                                isActiveWord ? 'bg-yellow-300 text-black' : ''
+                              )}
+                            >
+                              {word.text}
+                            </span>
+                          );
+                        })}
+                      </span>
                     </button>
                     {index === activeSentenceIndex ? (
-                      <div className="text-xs font-normal text-gray-500">
+                      <div className="text-left text-xs font-normal text-gray-500">
                         {sentence.textZh || '暂无中文翻译'}
                       </div>
                     ) : null}
