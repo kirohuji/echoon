@@ -254,6 +254,11 @@ enum AudioStatus {
   failed
 }
 
+enum AudioProvider {
+  minimax
+  cartesia
+}
+
 model DocumentLibrary {
   id          String   @id @default(cuid())
   title       String
@@ -263,8 +268,12 @@ model DocumentLibrary {
   fileSize    Int
   filePath    String
   modelName   String
+  audioProvider AudioProvider @default(minimax)
+  audioModel  String?
+  audioVoiceId String?
   audioStatus AudioStatus @default(pending)
   extractedText String?
+  wordTimestamps Json?
   audioProgress Int @default(0)
   audioStage String?
   audioPath   String?

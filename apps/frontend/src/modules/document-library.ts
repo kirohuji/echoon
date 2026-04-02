@@ -1,5 +1,12 @@
 import { Service } from './base';
 
+type AudioConfigPayload = {
+  audioModel: string;
+  audioProvider: 'minimax' | 'cartesia';
+  audioVoiceId?: string;
+  modelName?: string;
+};
+
 export default class DocumentLibraryService extends Service {
   upload(formData: FormData) {
     return this.api.post(`${this.model}/upload`, formData, {
@@ -9,7 +16,7 @@ export default class DocumentLibraryService extends Service {
     });
   }
 
-  createText(data: { title?: string; modelName: string; tagIds?: string[]; text: string }) {
+  createText(data: { title?: string; tagIds?: string[]; text: string } & AudioConfigPayload) {
     return this.api.post(`${this.model}/create-text`, data);
   }
 

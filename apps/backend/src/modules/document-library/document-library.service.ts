@@ -1,18 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
-import { AudioStatus, User } from '@prisma/client';
-import axios from 'axios';
+import { AudioProvider, AudioStatus, Prisma, User } from '@prisma/client';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { resolveDocumentAudioConfig } from './document-audio.config';
+import { DocumentAudioProviderFactory } from './document-audio-provider.factory';
+import { CreateDocumentAudioConfigInput } from './document-audio.types';
 
-type CreateDocumentLibraryInput = {
+type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
   title: string;
   fileName: string;
   fileType: string;
   mimeType: string;
   fileSize: number;
   filePath: string;
-  modelName: string;
   tagIds: string[];
 };
 
@@ -20,9 +21,19 @@ type CreateDocumentLibraryInput = {
 export class DocumentLibraryService {
   private readonly audioDir = path.join(process.cwd(), 'uploads', 'audios');
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly documentAudioProviderFactory: DocumentAudioProviderFactory
+  ) {}
 
   async create(input: CreateDocumentLibraryInput, user?: User) {
+    const audioConfig = resolveDocumentAudioConfig({
+      provider: input.provider,
+      model: input.model,
+      voiceId: input.voiceId,
+      legacyModelName: input.legacyModelName,
+    });
+
     const record = await this.prisma.documentLibrary.create({
       data: {
         title: input.title,
@@ -31,7 +42,10 @@ export class DocumentLibraryService {
         mimeType: input.mimeType,
         fileSize: input.fileSize,
         filePath: input.filePath,
-        modelName: input.modelName,
+        modelName: audioConfig.legacyModelName,
+        audioProvider: audioConfig.provider,
+        audioModel: audioConfig.model,
+        audioVoiceId: audioConfig.voiceId,
         audioStatus: AudioStatus.pending,
         userId: user?.id ?? 'system',
         createdBy: user?.id ?? 'system',
@@ -96,6 +110,8 @@ export class DocumentLibraryService {
               { title: { contains: keyword, mode: 'insensitive' as const } },
               { fileName: { contains: keyword, mode: 'insensitive' as const } },
               { modelName: { contains: keyword, mode: 'insensitive' as const } },
+              { audioModel: { contains: keyword, mode: 'insensitive' as const } },
+              { audioVoiceId: { contains: keyword, mode: 'insensitive' as const } },
             ],
           }
         : {}),
@@ -126,16 +142,36 @@ export class DocumentLibraryService {
 
   async update(
     id: string,
-    data: { title?: string; modelName?: string; tagIds?: string[] },
+    data: {
+      title?: string;
+      modelName?: string;
+      tagIds?: string[];
+      audioProvider?: AudioProvider;
+      audioModel?: string;
+      audioVoiceId?: string;
+    },
     user?: User,
   ) {
-    await this.findOne(id);
+    const existing = await this.findOne(id);
+    const audioConfig = resolveDocumentAudioConfig({
+      provider: data.audioProvider ?? existing.audioProvider,
+      model: data.audioModel ?? existing.audioModel ?? data.modelName ?? existing.modelName,
+      voiceId: data.audioVoiceId ?? existing.audioVoiceId,
+      legacyModelName: data.modelName ?? existing.modelName,
+    });
 
     await this.prisma.documentLibrary.update({
       where: { id },
       data: {
         ...(data.title !== undefined ? { title: data.title } : {}),
-        ...(data.modelName !== undefined ? { modelName: data.modelName } : {}),
+        ...(data.modelName !== undefined || data.audioModel !== undefined || data.audioProvider !== undefined
+          ? {
+              modelName: audioConfig.legacyModelName,
+              audioProvider: audioConfig.provider,
+              audioModel: audioConfig.model,
+              audioVoiceId: audioConfig.voiceId,
+            }
+          : {}),
         updatedBy: user?.id ?? 'system',
       },
     });
@@ -164,12 +200,14 @@ export class DocumentLibraryService {
       await fs.unlink(target.filePath).catch(() => null);
     }
     // audioPath 仅在 success 后才会写入 DB。
-    // 为了确保“处理中生成的 mp3”也能被清理，额外尝试删除默认路径：uploads/audios/<id>.mp3
+    // 为了确保处理中遗留文件也能被清理，额外尝试删除常见扩展名。
     if (target.audioPath) {
       await fs.unlink(target.audioPath).catch(() => null);
     }
     const fallbackAudioPath = path.join(this.audioDir, `${id}.mp3`);
     await fs.unlink(fallbackAudioPath).catch(() => null);
+    const fallbackWavPath = path.join(this.audioDir, `${id}.wav`);
+    await fs.unlink(fallbackWavPath).catch(() => null);
 
     return { success: true };
   }
@@ -211,92 +249,17 @@ export class DocumentLibraryService {
     return text.trim();
   }
 
-  private guessMinimaxVoiceId(text: string): string {
-    // 简单启发式：包含中文字符则用中文 voice，否则用英文 narrator。
-    const hasCJK = /[\u4E00-\u9FFF]/.test(text);
-    return hasCJK ? 'female-chengshu' : 'English_expressive_narrator';
+  private async writeAudioFile(id: string, extension: 'mp3' | 'wav', buffer: Buffer) {
+    await fs.mkdir(this.audioDir, { recursive: true });
+    const audioPath = path.join(this.audioDir, `${id}.${extension}`);
+    await fs.writeFile(audioPath, buffer);
+    return audioPath;
   }
 
-  /**
-   * 调用 minimax TTS(text->speech) 生成 mp3，并写入 uploads/audios/<id>.mp3。
-   * 注意：minimax 要求 text < 10,000 characters，本实现会做截断。
-   */
-  private async generateMinimaxAudioToFile(params: {
-    id: string;
-    text: string;
-    speechModel: string;
-    user?: User;
-  }): Promise<string> {
-    const { id, text, speechModel, user } = params;
-    const apiKey = process.env.MINIMAX_API_KEY?.trim();
-    if (!apiKey) {
-      throw new Error('MINIMAX_API_KEY is not set');
-    }
-
-    await fs.mkdir(this.audioDir, { recursive: true });
-    const audioPath = path.join(this.audioDir, `${id}.mp3`);
-
-    // minimax 文档要求：text < 10,000 characters
-    const inputText = text.length > 10000 ? text.slice(0, 10000) : text;
-
-    const voice_id = this.guessMinimaxVoiceId(inputText);
-
-    const res = await axios.post(
-      // 兼容：你当前的 API key 对 minimaxi.com 域名可用
-      'https://api.minimaxi.com/v1/t2a_v2',
-      {
-        model: speechModel,
-        text: inputText,
-        stream: false,
-        language_boost: 'auto',
-        output_format: 'hex',
-        voice_setting: {
-          voice_id,
-          speed: 1,
-          vol: 1,
-          pitch: 0,
-        },
-        audio_setting: {
-          format: 'mp3',
-          sample_rate: 32000,
-          bitrate: 128000,
-          channel: 1,
-        },
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        // minimax 可能生成较慢，给更长超时
-        timeout: 180000,
-      },
-    );
-
-    const baseResp = res?.data?.base_resp as
-      | { status_code?: number; status_msg?: string }
-      | undefined;
-    const traceId = res?.data?.trace_id as string | undefined;
-    const statusCode = baseResp?.status_code;
-    const statusMsg = baseResp?.status_msg;
-    const audioHex = res?.data?.data?.audio as string | undefined;
-
-    // 根据最新文档：失败时 base_resp.status_code != 0，data.audio 可能为空/缺失
-    if (statusCode !== 0) {
-      throw new Error(
-        `minimax t2a_v2 failed: status_code=${statusCode ?? 'unknown'}, status_msg=${statusMsg ?? 'unknown'}${traceId ? `, trace_id=${traceId}` : ''}`,
-      );
-    }
-
-    if (!audioHex) {
-      throw new Error(
-        `minimax response contains empty audio${traceId ? `, trace_id=${traceId}` : ''}`,
-      );
-    }
-
-    const mp3Buffer = Buffer.from(audioHex, 'hex');
-    await fs.writeFile(audioPath, mp3Buffer);
-    return audioPath;
+  private toWordTimestampJson(wordTimestamps: unknown[] | null | undefined): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+    return wordTimestamps?.length
+      ? (wordTimestamps as Prisma.InputJsonValue)
+      : Prisma.JsonNull;
   }
 
   async startGenerateAudio(id: string, user?: User) {
@@ -309,6 +272,7 @@ export class DocumentLibraryService {
         audioStage: 'extracting_text',
         audioError: null,
         extractedText: null,
+        wordTimestamps: Prisma.JsonNull,
         updatedBy: user?.id ?? 'system',
       },
     });
@@ -324,7 +288,12 @@ export class DocumentLibraryService {
       if (!target.filePath) {
         throw new Error('documentLibrary.filePath is empty');
       }
-      const speechModel = target.modelName;
+      const providerConfig = resolveDocumentAudioConfig({
+        provider: target.audioProvider,
+        model: target.audioModel ?? target.modelName,
+        voiceId: target.audioVoiceId,
+        legacyModelName: target.modelName,
+      });
 
       // 1) 提取文本
       await this.prisma.documentLibrary.update({
@@ -372,18 +341,20 @@ export class DocumentLibraryService {
         },
       });
 
-      // 2) 文本转语音（minimax）
+      // 2) 文本转语音（provider）
       await this.prisma.documentLibrary.update({
         where: { id },
         data: { audioStage: 'generating_audio', audioProgress: 40 },
       });
 
-      const audioPath = await this.generateMinimaxAudioToFile({
+      const provider = this.documentAudioProviderFactory.getProvider(providerConfig.provider);
+      const result = await provider.generateAudio({
         id,
         text: extractedText || '',
-        speechModel,
-        user,
+        model: providerConfig.model,
+        voiceId: providerConfig.voiceId,
       });
+      const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
 
       // 3) 写入完成状态
       await this.prisma.documentLibrary.update({
@@ -395,6 +366,7 @@ export class DocumentLibraryService {
           audioStage: 'done',
           audioError: null,
           extractedText,
+          wordTimestamps: this.toWordTimestampJson(result.wordTimestamps),
           updatedBy,
         },
       });
@@ -423,6 +395,7 @@ export class DocumentLibraryService {
         audioStage: 'generating_audio',
         audioError: null,
         extractedText: text,
+        wordTimestamps: Prisma.JsonNull,
         updatedBy: user?.id ?? 'system',
       },
     }).then(() => this.findOne(id));
@@ -434,18 +407,30 @@ export class DocumentLibraryService {
       const target = await this.findOne(id);
       if (!target) return;
 
-      const speechModel = target.modelName;
+      const providerConfig = resolveDocumentAudioConfig({
+        provider: target.audioProvider,
+        model: target.audioModel ?? target.modelName,
+        voiceId: target.audioVoiceId,
+        legacyModelName: target.modelName,
+      });
       await this.prisma.documentLibrary.update({
         where: { id },
-        data: { audioStage: 'generating_audio', audioProgress: 40, extractedText: text },
+        data: {
+          audioStage: 'generating_audio',
+          audioProgress: 40,
+          extractedText: text,
+          wordTimestamps: Prisma.JsonNull,
+        },
       });
 
-      const audioPath = await this.generateMinimaxAudioToFile({
+      const provider = this.documentAudioProviderFactory.getProvider(providerConfig.provider);
+      const result = await provider.generateAudio({
         id,
         text,
-        speechModel,
-        user,
+        model: providerConfig.model,
+        voiceId: providerConfig.voiceId,
       });
+      const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
 
       await this.prisma.documentLibrary.update({
         where: { id },
@@ -456,6 +441,7 @@ export class DocumentLibraryService {
           audioStage: 'done',
           audioError: null,
           extractedText: text,
+          wordTimestamps: this.toWordTimestampJson(result.wordTimestamps),
           updatedBy,
         },
       });

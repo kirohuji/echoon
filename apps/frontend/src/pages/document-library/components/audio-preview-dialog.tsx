@@ -1,9 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import AudioPlayer from 'react-audio-player';
 
 import { Button } from 'src/components/ui/button';
 import { documentLibraryService } from 'src/composables/context-provider';
+import { AudioPreviewPlayer } from './audio-preview-player';
+
+type WordTimestamp = {
+  start_time: number;
+  text: string;
+};
+
+type AudioPreviewDocument = {
+  audioError?: string | null;
+  audioProgress?: number | null;
+  audioStage?: string | null;
+  audioStatus?: 'pending' | 'processing' | 'success' | 'failed' | null;
+  extractedText?: string | null;
+  wordTimestamps?: WordTimestamp[] | null;
+};
 
 type AudioPreviewDialogProps = {
   open: boolean;
@@ -12,7 +26,7 @@ type AudioPreviewDialogProps = {
 };
 
 export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDialogProps) {
-  const [doc, setDoc] = useState<any>(null);
+  const [doc, setDoc] = useState<AudioPreviewDocument | null>(null);
   const [audioUrl, setAudioUrl] = useState<string>('');
   const [polling, setPolling] = useState(false);
   const [pollingRun, setPollingRun] = useState(0);
@@ -32,7 +46,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const refresh = useCallback(async () => {
     if (!documentId) return null;
     const res = await documentLibraryService.get({ id: documentId });
-    return res?.data ?? null;
+    return (res?.data ?? null) as AudioPreviewDocument | null;
   }, [documentId]);
 
   // 把提取文本同步到可编辑文本：processing 阶段不覆盖用户输入
@@ -153,7 +167,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-[92vw] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-4 shadow-lg">
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[96vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg bg-white p-4 shadow-lg">
           <div className="flex items-center justify-between">
             <Dialog.Title className="text-base font-semibold">音频预览</Dialog.Title>
             <Dialog.Close asChild>
@@ -177,7 +191,9 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
                 <div>{doc?.audioStage ? `阶段：${doc.audioStage}` : '阶段：-'}</div>
-                <div>{Number.isFinite(doc?.audioProgress) ? `${doc.audioProgress}%` : ''}</div>
+                <div>
+                  {Number.isFinite(doc?.audioProgress ?? null) ? `${doc?.audioProgress ?? 0}%` : ''}
+                </div>
               </div>
             </div>
 
@@ -186,6 +202,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
               {doc?.audioStatus === 'processing' ? (
                 <div className="mt-2 max-h-64 overflow-auto rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words">
                   {doc?.extractedText ? doc.extractedText : '正在提取/生成，请稍候...'}
+                </div>
+              ) : doc?.audioStatus === 'success' ? (
+                <div className="mt-2 max-h-40 overflow-auto rounded border border-black/10 bg-black/[0.02] p-3 text-xs leading-5 whitespace-pre-wrap break-words text-gray-700">
+                  {doc?.extractedText || '音频已生成，可在下方词时间戳区域点击定位播放。'}
                 </div>
               ) : (
                 <textarea
@@ -204,7 +224,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
               <div className="text-sm font-medium">播放器</div>
               <div className="mt-2">
                 {doc?.audioStatus === 'success' ? (
-                  <AudioPlayer src={audioUrl} controls />
+                  <AudioPreviewPlayer
+                    audioUrl={audioUrl}
+                    wordTimestamps={doc?.wordTimestamps}
+                  />
                 ) : (
                   <Button type="button" variant="outline" disabled>
                     音频生成中，完成后可播放

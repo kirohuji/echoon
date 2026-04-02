@@ -13,6 +13,9 @@ type LibraryItem = {
   title: string;
   fileName: string;
   modelName: string;
+  audioProvider?: 'minimax' | 'cartesia';
+  audioModel?: string | null;
+  audioVoiceId?: string | null;
   audioStatus: 'pending' | 'processing' | 'success' | 'failed';
   createdAt: number;
   tags: Array<{ tag: TagItem }>;
@@ -175,7 +178,13 @@ export default function DocumentLibraryPage() {
                       <td className="px-3 py-2">
                         {row.tags.map((item) => item.tag.name).join(' / ') || '-'}
                       </td>
-                      <td className="px-3 py-2">{row.modelName}</td>
+                      <td className="px-3 py-2">
+                        <div>{row.audioProvider || 'minimax'}</div>
+                        <div className="text-xs text-gray-500">
+                          {row.audioModel || row.modelName}
+                          {row.audioVoiceId ? ` / ${row.audioVoiceId}` : ''}
+                        </div>
+                      </td>
                       <td className="px-3 py-2">{row.audioStatus}</td>
                       <td className="px-3 py-2">{new Date(row.createdAt).toLocaleString()}</td>
                       <td className="px-3 py-2">
@@ -227,7 +236,8 @@ export default function DocumentLibraryPage() {
                     </div>
                     <div className="text-xs text-gray-700">
                       <span className="font-medium text-gray-900">模型：</span>
-                      {row.modelName}
+                      {row.audioProvider || 'minimax'} / {row.audioModel || row.modelName}
+                      {row.audioVoiceId ? ` / ${row.audioVoiceId}` : ''}
                     </div>
                     <div className="text-xs text-gray-700">
                       <span className="font-medium text-gray-900">音频状态：</span>

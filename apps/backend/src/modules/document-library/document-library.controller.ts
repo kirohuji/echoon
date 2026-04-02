@@ -16,12 +16,19 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { User } from '@prisma/client';
+import { AudioProvider, User } from '@prisma/client';
 import { CurrentUser } from '@/decorator/user.decorator';
 import type { Response } from 'express';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { DocumentLibraryService } from './document-library.service';
+
+type AudioConfigBody = {
+  audioProvider?: AudioProvider;
+  audioModel?: string;
+  audioVoiceId?: string;
+  modelName?: string;
+};
 
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
@@ -40,7 +47,7 @@ export class DocumentLibraryController {
   )
   async upload(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { title?: string; modelName: string; tagIds?: string | string[] },
+    @Body() body: { title?: string; tagIds?: string | string[] } & AudioConfigBody,
     @CurrentUser() user: User,
   ) {
     await fs.mkdir(this.uploadDir, { recursive: true });
@@ -62,7 +69,10 @@ export class DocumentLibraryController {
         mimeType: file.mimetype,
         fileSize: file.size,
         filePath,
-        modelName: body.modelName || 'gpt-4o-mini',
+        provider: body.audioProvider,
+        model: body.audioModel,
+        voiceId: body.audioVoiceId,
+        legacyModelName: body.modelName,
         tagIds,
       },
       user,
@@ -74,10 +84,9 @@ export class DocumentLibraryController {
     @Body()
     body: {
       title?: string;
-      modelName: string;
       text: string;
       tagIds?: string | string[];
-    },
+    } & AudioConfigBody,
     @CurrentUser() user: User,
   ) {
     const text = body.text?.toString() ?? '';
@@ -109,7 +118,10 @@ export class DocumentLibraryController {
         mimeType: 'text/plain',
         fileSize,
         filePath,
-        modelName: body.modelName || 'speech-01-hd',
+        provider: body.audioProvider,
+        model: body.audioModel,
+        voiceId: body.audioVoiceId,
+        legacyModelName: body.modelName,
         tagIds,
       },
       user,
@@ -134,7 +146,7 @@ export class DocumentLibraryController {
   @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() data: { title?: string; modelName?: string; tagIds?: string[] },
+    @Body() data: { title?: string; tagIds?: string[] } & AudioConfigBody,
     @CurrentUser() user: User,
   ) {
     return this.documentLibraryService.update(id, data, user);
