@@ -1,12 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { AudioProvider, AudioStatus, Prisma, User } from '@prisma/client';
+import axios from 'axios';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import * as wordnet from 'wordnet';
 import { resolveDocumentAudioConfig } from './document-audio.config';
 import { DocumentAudioProviderFactory } from './document-audio-provider.factory';
 import { CreateDocumentAudioConfigInput, DocumentAudioRegenerateOverrides } from './document-audio.types';
 import { DOCUMENT_AUDIO_PARAMS_SCHEMA, sanitizeRegenerateAudioParams } from './document-audio-params.schema';
+import { DocumentWordTimestamp } from './document-audio.types';
 
 type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
   title: string;
@@ -21,6 +24,8 @@ type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
 @Injectable()
 export class DocumentLibraryService {
   private readonly audioDir = path.join(process.cwd(), 'uploads', 'audios');
+  private readonly sentenceEndRegex = /[.!?。！？；;:]$/;
+  private wordnetReadyPromise: Promise<void> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -94,6 +99,45 @@ export class DocumentLibraryService {
 
   getAudioParamsSchema() {
     return DOCUMENT_AUDIO_PARAMS_SCHEMA;
+  }
+
+  private async ensureWordnetReady() {
+    if (!this.wordnetReadyPromise) {
+      this.wordnetReadyPromise = wordnet.init();
+    }
+    await this.wordnetReadyPromise;
+  }
+
+  private normalizeLookupWord(input: string) {
+    return (input || '')
+      .trim()
+      .toLowerCase()
+      .replace(/^[^a-z]+|[^a-z]+$/g, '');
+  }
+
+  async lookupEnglishWord(word: string) {
+    const normalizedWord = this.normalizeLookupWord(word);
+    if (!normalizedWord) {
+      return { word: '', definitions: [] };
+    }
+
+    await this.ensureWordnetReady();
+    try {
+      const rows = await wordnet.lookup(normalizedWord, true);
+      return {
+        word: normalizedWord,
+        definitions: (rows || []).slice(0, 6).map((item) => ({
+          partOfSpeech: item?.meta?.synsetType || 'unknown',
+          gloss: item?.glossary || '',
+          synonyms: (item?.meta?.words || [])
+            .map((w) => String(w?.word ?? '').replace(/_/g, ' '))
+            .filter(Boolean)
+            .slice(0, 6),
+        })),
+      };
+    } catch {
+      return { word: normalizedWord, definitions: [] };
+    }
   }
 
   async paginate({
@@ -267,6 +311,200 @@ export class DocumentLibraryService {
       : Prisma.JsonNull;
   }
 
+  private buildSentenceSegments(words: DocumentWordTimestamp[]) {
+    if (!words.length) return [] as Array<{ sentenceIndex: number; text: string; startIdx: number; endIdx: number }>;
+    const starts = [0];
+    for (let i = 0; i < words.length - 1; i += 1) {
+      if (this.sentenceEndRegex.test(words[i].text || '')) starts.push(i + 1);
+    }
+    const uniqueStarts = Array.from(new Set(starts)).sort((a, b) => a - b);
+    return uniqueStarts.map((startIdx, idx) => {
+      const endIdx = (uniqueStarts[idx + 1] ?? words.length) - 1;
+      const text = words.slice(startIdx, endIdx + 1).map((item) => item.text).join(' ').trim();
+      return { sentenceIndex: idx, text, startIdx, endIdx };
+    });
+  }
+
+  private splitTextToSentences(text: string) {
+    const normalized = (text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return [];
+    const parts = normalized
+      .split(/(?<=[.!?。！？；;:])\s+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return parts.length ? parts : [normalized];
+  }
+
+  private splitSentenceToTokens(sentence: string) {
+    const tokens = sentence.match(/[\u4e00-\u9fff]|[A-Za-z0-9']+|[^\s]/g) ?? [];
+    return tokens.filter(Boolean);
+  }
+
+  private buildPseudoWordTimestampsFromText(text: string): DocumentWordTimestamp[] | null {
+    const sentences = this.splitTextToSentences(text);
+    if (!sentences.length) return null;
+    const avgSecondsPerToken = 0.28;
+    let cursorSeconds = 0;
+    const output: DocumentWordTimestamp[] = [];
+    for (const sentence of sentences) {
+      const tokens = this.splitSentenceToTokens(sentence);
+      const sentenceTokens = tokens.length ? tokens : [sentence];
+      for (const token of sentenceTokens) {
+        output.push({
+          text: token,
+          start_time: Math.floor(cursorSeconds * 1_000_000_000),
+        });
+        cursorSeconds += avgSecondsPerToken;
+      }
+      cursorSeconds += 0.35;
+    }
+    return output.length ? output : null;
+  }
+
+  private parseTranslationsContent(content: string, sentenceCount: number) {
+    const direct = (() => {
+      try {
+        const parsed = JSON.parse(content) as { translations?: string[] };
+        return Array.isArray(parsed.translations) ? parsed.translations : null;
+      } catch {
+        return null;
+      }
+    })();
+    if (direct) return direct.map((item) => String(item ?? '').trim());
+
+    const fencedMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fencedMatch?.[1]) {
+      try {
+        const parsed = JSON.parse(fencedMatch[1]) as { translations?: string[] };
+        if (Array.isArray(parsed.translations)) {
+          return parsed.translations.map((item) => String(item ?? '').trim());
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const lines = content
+      .split('\n')
+      .map((item) => item.replace(/^\s*[-*\d.)]+\s*/, '').trim())
+      .filter(Boolean);
+    if (!lines.length) return [];
+    return lines.slice(0, sentenceCount);
+  }
+
+  private async translateSentencesToChinese(sentences: string[]) {
+    const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+    if (!apiKey || !sentences.length) return [] as string[];
+    try {
+      const response = await axios.post(
+        'https://api.deepseek.com/chat/completions',
+        {
+          model: 'deepseek-chat',
+          temperature: 0.1,
+          messages: [
+            {
+              role: 'system',
+              content:
+                '你是翻译助手。请把输入句子逐句翻译为简体中文，严格保持顺序与数量一致，不要解释。',
+            },
+            {
+              role: 'user',
+              content: [
+                '请返回 JSON：{"translations":["..."]}',
+                `translations 数组长度必须等于 ${sentences.length}。`,
+                '待翻译句子：',
+                ...sentences.map((sentence, index) => `${index + 1}. ${sentence}`),
+              ].join('\n'),
+            },
+          ],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 60000,
+        }
+      );
+      const rawContent = response?.data?.choices?.[0]?.message?.content;
+      const content =
+        typeof rawContent === 'string'
+          ? rawContent
+          : Array.isArray(rawContent)
+            ? rawContent
+                .map((item) =>
+                  typeof item === 'string'
+                    ? item
+                    : typeof item?.text === 'string'
+                      ? item.text
+                      : ''
+                )
+                .join('\n')
+            : '';
+      if (!content) return [];
+      const parsed = this.parseTranslationsContent(content, sentences.length);
+      if (parsed.length === sentences.length) return parsed;
+      // 长度不匹配时，按已翻译部分返回，缺失项回退原句，避免空值污染 UI
+      return sentences.map((sentence, index) => parsed[index]?.trim() || sentence);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('DeepSeek translation failed', error);
+      return [];
+    }
+  }
+
+  private async enrichWordTimestampsWithSentenceTranslation(wordTimestamps: DocumentWordTimestamp[] | null) {
+    if (!wordTimestamps?.length) return null;
+    const words = [...wordTimestamps].sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0));
+    const sentenceSegments = this.buildSentenceSegments(words).map((segment) => {
+      const existingZh = words
+        .slice(segment.startIdx, segment.endIdx + 1)
+        .find((item) => item.sentenceZh?.trim())?.sentenceZh;
+      const existingText = words
+        .slice(segment.startIdx, segment.endIdx + 1)
+        .find((item) => item.sentenceText?.trim())?.sentenceText;
+      return {
+        ...segment,
+        text: (existingText || segment.text).trim(),
+        existingZh: existingZh?.trim() || '',
+      };
+    });
+    if (!sentenceSegments.length) return words;
+
+    // 仅翻译“没有已有翻译”的句子，并按 sentenceText 去重，避免重复调用。
+    const uniquePendingTexts: string[] = [];
+    const pendingTextSet = new Set<string>();
+    for (const segment of sentenceSegments) {
+      if (segment.existingZh) continue;
+      if (!segment.text) continue;
+      if (pendingTextSet.has(segment.text)) continue;
+      pendingTextSet.add(segment.text);
+      uniquePendingTexts.push(segment.text);
+    }
+    const uniquePendingTranslations = uniquePendingTexts.length
+      ? await this.translateSentencesToChinese(uniquePendingTexts)
+      : [];
+    const translationMap = new Map<string, string>();
+    uniquePendingTexts.forEach((text, idx) => {
+      const zh = uniquePendingTranslations[idx]?.trim();
+      if (zh) translationMap.set(text, zh);
+    });
+
+    const merged = [...words];
+    sentenceSegments.forEach((segment) => {
+      const sentenceZh = segment.existingZh || translationMap.get(segment.text) || '';
+      for (let i = segment.startIdx; i <= segment.endIdx; i += 1) {
+        merged[i] = {
+          ...merged[i],
+          sentenceIndex: segment.sentenceIndex,
+          sentenceText: segment.text,
+          sentenceZh,
+        };
+      }
+    });
+    return merged;
+  }
+
   async startGenerateAudio(id: string, user?: User) {
     // 重置本次运行状态，便于前端展示进度/文本。
     await this.prisma.documentLibrary.update({
@@ -360,6 +598,11 @@ export class DocumentLibraryService {
         voiceId: providerConfig.voiceId,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
+      const baseWordTimestamps =
+        result.wordTimestamps ?? this.buildPseudoWordTimestampsFromText(extractedText);
+      const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
+        baseWordTimestamps
+      );
 
       // 3) 写入完成状态
       await this.prisma.documentLibrary.update({
@@ -371,7 +614,7 @@ export class DocumentLibraryService {
           audioStage: 'done',
           audioError: null,
           extractedText,
-          wordTimestamps: this.toWordTimestampJson(result.wordTimestamps),
+          wordTimestamps: this.toWordTimestampJson(enrichedWordTimestamps),
           updatedBy,
         },
       });
@@ -435,6 +678,10 @@ export class DocumentLibraryService {
           audioProgress: 40,
           extractedText: text,
           wordTimestamps: Prisma.JsonNull,
+          audioProvider: providerConfig.provider,
+          audioModel: providerConfig.model,
+          audioVoiceId: providerConfig.voiceId,
+          modelName: providerConfig.legacyModelName,
         },
       });
 
@@ -447,6 +694,10 @@ export class DocumentLibraryService {
         params: sanitizedParams,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
+      const baseWordTimestamps = result.wordTimestamps ?? this.buildPseudoWordTimestampsFromText(text);
+      const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
+        baseWordTimestamps
+      );
 
       await this.prisma.documentLibrary.update({
         where: { id },
@@ -457,7 +708,11 @@ export class DocumentLibraryService {
           audioStage: 'done',
           audioError: null,
           extractedText: text,
-          wordTimestamps: this.toWordTimestampJson(result.wordTimestamps),
+          wordTimestamps: this.toWordTimestampJson(enrichedWordTimestamps),
+          audioProvider: providerConfig.provider,
+          audioModel: providerConfig.model,
+          audioVoiceId: providerConfig.voiceId,
+          modelName: providerConfig.legacyModelName,
           updatedBy,
         },
       });
@@ -483,6 +738,31 @@ export class DocumentLibraryService {
   async generateAudio(id: string, user?: User) {
     await this.startGenerateAudio(id, user);
     await this.generateAudioPipeline(id, user);
+    return this.findOne(id);
+  }
+
+  async generateSentenceTranslation(id: string, user?: User) {
+    const record = await this.findOne(id);
+    const rawWordTimestamps = Array.isArray(record.wordTimestamps)
+      ? (record.wordTimestamps as unknown as DocumentWordTimestamp[])
+      : null;
+    const baseWordTimestamps =
+      rawWordTimestamps?.length
+        ? rawWordTimestamps
+        : this.buildPseudoWordTimestampsFromText(record.extractedText || '');
+    if (!baseWordTimestamps?.length) {
+      throw new Error('word timestamps and extractedText are both empty');
+    }
+    const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
+      baseWordTimestamps
+    );
+    await this.prisma.documentLibrary.update({
+      where: { id },
+      data: {
+        wordTimestamps: this.toWordTimestampJson(enrichedWordTimestamps),
+        updatedBy: user?.id ?? 'system',
+      },
+    });
     return this.findOne(id);
   }
 }

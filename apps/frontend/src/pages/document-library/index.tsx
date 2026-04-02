@@ -13,7 +13,7 @@ type LibraryItem = {
   title: string;
   fileName: string;
   modelName: string;
-  audioProvider?: 'minimax' | 'cartesia';
+  audioProvider?: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
   audioModel?: string | null;
   audioVoiceId?: string | null;
   audioStatus: 'pending' | 'processing' | 'success' | 'failed';
@@ -70,15 +70,8 @@ export default function DocumentLibraryPage() {
     setPreviewOpen(true);
   };
 
-  const onGenerateAudio = async (id: string) => {
+  const onOpenAudioManagement = (id: string) => {
     openAudioPreview(id);
-    try {
-      await documentLibraryService.generateAudio(id);
-      loadData();
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
-    }
   };
 
   const onRemove = async (id: string) => {
@@ -192,13 +185,10 @@ export default function DocumentLibraryPage() {
                           <Button
                             type="button"
                             size="sm"
-                            onClick={() => onGenerateAudio(row.id)}
+                            onClick={() => onOpenAudioManagement(row.id)}
                             disabled={row.audioStatus === 'processing'}
                           >
-                            {row.audioStatus === 'failed' ? '重试生成音频' : '生成音频'}
-                          </Button>
-                          <Button type="button" size="sm" variant="outline" onClick={() => openAudioPreview(row.id)}>
-                            播放
+                            音频管理
                           </Button>
                           <Button
                             type="button"
@@ -253,18 +243,10 @@ export default function DocumentLibraryPage() {
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => onGenerateAudio(row.id)}
+                      onClick={() => onOpenAudioManagement(row.id)}
                       disabled={row.audioStatus === 'processing'}
                     >
-                      {row.audioStatus === 'failed' ? '重试生成音频' : '生成音频'}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openAudioPreview(row.id)}
-                    >
-                      播放
+                      音频管理
                     </Button>
                     <Button
                       type="button"

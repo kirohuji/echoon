@@ -2,12 +2,8 @@ import { useMemo, useState } from 'react';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import { documentLibraryService } from 'src/composables/context-provider';
-import {
-  DOCUMENT_AUDIO_PROVIDER_OPTIONS,
-  type AudioProvider,
-} from '../audio-provider-options';
 
-const steps = ['选择文件', '选择标签', '选择模型', '确认上传'];
+const steps = ['选择文件', '选择标签', '确认上传'];
 
 type TagOption = { id: string; name: string };
 
@@ -23,14 +19,9 @@ export function UploadWizardDialog({ open, tags, onClose, onSuccess }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [customText, setCustomText] = useState('');
   const [title, setTitle] = useState('');
-  const [audioProvider, setAudioProvider] = useState<AudioProvider>('minimax');
-  const [selectedOptionIndex, setSelectedOptionIndex] = useState(0);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const providerOptions = DOCUMENT_AUDIO_PROVIDER_OPTIONS[audioProvider];
-  const selectedOption = providerOptions[selectedOptionIndex] || providerOptions[0];
 
   const canNext = useMemo(() => {
     if (activeStep === 0) return Boolean(file) || Boolean(customText.trim());
@@ -42,8 +33,6 @@ export function UploadWizardDialog({ open, tags, onClose, onSuccess }: Props) {
     setFile(null);
     setCustomText('');
     setTitle('');
-    setAudioProvider('minimax');
-    setSelectedOptionIndex(0);
     setTagIds([]);
     setSubmitting(false);
     setError(null);
@@ -68,21 +57,11 @@ export function UploadWizardDialog({ open, tags, onClose, onSuccess }: Props) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('title', title || file.name);
-        formData.append('audioProvider', audioProvider);
-        formData.append('audioModel', selectedOption.model);
-        if (selectedOption.voiceId) {
-          formData.append('audioVoiceId', selectedOption.voiceId);
-        }
-        formData.append('modelName', selectedOption.model);
         formData.append('tagIds', JSON.stringify(tagIds));
         await documentLibraryService.upload(formData);
       } else {
         await documentLibraryService.createText({
           title: title || 'custom-text',
-          audioProvider,
-          audioModel: selectedOption.model,
-          audioVoiceId: selectedOption.voiceId,
-          modelName: selectedOption.model,
           tagIds,
           text: customText,
         });
@@ -157,52 +136,10 @@ export function UploadWizardDialog({ open, tags, onClose, onSuccess }: Props) {
           ) : null}
 
           {activeStep === 2 ? (
-            <div className="space-y-3">
-              <div>
-                <div className="mb-1 text-xs text-gray-500">厂商</div>
-                <select
-                  className="h-9 w-full rounded-md border border-black/20 px-3 text-sm"
-                  value={audioProvider}
-                  onChange={(event) => {
-                    setAudioProvider(event.target.value as AudioProvider);
-                    setSelectedOptionIndex(0);
-                  }}
-                >
-                  <option value="minimax">Minimax</option>
-                  <option value="cartesia">Cartesia</option>
-                </select>
-              </div>
-
-              <div>
-                <div className="mb-1 text-xs text-gray-500">模型 / 音色</div>
-                <select
-                  className="h-9 w-full rounded-md border border-black/20 px-3 text-sm"
-                  value={selectedOptionIndex}
-                  onChange={(event) => setSelectedOptionIndex(Number(event.target.value))}
-                >
-                  {providerOptions.map((item, index) => (
-                    <option key={`${item.model}-${item.voiceId || 'default'}`} value={index}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="rounded-md border border-black/10 bg-black/[0.02] p-3 text-xs text-gray-600">
-                <div>Provider：{audioProvider}</div>
-                <div>Model：{selectedOption.model}</div>
-                <div>Voice：{selectedOption.voiceLabel || selectedOption.voiceId || '默认'}</div>
-              </div>
-            </div>
-          ) : null}
-
-          {activeStep === 3 ? (
             <div className="space-y-2 text-sm">
               <div>文件：{file?.name || '-'}</div>
               <div>标题：{title || file?.name || 'custom-text'}</div>
-              <div>厂商：{audioProvider}</div>
-              <div>模型：{selectedOption.model}</div>
-              <div>音色：{selectedOption.voiceLabel || selectedOption.voiceId || '默认'}</div>
+              <div>模型与音频参数：上传后在“音频管理”中配置</div>
               <div>标签：{tagIds.length} 个</div>
               {file ? null : <div className="text-xs text-gray-600">文本长度：{customText.trim().length} 字符</div>}
             </div>

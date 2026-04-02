@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import AudioPlayer from 'react-audio-player';
 
@@ -9,16 +9,24 @@ import { cn } from 'src/lib/utils';
 type WordTimestamp = {
   start_time: number;
   text: string;
+  sentenceIndex?: number;
+  sentenceText?: string;
+  sentenceZh?: string;
 };
 
 type AudioPreviewPlayerProps = {
   audioUrl: string;
   wordTimestamps?: WordTimestamp[] | null;
+  activeLookupWord?: string;
+  onWordLongPress?: (word: string) => void;
 };
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
 const SENTENCE_END_RE = /[.!?。！？；;:]$/;
 const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5];
+const IPHONE_VIEW_WIDTH = '100%';
+const IPHONE_VIEW_HEIGHT = 720;
+const LONG_PRESS_MS = 450;
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return '00:00';
@@ -38,6 +46,9 @@ function normalizeWordTimestamps(wordTimestamps?: WordTimestamp[] | null) {
     .map((item) => ({
       text: item.text,
       start_time: Math.max(0, item.start_time ?? 0),
+      sentenceIndex: item.sentenceIndex,
+      sentenceText: item.sentenceText,
+      sentenceZh: item.sentenceZh,
     }));
 }
 
@@ -75,9 +86,68 @@ function buildSentenceStarts(words: WordTimestamp[]) {
   return Array.from(new Set(starts)).sort((a, b) => a - b);
 }
 
+type SentenceSegment = {
+  index: number;
+  startWordIndex: number;
+  startTimeNs: number;
+  endTimeNs: number;
+  text: string;
+  textZh?: string;
+  words: WordTimestamp[];
+};
+
+function buildSentenceSegments(words: WordTimestamp[]) {
+  if (!words.length) return [] as SentenceSegment[];
+
+  const starts = buildSentenceStarts(words);
+  const segments: SentenceSegment[] = [];
+  for (let i = 0; i < starts.length; i += 1) {
+    const startIdx = starts[i];
+    const endExclusive = starts[i + 1] ?? words.length;
+    const sentenceWords = words.slice(startIdx, endExclusive);
+    if (!sentenceWords.length) continue;
+    const startTimeNs = sentenceWords[0].start_time;
+    const nextSentenceStartNs = words[endExclusive]?.start_time;
+    const fallbackEndNs = startTimeNs + 2 * NANOSECONDS_PER_SECOND;
+    const sentenceText = sentenceWords.map((item) => item.text).join(' ');
+    segments.push({
+      index: i,
+      startWordIndex: startIdx,
+      startTimeNs,
+      endTimeNs: nextSentenceStartNs ?? fallbackEndNs,
+      text: sentenceText,
+      textZh: sentenceWords.find((item) => item.sentenceZh)?.sentenceZh,
+      words: sentenceWords,
+    });
+  }
+  return segments;
+}
+
+function shouldPrependSpace(current: string, previous?: string) {
+  if (!previous) return false;
+  if (!current) return true;
+
+  // 标点前不加空格，如 "hello,"、"world!"。
+  if (/^[,.;:!?%)}\]，。！？；：]/.test(current)) return false;
+  // 英文缩写片段前不加空格，如 I've / we're / don't。
+  if (/^['’](?:s|d|m|re|ve|ll|t)\b/i.test(current)) return false;
+  // 紧跟右侧引号/括号时不加空格。
+  if (/^['’)）\]}]/.test(current)) return false;
+  // 前一个 token 是左引号或左括号时不加空格。
+  if (/^[(\[{“‘]$/.test(previous)) return false;
+
+  return true;
+}
+
+function sanitizeLookupWord(text: string) {
+  return text.replace(/^[^A-Za-z0-9\u00C0-\u024F']+|[^A-Za-z0-9\u00C0-\u024F']+$/g, '').trim();
+}
+
 export function AudioPreviewPlayer({
   audioUrl,
   wordTimestamps,
+  activeLookupWord,
+  onWordLongPress,
 }: AudioPreviewPlayerProps) {
   const audioPlayerRef = useRef<AudioPlayer>(null);
   const waveContainerRef = useRef<HTMLDivElement | null>(null);
@@ -88,8 +158,15 @@ export function AudioPreviewPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const lyricContainerRef = useRef<HTMLDivElement | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
 
   const normalizedWords = useMemo(() => normalizeWordTimestamps(wordTimestamps), [wordTimestamps]);
+  const normalizedActiveLookupWord = (activeLookupWord || '').toLowerCase();
+  const sentenceSegments = useMemo(
+    () => buildSentenceSegments(normalizedWords),
+    [normalizedWords]
+  );
 
   const activeWordIndex = useMemo(
     () => findActiveWordIndex(normalizedWords, currentTime),
@@ -97,6 +174,16 @@ export function AudioPreviewPlayer({
   );
 
   const sentenceStarts = useMemo(() => buildSentenceStarts(normalizedWords), [normalizedWords]);
+  const activeSentenceIndex = useMemo(() => {
+    if (!sentenceSegments.length) return -1;
+    const currentNs = Math.floor(currentTime * NANOSECONDS_PER_SECOND);
+    const found = sentenceSegments.findIndex(
+      (item, index) =>
+        currentNs >= item.startTimeNs &&
+        (currentNs < item.endTimeNs || index === sentenceSegments.length - 1)
+    );
+    return found;
+  }, [currentTime, sentenceSegments]);
 
   const syncWaveProgress = (time: number) => {
     const waveSurfer = waveSurferRef.current;
@@ -205,33 +292,146 @@ export function AudioPreviewPlayer({
     };
   }, [audioUrl]);
 
+  useEffect(() => {
+    if (!lyricContainerRef.current) return;
+    if (activeSentenceIndex < 0) return;
+    const activeElement = lyricContainerRef.current.querySelector<HTMLElement>(
+      `[data-lyric-index="${activeSentenceIndex}"]`
+    );
+    if (!activeElement) return;
+    activeElement.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [activeSentenceIndex]);
+
   const hasWords = normalizedWords.length > 0;
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const startLongPress = (wordText: string, event: PointerEvent<HTMLSpanElement>) => {
+    clearLongPressTimer();
+    void event;
+    const lookupText = sanitizeLookupWord(wordText);
+    const displayText = lookupText || wordText;
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      onWordLongPress?.(displayText);
+    }, LONG_PRESS_MS);
+  };
+
+  const cancelLongPress = () => {
+    clearLongPressTimer();
+  };
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer();
+    };
+  }, []);
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-black/10 bg-black/[0.02] p-3">
-        <div className="mb-3 flex items-center justify-between text-xs text-gray-600">
-          <span>{formatTime(currentTime)}</span>
-          <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
-        </div>
-
+      <div className="flex justify-center">
         <div
-          ref={waveContainerRef}
-          className="min-h-[72px] w-full overflow-hidden rounded-md bg-white"
-        />
+          className="bg-white p-2"
+          style={{ width: IPHONE_VIEW_WIDTH, maxWidth: '100%' }}
+        >
+          <div
+            ref={lyricContainerRef}
+            className="overflow-y-auto px-2 py-2 pr-6"
+            style={{ height: IPHONE_VIEW_HEIGHT - 320 }}
+          >
+            {sentenceSegments.length ? (
+              <div className="space-y-5">
+                {sentenceSegments.map((sentence, index) => (
+                  <div
+                    key={`${sentence.startTimeNs}-${sentence.index}`}
+                    data-lyric-index={index}
+                    className={cn(
+                      'w-full text-left text-base leading-7 transition-all break-normal',
+                      index === activeSentenceIndex
+                        ? 'scale-[1.02] font-semibold text-black'
+                        : 'text-gray-400 hover:text-gray-600'
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className="mb-1 block w-full"
+                      onClick={() => seekToTime(sentence.startTimeNs / NANOSECONDS_PER_SECOND)}
+                    >
+                      <span className="flex flex-wrap justify-start gap-x-1">
+                        {sentence.words.map((word, wordIdx) => {
+                          const globalWordIndex = sentence.startWordIndex + wordIdx;
+                          const isActiveWord = globalWordIndex === activeWordIndex;
+                          const normalizedCurrentWord = sanitizeLookupWord(word.text).toLowerCase();
+                          const isLookupWordActive =
+                            Boolean(normalizedActiveLookupWord) &&
+                            normalizedCurrentWord === normalizedActiveLookupWord;
+                          const prev = sentence.words[wordIdx - 1];
+                          const prependSpace = shouldPrependSpace(word.text, prev?.text);
+                          return (
+                            <span
+                              key={`${word.start_time}-${wordIdx}`}
+                              className={cn(
+                                'rounded px-0.5',
+                                isActiveWord ? 'bg-yellow-300 text-black' : '',
+                                isLookupWordActive
+                                  ? 'bg-amber-100 text-black underline decoration-2 decoration-wavy decoration-amber-500'
+                                  : ''
+                              )}
+                              onPointerDown={(event) => startLongPress(word.text, event)}
+                              onPointerUp={cancelLongPress}
+                              onPointerLeave={cancelLongPress}
+                              onPointerCancel={cancelLongPress}
+                            >
+                              {prependSpace ? ` ${word.text}` : word.text}
+                            </span>
+                          );
+                        })}
+                      </span>
+                    </button>
+                    {index === activeSentenceIndex ? (
+                      <div className="text-left text-xs font-normal text-gray-500">
+                        {sentence.textZh || '暂无中文翻译'}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="pt-20 text-center text-xs text-gray-500">
+                该音频当前没有可用的句子时间戳，暂不支持歌词流模式。
+              </div>
+            )}
+          </div>
 
-        <input
-          className="mt-3 w-full"
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.05}
-          value={Math.min(currentTime, duration || 0)}
-          onChange={(e) => seekToTime(Number(e.target.value))}
-        />
+          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+            <span>{formatTime(currentTime)}</span>
+            <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
+          </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <div
+            ref={waveContainerRef}
+            className="mt-2 min-h-[56px] w-full overflow-hidden bg-white"
+          />
+
+          <input
+            className="mt-2 w-full"
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.05}
+            value={Math.min(currentTime, duration || 0)}
+            onChange={(e) => seekToTime(Number(e.target.value))}
+          />
+
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(-10)}>
+              <Iconify icon="solar:rewind-10-seconds-back-broken" width={18} />
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -240,27 +440,13 @@ export function AudioPreviewPlayer({
               disabled={!hasWords}
             >
               <Iconify icon="solar:double-alt-arrow-left-bold" width={18} />
-              上一句
             </Button>
-
-            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(-10)}>
-              <Iconify icon="solar:rewind-10-seconds-back-broken" width={18} />
-              快退 10 秒
-            </Button>
-
-            <Button className="px-3" onClick={() => void togglePlay()}>
+            <Button className="px-4" onClick={() => void togglePlay()}>
               <Iconify
                 icon={isPlaying ? 'solar:pause-circle-broken' : 'solar:play-circle-broken'}
                 width={18}
               />
-              {isPlaying ? '暂停' : '播放'}
             </Button>
-
-            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(10)}>
-              <Iconify icon="solar:rewind-10-seconds-forward-broken" width={18} />
-              快进 10 秒
-            </Button>
-
             <Button
               variant="outline"
               size="sm"
@@ -268,20 +454,21 @@ export function AudioPreviewPlayer({
               onClick={() => jumpToSentence('next')}
               disabled={!hasWords}
             >
-              下一句
               <Iconify icon="solar:double-alt-arrow-right-bold" width={18} />
+            </Button>
+            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(10)}>
+              <Iconify icon="solar:rewind-10-seconds-forward-broken" width={18} />
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">倍速</span>
+          <div className="mt-3 flex items-center justify-center gap-2">
             {PLAYBACK_RATES.map((rate) => (
               <button
                 key={rate}
                 type="button"
                 className={cn(
-                  'rounded-md px-2 py-1 text-xs transition-colors',
-                  playbackRate === rate ? 'bg-black text-white' : 'bg-white text-gray-700 ring-1 ring-black/10'
+                  'rounded-full px-2.5 py-1 text-[11px] transition-colors',
+                  playbackRate === rate ? 'bg-black text-white' : 'bg-white text-gray-600 ring-1 ring-black/10'
                 )}
                 onClick={() => setPlaybackRate(rate)}
               >
@@ -289,31 +476,6 @@ export function AudioPreviewPlayer({
               </button>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-black/10">
-        <div className="border-b border-black/10 px-3 py-2 text-sm font-medium">词时间戳</div>
-        <div className="max-h-72 overflow-auto p-3 text-sm leading-7">
-          {hasWords ? (
-            normalizedWords.map((word, index) => (
-              <button
-                key={`${index}-${word.start_time}`}
-                type="button"
-                className={cn(
-                  'mr-1 inline rounded px-1 py-0.5 text-left transition-colors',
-                  index === activeWordIndex ? 'bg-yellow-300 text-black' : 'text-gray-800 hover:bg-black/5'
-                )}
-                onClick={() => seekToTime(word.start_time / NANOSECONDS_PER_SECOND)}
-              >
-                {word.text}
-              </button>
-            ))
-          ) : (
-            <div className="text-xs text-gray-500">
-              该音频当前没有可用的真实词时间戳，暂不支持逐词定位。
-            </div>
-          )}
         </div>
       </div>
 

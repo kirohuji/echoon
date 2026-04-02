@@ -1,8 +1,8 @@
 import { Service } from './base';
 
 type AudioConfigPayload = {
-  audioModel: string;
-  audioProvider: 'minimax' | 'cartesia';
+  audioModel?: string;
+  audioProvider?: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
   audioVoiceId?: string;
   modelName?: string;
 };
@@ -28,13 +28,24 @@ export type AudioParamsSchemaModel = {
 };
 
 export type AudioParamsSchema = {
-  provider: 'minimax' | 'cartesia';
+  provider: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
   models: AudioParamsSchemaModel[];
+};
+
+export type WordLookupDefinition = {
+  partOfSpeech: string;
+  gloss: string;
+  synonyms: string[];
+};
+
+export type WordLookupResponse = {
+  word: string;
+  definitions: WordLookupDefinition[];
 };
 
 type GenerateAudioFromTextPayload = {
   text: string;
-  audioProvider?: 'minimax' | 'cartesia';
+  audioProvider?: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
   audioModel?: string;
   audioVoiceId?: string;
   params?: Record<string, string | number | boolean>;
@@ -61,11 +72,19 @@ export default class DocumentLibraryService extends Service {
     return this.api.post(`${this.model}/${id}/generate-audio-text`, payload);
   }
 
+  generateTranslation(id: string) {
+    return this.api.post(`${this.model}/${id}/generate-translation`);
+  }
+
   getAudioParamsSchema() {
     return this.api.get(`${this.model}/audio-params-schema`) as Promise<AudioParamsSchema[]>;
   }
 
   getAudioBlob(id: string) {
     return this.api.get(`${this.model}/${id}/audio`, { responseType: 'blob' });
+  }
+
+  lookupWord(word: string) {
+    return this.api.get(`${this.model}/word-lookup`, { params: { word } }) as Promise<WordLookupResponse>;
   }
 }

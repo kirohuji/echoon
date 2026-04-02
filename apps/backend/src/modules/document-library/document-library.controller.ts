@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Res,
   UploadedFile,
   UseGuards,
@@ -139,6 +140,11 @@ export class DocumentLibraryController {
     return this.documentLibraryService.getAudioParamsSchema();
   }
 
+  @Get('word-lookup')
+  wordLookup(@Query('word') word: string) {
+    return this.documentLibraryService.lookupEnglishWord(word);
+  }
+
   @Post('pagination')
   paginate(@Body() data: { page: number; limit: number; keyword?: string; tagId?: string }) {
     return this.documentLibraryService.paginate(data);
@@ -192,6 +198,11 @@ export class DocumentLibraryController {
     const record = await this.documentLibraryService.startGenerateAudioFromText(id, text, user);
     void this.documentLibraryService.generateAudioTextPipeline(id, text, overrides, user);
     return record;
+  }
+
+  @Post(':id/generate-translation')
+  generateTranslation(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.documentLibraryService.generateSentenceTranslation(id, user);
   }
 
   @Get(':id/audio')

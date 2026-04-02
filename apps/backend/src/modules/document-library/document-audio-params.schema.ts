@@ -93,9 +93,263 @@ const CARTESIA_MODELS: DocumentAudioProviderModelSchema[] = [
   },
 ];
 
+const HUME_MODELS: DocumentAudioProviderModelSchema[] = [
+  {
+    model: 'octave-tts',
+    label: 'Octave TTS',
+    requiresVoiceId: false,
+    fields: [
+      {
+        key: 'speed',
+        label: '语速',
+        type: 'number',
+        min: 0.5,
+        max: 2,
+        step: 0.1,
+        defaultValue: 1,
+      },
+      {
+        key: 'stability',
+        label: '稳定度',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.5,
+      },
+      {
+        key: 'style',
+        label: '风格强度',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.2,
+      },
+      {
+        key: 'sampleRate',
+        label: '采样率',
+        type: 'select',
+        defaultValue: '44100',
+        options: [
+          { label: '22050', value: '22050' },
+          { label: '44100', value: '44100' },
+        ],
+      },
+      {
+        key: 'bitrate',
+        label: '码率',
+        type: 'select',
+        defaultValue: '128000',
+        options: [
+          { label: '64000', value: '64000' },
+          { label: '96000', value: '96000' },
+          { label: '128000', value: '128000' },
+        ],
+      },
+    ],
+  },
+  {
+    model: 'octave-tts-v2',
+    label: 'Octave TTS 2',
+    requiresVoiceId: false,
+    fields: [
+      {
+        key: 'speed',
+        label: '语速',
+        type: 'number',
+        min: 0.5,
+        max: 2,
+        step: 0.1,
+        defaultValue: 1,
+      },
+      {
+        key: 'stability',
+        label: '稳定度',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.5,
+      },
+      {
+        key: 'style',
+        label: '风格强度',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.3,
+      },
+    ],
+  },
+];
+
+const ELEVENLABS_MODELS: DocumentAudioProviderModelSchema[] = [
+  {
+    model: 'eleven_v3',
+    label: 'Eleven v3',
+    requiresVoiceId: true,
+    fields: [
+      {
+        key: 'stability',
+        label: '稳定度',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.5,
+      },
+      {
+        key: 'similarityBoost',
+        label: '相似度增强',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.75,
+      },
+      {
+        key: 'style',
+        label: '风格强度',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0,
+      },
+      {
+        key: 'speakerBoost',
+        label: '说话人增强',
+        type: 'boolean',
+        defaultValue: true,
+      },
+    ],
+  },
+  {
+    model: 'eleven_multilingual_v2',
+    label: 'Eleven Multilingual v2',
+    requiresVoiceId: true,
+    fields: [
+      {
+        key: 'stability',
+        label: '稳定度',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.5,
+      },
+      {
+        key: 'similarityBoost',
+        label: '相似度增强',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.75,
+      },
+      {
+        key: 'speakerBoost',
+        label: '说话人增强',
+        type: 'boolean',
+        defaultValue: true,
+      },
+    ],
+  },
+  {
+    model: 'eleven_flash_v2_5',
+    label: 'Eleven Flash v2.5',
+    requiresVoiceId: true,
+    fields: [
+      {
+        key: 'stability',
+        label: '稳定度',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.4,
+      },
+      {
+        key: 'similarityBoost',
+        label: '相似度增强',
+        type: 'number',
+        min: 0,
+        max: 1,
+        step: 0.05,
+        defaultValue: 0.7,
+      },
+    ],
+  },
+];
+
+const DEEPGRAM_MODELS: DocumentAudioProviderModelSchema[] = [
+  {
+    model: 'aura-2-thalia-en',
+    label: 'Aura-2 Thalia',
+    requiresVoiceId: false,
+    fields: [
+      {
+        key: 'encoding',
+        label: '编码格式',
+        type: 'select',
+        defaultValue: 'mp3',
+        options: [
+          { label: 'mp3', value: 'mp3' },
+          { label: 'wav', value: 'wav' },
+          { label: 'linear16', value: 'linear16' },
+        ],
+      },
+      {
+        key: 'sampleRate',
+        label: '采样率',
+        type: 'select',
+        defaultValue: '24000',
+        options: [
+          { label: '16000', value: '16000' },
+          { label: '24000', value: '24000' },
+          { label: '48000', value: '48000' },
+        ],
+      },
+    ],
+  },
+  {
+    model: 'aura-2-asteria-en',
+    label: 'Aura-2 Asteria',
+    requiresVoiceId: false,
+    fields: [
+      {
+        key: 'encoding',
+        label: '编码格式',
+        type: 'select',
+        defaultValue: 'mp3',
+        options: [
+          { label: 'mp3', value: 'mp3' },
+          { label: 'wav', value: 'wav' },
+        ],
+      },
+      {
+        key: 'sampleRate',
+        label: '采样率',
+        type: 'select',
+        defaultValue: '24000',
+        options: [
+          { label: '16000', value: '16000' },
+          { label: '24000', value: '24000' },
+          { label: '48000', value: '48000' },
+        ],
+      },
+    ],
+  },
+];
+
 export const DOCUMENT_AUDIO_PARAMS_SCHEMA: DocumentAudioParamsSchema[] = [
   { provider: AudioProvider.minimax, models: MINIMAX_MODELS },
   { provider: AudioProvider.cartesia, models: CARTESIA_MODELS },
+  { provider: AudioProvider.hume, models: HUME_MODELS },
+  { provider: AudioProvider.elevenlabs, models: ELEVENLABS_MODELS },
+  { provider: AudioProvider.deepgram, models: DEEPGRAM_MODELS },
 ];
 
 function toNumber(raw: unknown): number | undefined {
@@ -103,6 +357,15 @@ function toNumber(raw: unknown): number | undefined {
   if (typeof raw === 'string' && raw.trim() !== '') {
     const value = Number(raw);
     if (Number.isFinite(value)) return value;
+  }
+  return undefined;
+}
+
+function toBoolean(raw: unknown): boolean | undefined {
+  if (typeof raw === 'boolean') return raw;
+  if (typeof raw === 'string') {
+    if (raw.toLowerCase() === 'true') return true;
+    if (raw.toLowerCase() === 'false') return false;
   }
   return undefined;
 }
@@ -129,8 +392,10 @@ export function sanitizeRegenerateAudioParams(
       result[field.key] = parsed;
       continue;
     }
-    if (field.type === 'boolean' && typeof rawValue === 'boolean') {
-      result[field.key] = rawValue;
+    if (field.type === 'boolean') {
+      const parsed = toBoolean(rawValue);
+      if (parsed === undefined) continue;
+      result[field.key] = parsed;
       continue;
     }
     if (field.type === 'select' || field.type === 'string') {
