@@ -284,6 +284,73 @@ export class DocumentLibraryService {
     });
   }
 
+  private splitTextToSentences(text: string) {
+    const normalized = (text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return [];
+    const parts = normalized
+      .split(/(?<=[.!?。！？；;:])\s+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    return parts.length ? parts : [normalized];
+  }
+
+  private splitSentenceToTokens(sentence: string) {
+    const tokens = sentence.match(/[\u4e00-\u9fff]|[A-Za-z0-9']+|[^\s]/g) ?? [];
+    return tokens.filter(Boolean);
+  }
+
+  private buildPseudoWordTimestampsFromText(text: string): DocumentWordTimestamp[] | null {
+    const sentences = this.splitTextToSentences(text);
+    if (!sentences.length) return null;
+    const avgSecondsPerToken = 0.28;
+    let cursorSeconds = 0;
+    const output: DocumentWordTimestamp[] = [];
+    for (const sentence of sentences) {
+      const tokens = this.splitSentenceToTokens(sentence);
+      const sentenceTokens = tokens.length ? tokens : [sentence];
+      for (const token of sentenceTokens) {
+        output.push({
+          text: token,
+          start_time: Math.floor(cursorSeconds * 1_000_000_000),
+        });
+        cursorSeconds += avgSecondsPerToken;
+      }
+      cursorSeconds += 0.35;
+    }
+    return output.length ? output : null;
+  }
+
+  private parseTranslationsContent(content: string, sentenceCount: number) {
+    const direct = (() => {
+      try {
+        const parsed = JSON.parse(content) as { translations?: string[] };
+        return Array.isArray(parsed.translations) ? parsed.translations : null;
+      } catch {
+        return null;
+      }
+    })();
+    if (direct) return direct.map((item) => String(item ?? '').trim());
+
+    const fencedMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fencedMatch?.[1]) {
+      try {
+        const parsed = JSON.parse(fencedMatch[1]) as { translations?: string[] };
+        if (Array.isArray(parsed.translations)) {
+          return parsed.translations.map((item) => String(item ?? '').trim());
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const lines = content
+      .split('\n')
+      .map((item) => item.replace(/^\s*[-*\d.)]+\s*/, '').trim())
+      .filter(Boolean);
+    if (!lines.length) return [];
+    return lines.slice(0, sentenceCount);
+  }
+
   private async translateSentencesToChinese(sentences: string[]) {
     const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
     if (!apiKey || !sentences.length) return [] as string[];
@@ -293,19 +360,20 @@ export class DocumentLibraryService {
         {
           model: 'deepseek-chat',
           temperature: 0.1,
-          response_format: { type: 'json_object' },
           messages: [
             {
               role: 'system',
-              content: '你是翻译助手。请把输入句子逐句翻译为中文，保持顺序和数量一致。',
+              content:
+                '你是翻译助手。请把输入句子逐句翻译为简体中文，严格保持顺序与数量一致，不要解释。',
             },
             {
               role: 'user',
-              content: JSON.stringify({
-                task: 'translate_to_zh_cn',
-                sentences,
-                output: { translations: ['与 sentences 数量一致的中文数组'] },
-              }),
+              content: [
+                '请返回 JSON：{"translations":["..."]}',
+                `translations 数组长度必须等于 ${sentences.length}。`,
+                '待翻译句子：',
+                ...sentences.map((sentence, index) => `${index + 1}. ${sentence}`),
+              ].join('\n'),
             },
           ],
         },
@@ -317,12 +385,29 @@ export class DocumentLibraryService {
           timeout: 60000,
         }
       );
-      const content = response?.data?.choices?.[0]?.message?.content;
+      const rawContent = response?.data?.choices?.[0]?.message?.content;
+      const content =
+        typeof rawContent === 'string'
+          ? rawContent
+          : Array.isArray(rawContent)
+            ? rawContent
+                .map((item) =>
+                  typeof item === 'string'
+                    ? item
+                    : typeof item?.text === 'string'
+                      ? item.text
+                      : ''
+                )
+                .join('\n')
+            : '';
       if (!content) return [];
-      const parsed = JSON.parse(content) as { translations?: string[] };
-      if (!Array.isArray(parsed.translations)) return [];
-      return parsed.translations.map((item) => String(item ?? '').trim());
-    } catch {
+      const parsed = this.parseTranslationsContent(content, sentences.length);
+      if (parsed.length === sentences.length) return parsed;
+      // 长度不匹配时，按已翻译部分返回，缺失项回退原句，避免空值污染 UI
+      return sentences.map((sentence, index) => parsed[index]?.trim() || sentence);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('DeepSeek translation failed', error);
       return [];
     }
   }
@@ -330,13 +415,43 @@ export class DocumentLibraryService {
   private async enrichWordTimestampsWithSentenceTranslation(wordTimestamps: DocumentWordTimestamp[] | null) {
     if (!wordTimestamps?.length) return null;
     const words = [...wordTimestamps].sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0));
-    const sentenceSegments = this.buildSentenceSegments(words);
+    const sentenceSegments = this.buildSentenceSegments(words).map((segment) => {
+      const existingZh = words
+        .slice(segment.startIdx, segment.endIdx + 1)
+        .find((item) => item.sentenceZh?.trim())?.sentenceZh;
+      const existingText = words
+        .slice(segment.startIdx, segment.endIdx + 1)
+        .find((item) => item.sentenceText?.trim())?.sentenceText;
+      return {
+        ...segment,
+        text: (existingText || segment.text).trim(),
+        existingZh: existingZh?.trim() || '',
+      };
+    });
     if (!sentenceSegments.length) return words;
-    const sentenceTexts = sentenceSegments.map((item) => item.text);
-    const translations = await this.translateSentencesToChinese(sentenceTexts);
+
+    // 仅翻译“没有已有翻译”的句子，并按 sentenceText 去重，避免重复调用。
+    const uniquePendingTexts: string[] = [];
+    const pendingTextSet = new Set<string>();
+    for (const segment of sentenceSegments) {
+      if (segment.existingZh) continue;
+      if (!segment.text) continue;
+      if (pendingTextSet.has(segment.text)) continue;
+      pendingTextSet.add(segment.text);
+      uniquePendingTexts.push(segment.text);
+    }
+    const uniquePendingTranslations = uniquePendingTexts.length
+      ? await this.translateSentencesToChinese(uniquePendingTexts)
+      : [];
+    const translationMap = new Map<string, string>();
+    uniquePendingTexts.forEach((text, idx) => {
+      const zh = uniquePendingTranslations[idx]?.trim();
+      if (zh) translationMap.set(text, zh);
+    });
+
     const merged = [...words];
-    sentenceSegments.forEach((segment, idx) => {
-      const sentenceZh = translations[idx] || '';
+    sentenceSegments.forEach((segment) => {
+      const sentenceZh = segment.existingZh || translationMap.get(segment.text) || '';
       for (let i = segment.startIdx; i <= segment.endIdx; i += 1) {
         merged[i] = {
           ...merged[i],
@@ -442,8 +557,10 @@ export class DocumentLibraryService {
         voiceId: providerConfig.voiceId,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
+      const baseWordTimestamps =
+        result.wordTimestamps ?? this.buildPseudoWordTimestampsFromText(extractedText);
       const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
-        result.wordTimestamps
+        baseWordTimestamps
       );
 
       // 3) 写入完成状态
@@ -536,8 +653,9 @@ export class DocumentLibraryService {
         params: sanitizedParams,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
+      const baseWordTimestamps = result.wordTimestamps ?? this.buildPseudoWordTimestampsFromText(text);
       const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
-        result.wordTimestamps
+        baseWordTimestamps
       );
 
       await this.prisma.documentLibrary.update({
@@ -587,10 +705,16 @@ export class DocumentLibraryService {
     const rawWordTimestamps = Array.isArray(record.wordTimestamps)
       ? (record.wordTimestamps as unknown as DocumentWordTimestamp[])
       : null;
-    if (!rawWordTimestamps?.length) {
-      throw new Error('word timestamps not found');
+    const baseWordTimestamps =
+      rawWordTimestamps?.length
+        ? rawWordTimestamps
+        : this.buildPseudoWordTimestampsFromText(record.extractedText || '');
+    if (!baseWordTimestamps?.length) {
+      throw new Error('word timestamps and extractedText are both empty');
     }
-    const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(rawWordTimestamps);
+    const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
+      baseWordTimestamps
+    );
     await this.prisma.documentLibrary.update({
       where: { id },
       data: {
