@@ -21,6 +21,9 @@ export class MinimaxDocumentAudioProvider extends DocumentAudioProvider {
 
     const transcript = input.text.length > 10000 ? input.text.slice(0, 10000) : input.text;
     const voiceId = input.voiceId || this.guessVoiceId(transcript);
+    const speed = typeof input.params?.speed === 'number' ? input.params.speed : 1;
+    const vol = typeof input.params?.vol === 'number' ? input.params.vol : 1;
+    const pitch = typeof input.params?.pitch === 'number' ? input.params.pitch : 0;
 
     const res = await axios.post(
       'https://api.minimaxi.com/v1/t2a_v2',
@@ -32,9 +35,9 @@ export class MinimaxDocumentAudioProvider extends DocumentAudioProvider {
         output_format: 'hex',
         voice_setting: {
           voice_id: voiceId,
-          speed: 1,
-          vol: 1,
-          pitch: 0,
+          speed,
+          vol,
+          pitch,
         },
         audio_setting: {
           format: 'mp3',

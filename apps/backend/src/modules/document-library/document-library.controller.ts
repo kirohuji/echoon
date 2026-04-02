@@ -22,6 +22,7 @@ import type { Response } from 'express';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { DocumentLibraryService } from './document-library.service';
+import { DocumentAudioRegenerateOverrides } from './document-audio.types';
 
 type AudioConfigBody = {
   audioProvider?: AudioProvider;
@@ -133,6 +134,11 @@ export class DocumentLibraryController {
     return this.documentLibraryService.findAll();
   }
 
+  @Get('audio-params-schema')
+  getAudioParamsSchema() {
+    return this.documentLibraryService.getAudioParamsSchema();
+  }
+
   @Post('pagination')
   paginate(@Body() data: { page: number; limit: number; keyword?: string; tagId?: string }) {
     return this.documentLibraryService.paginate(data);
@@ -169,7 +175,7 @@ export class DocumentLibraryController {
   @Post(':id/generate-audio-text')
   async generateAudioFromText(
     @Param('id') id: string,
-    @Body() body: { text: string },
+    @Body() body: { text: string } & DocumentAudioRegenerateOverrides,
     @CurrentUser() user: User,
   ) {
     const text = body?.text?.toString?.() ?? '';
@@ -177,8 +183,14 @@ export class DocumentLibraryController {
       throw new Error('text is empty');
     }
 
+    const overrides: DocumentAudioRegenerateOverrides = {
+      audioProvider: body.audioProvider,
+      audioModel: body.audioModel,
+      audioVoiceId: body.audioVoiceId,
+      params: body.params,
+    };
     const record = await this.documentLibraryService.startGenerateAudioFromText(id, text, user);
-    void this.documentLibraryService.generateAudioTextPipeline(id, text, user);
+    void this.documentLibraryService.generateAudioTextPipeline(id, text, overrides, user);
     return record;
   }
 

@@ -25,6 +25,7 @@ export type GenerateDocumentAudioInput = {
   text: string;
   model: string;
   voiceId?: string | null;
+  params?: Record<string, unknown>;
 };
 
 export type GenerateDocumentAudioResult = {
@@ -33,4 +34,36 @@ export type GenerateDocumentAudioResult = {
   mimeType: string;
   wordTimestamps: DocumentWordTimestamp[] | null;
   providerMeta?: Record<string, unknown>;
+};
+
+export type DocumentAudioParamSchemaField = {
+  key: string;
+  label: string;
+  type: 'number' | 'string' | 'select' | 'boolean';
+  required?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  defaultValue?: string | number | boolean;
+  options?: Array<{ label: string; value: string }>;
+  helpText?: string;
+};
+
+export type DocumentAudioProviderModelSchema = {
+  model: string;
+  label: string;
+  requiresVoiceId: boolean;
+  fields: DocumentAudioParamSchemaField[];
+};
+
+export type DocumentAudioParamsSchema = {
+  provider: AudioProvider;
+  models: DocumentAudioProviderModelSchema[];
+};
+
+export type DocumentAudioRegenerateOverrides = {
+  audioProvider?: AudioProvider;
+  audioModel?: string;
+  audioVoiceId?: string;
+  params?: Record<string, unknown>;
 };

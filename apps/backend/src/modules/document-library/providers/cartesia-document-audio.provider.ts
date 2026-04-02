@@ -116,6 +116,11 @@ export class CartesiaDocumentAudioProvider extends DocumentAudioProvider {
               sample_rate: sampleRate,
             },
             add_timestamps: true,
+            generation_config: {
+              ...(typeof input.params?.speed === 'number' ? { speed: input.params.speed } : {}),
+              ...(typeof input.params?.volume === 'number' ? { volume: input.params.volume } : {}),
+              ...(typeof input.params?.emotion === 'string' ? { emotion: input.params.emotion } : {}),
+            },
           })
         );
       });

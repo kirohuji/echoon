@@ -5,7 +5,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { resolveDocumentAudioConfig } from './document-audio.config';
 import { DocumentAudioProviderFactory } from './document-audio-provider.factory';
-import { CreateDocumentAudioConfigInput } from './document-audio.types';
+import { CreateDocumentAudioConfigInput, DocumentAudioRegenerateOverrides } from './document-audio.types';
+import { DOCUMENT_AUDIO_PARAMS_SCHEMA, sanitizeRegenerateAudioParams } from './document-audio-params.schema';
 
 type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
   title: string;
@@ -89,6 +90,10 @@ export class DocumentLibraryService {
       include: { tags: { include: { tag: true } } },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  getAudioParamsSchema() {
+    return DOCUMENT_AUDIO_PARAMS_SCHEMA;
   }
 
   async paginate({
@@ -401,18 +406,28 @@ export class DocumentLibraryService {
     }).then(() => this.findOne(id));
   }
 
-  async generateAudioTextPipeline(id: string, text: string, user?: User): Promise<void> {
+  async generateAudioTextPipeline(
+    id: string,
+    text: string,
+    overrides?: DocumentAudioRegenerateOverrides,
+    user?: User
+  ): Promise<void> {
     const updatedBy = user?.id ?? 'system';
     try {
       const target = await this.findOne(id);
       if (!target) return;
 
       const providerConfig = resolveDocumentAudioConfig({
-        provider: target.audioProvider,
-        model: target.audioModel ?? target.modelName,
-        voiceId: target.audioVoiceId,
+        provider: overrides?.audioProvider ?? target.audioProvider,
+        model: overrides?.audioModel ?? target.audioModel ?? target.modelName,
+        voiceId: overrides?.audioVoiceId ?? target.audioVoiceId,
         legacyModelName: target.modelName,
       });
+      const sanitizedParams = sanitizeRegenerateAudioParams(
+        providerConfig.provider,
+        providerConfig.model,
+        overrides?.params
+      );
       await this.prisma.documentLibrary.update({
         where: { id },
         data: {
@@ -429,6 +444,7 @@ export class DocumentLibraryService {
         text,
         model: providerConfig.model,
         voiceId: providerConfig.voiceId,
+        params: sanitizedParams,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
 

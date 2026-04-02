@@ -7,6 +7,39 @@ type AudioConfigPayload = {
   modelName?: string;
 };
 
+export type AudioParamsSchemaField = {
+  key: string;
+  label: string;
+  type: 'number' | 'string' | 'select' | 'boolean';
+  required?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  defaultValue?: string | number | boolean;
+  options?: Array<{ label: string; value: string }>;
+  helpText?: string;
+};
+
+export type AudioParamsSchemaModel = {
+  model: string;
+  label: string;
+  requiresVoiceId: boolean;
+  fields: AudioParamsSchemaField[];
+};
+
+export type AudioParamsSchema = {
+  provider: 'minimax' | 'cartesia';
+  models: AudioParamsSchemaModel[];
+};
+
+type GenerateAudioFromTextPayload = {
+  text: string;
+  audioProvider?: 'minimax' | 'cartesia';
+  audioModel?: string;
+  audioVoiceId?: string;
+  params?: Record<string, string | number | boolean>;
+};
+
 export default class DocumentLibraryService extends Service {
   upload(formData: FormData) {
     return this.api.post(`${this.model}/upload`, formData, {
@@ -24,8 +57,12 @@ export default class DocumentLibraryService extends Service {
     return this.api.post(`${this.model}/${id}/generate-audio`);
   }
 
-  generateAudioFromText(id: string, text: string) {
-    return this.api.post(`${this.model}/${id}/generate-audio-text`, { text });
+  generateAudioFromText(id: string, payload: GenerateAudioFromTextPayload) {
+    return this.api.post(`${this.model}/${id}/generate-audio-text`, payload);
+  }
+
+  getAudioParamsSchema() {
+    return this.api.get(`${this.model}/audio-params-schema`) as Promise<AudioParamsSchema[]>;
   }
 
   getAudioBlob(id: string) {

@@ -3,6 +3,11 @@ import * as Dialog from '@radix-ui/react-dialog';
 
 import { Button } from 'src/components/ui/button';
 import { documentLibraryService } from 'src/composables/context-provider';
+import type { AudioParamsSchema } from 'src/modules/document-library';
+import {
+  DOCUMENT_AUDIO_PROVIDER_OPTIONS,
+  type AudioProvider,
+} from '../audio-provider-options';
 import { AudioPreviewPlayer } from './audio-preview-player';
 
 type WordTimestamp = {
@@ -11,6 +16,9 @@ type WordTimestamp = {
 };
 
 type AudioPreviewDocument = {
+  audioProvider?: AudioProvider | null;
+  audioModel?: string | null;
+  audioVoiceId?: string | null;
   audioError?: string | null;
   audioProgress?: number | null;
   audioStage?: string | null;
@@ -32,6 +40,11 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [pollingRun, setPollingRun] = useState(0);
   const [editableText, setEditableText] = useState<string>('');
   const [textDirty, setTextDirty] = useState(false);
+  const [schema, setSchema] = useState<AudioParamsSchema[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<AudioProvider>('minimax');
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
+  const [advancedParams, setAdvancedParams] = useState<Record<string, string | number | boolean>>({});
 
   const objectUrlRef = useRef<string>('');
 
@@ -49,6 +62,17 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     return (res?.data ?? null) as AudioPreviewDocument | null;
   }, [documentId]);
 
+  useEffect(() => {
+    if (!open) return;
+    documentLibraryService
+      .getAudioParamsSchema()
+      .then((res) => {
+        const payload = (res as any)?.data ?? res;
+        setSchema(Array.isArray(payload) ? (payload as AudioParamsSchema[]) : []);
+      })
+      .catch(() => setSchema([]));
+  }, [open]);
+
   // 把提取文本同步到可编辑文本：processing 阶段不覆盖用户输入
   useEffect(() => {
     if (!doc) return;
@@ -56,6 +80,22 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     if (textDirty) return;
     setEditableText(doc?.extractedText ?? '');
   }, [doc, textDirty]);
+
+  useEffect(() => {
+    if (!doc) return;
+    const provider = (doc.audioProvider ?? 'minimax') as AudioProvider;
+    const providerSchema = schema.find((item) => item.provider === provider);
+    const model = doc.audioModel || providerSchema?.models[0]?.model || '';
+    const matchedModel = providerSchema?.models.find((item) => item.model === model);
+    setSelectedProvider(provider);
+    setSelectedModel(model);
+    setSelectedVoiceId(doc.audioVoiceId || '');
+    const defaults: Record<string, string | number | boolean> = {};
+    matchedModel?.fields.forEach((field) => {
+      if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
+    });
+    setAdvancedParams(defaults);
+  }, [doc?.audioProvider, doc?.audioModel, doc?.audioVoiceId, schema, doc]);
 
   // 当重新开始生成时，清空“已手动编辑”的标记
   useEffect(() => {
@@ -143,6 +183,15 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     };
   }, [doc?.audioStatus, documentId, open, stopAndCleanupAudioUrl]);
 
+  const providerSchema = schema.find((item) => item.provider === selectedProvider);
+  const modelSchema =
+    providerSchema?.models.find((item) => item.model === selectedModel) || providerSchema?.models[0];
+  const voiceOptions = DOCUMENT_AUDIO_PROVIDER_OPTIONS[selectedProvider].filter(
+    (item) => item.model === (selectedModel || modelSchema?.model)
+  );
+  const requiresVoiceId = Boolean(modelSchema?.requiresVoiceId);
+  const canRegenerate = doc?.audioStatus !== 'processing';
+
   const onRetryGenerate = useCallback(async () => {
     if (!documentId) return;
     try {
@@ -150,13 +199,29 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       setPollingRun((x) => x + 1);
       const text = (editableText || doc?.extractedText || '').trim();
       if (!text) return;
-      await documentLibraryService.generateAudioFromText(documentId, text);
+      if (requiresVoiceId && !selectedVoiceId) return;
+      await documentLibraryService.generateAudioFromText(documentId, {
+        text,
+        audioProvider: selectedProvider,
+        audioModel: selectedModel || undefined,
+        audioVoiceId: selectedVoiceId || undefined,
+        params: advancedParams,
+      });
       // 后端会把 audioStatus 重置为 processing；当前轮询会自然拉取到新的进度/文本。
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
     }
-  }, [documentId, editableText, doc?.extractedText]);
+  }, [
+    documentId,
+    editableText,
+    doc?.extractedText,
+    selectedProvider,
+    selectedModel,
+    selectedVoiceId,
+    advancedParams,
+    requiresVoiceId,
+  ]);
 
   return (
     <Dialog.Root
@@ -233,11 +298,108 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     音频生成中，完成后可播放
                   </Button>
                 )}
-                {doc?.audioStatus === 'failed' && doc?.audioError ? (
+                {canRegenerate ? (
                   <div className="mt-2 space-y-2">
-                    <div className="text-xs text-red-600">{doc.audioError}</div>
+                    {doc?.audioStatus === 'failed' && doc?.audioError ? (
+                      <div className="text-xs text-red-600">{doc.audioError}</div>
+                    ) : null}
+                    <div className="space-y-2 rounded-md border border-black/10 bg-black/[0.02] p-3">
+                      <div className="text-xs font-medium text-gray-700">重生参数</div>
+                      <div className="grid gap-2 md:grid-cols-3">
+                        <select
+                          className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
+                          value={selectedProvider}
+                          onChange={(e) => {
+                            const provider = e.target.value as AudioProvider;
+                            const nextSchema = schema.find((item) => item.provider === provider);
+                            const nextModel = nextSchema?.models[0]?.model || '';
+                            setSelectedProvider(provider);
+                            setSelectedModel(nextModel);
+                            setSelectedVoiceId('');
+                            const defaults: Record<string, string | number | boolean> = {};
+                            nextSchema?.models[0]?.fields.forEach((field) => {
+                              if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
+                            });
+                            setAdvancedParams(defaults);
+                          }}
+                        >
+                          <option value="minimax">Minimax</option>
+                          <option value="cartesia">Cartesia</option>
+                        </select>
+                        <select
+                          className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
+                          value={selectedModel}
+                          onChange={(e) => {
+                            const nextModel = e.target.value;
+                            setSelectedModel(nextModel);
+                            const nextModelSchema = providerSchema?.models.find((item) => item.model === nextModel);
+                            const defaults: Record<string, string | number | boolean> = {};
+                            nextModelSchema?.fields.forEach((field) => {
+                              if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
+                            });
+                            setAdvancedParams(defaults);
+                          }}
+                        >
+                          {(providerSchema?.models || []).map((item) => (
+                            <option key={item.model} value={item.model}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
+                          value={selectedVoiceId}
+                          onChange={(e) => setSelectedVoiceId(e.target.value)}
+                        >
+                          <option value="">{requiresVoiceId ? '请选择人声' : '默认人声'}</option>
+                          {voiceOptions.map((item) => (
+                            <option key={`${item.model}-${item.voiceId || 'default'}`} value={item.voiceId || ''}>
+                              {item.voiceLabel || item.voiceId || item.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {modelSchema?.fields?.length ? (
+                        <div className="grid gap-2 md:grid-cols-3">
+                          {modelSchema.fields.map((field) => (
+                            <label key={field.key} className="space-y-1 text-xs text-gray-600">
+                              <div>{field.label}</div>
+                              {field.type === 'select' ? (
+                                <select
+                                  className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
+                                  value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
+                                  onChange={(e) =>
+                                    setAdvancedParams((prev) => ({ ...prev, [field.key]: e.target.value }))
+                                  }
+                                >
+                                  {(field.options || []).map((item) => (
+                                    <option key={item.value} value={item.value}>
+                                      {item.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type={field.type === 'number' ? 'number' : 'text'}
+                                  className="h-8 w-full rounded-md border border-black/20 px-2"
+                                  value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
+                                  min={field.min}
+                                  max={field.max}
+                                  step={field.step}
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    const value = field.type === 'number' ? Number(raw) : raw;
+                                    setAdvancedParams((prev) => ({ ...prev, [field.key]: value }));
+                                  }}
+                                />
+                              )}
+                            </label>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                     <Button type="button" variant="outline" onClick={onRetryGenerate}>
-                      重试生成音频
+                      重新生成音频
                     </Button>
                   </div>
                 ) : null}
