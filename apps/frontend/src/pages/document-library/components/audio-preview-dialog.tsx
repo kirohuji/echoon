@@ -230,6 +230,17 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     requiresVoiceId,
   ]);
 
+  const onGenerateTranslation = useCallback(async () => {
+    if (!documentId) return;
+    try {
+      await documentLibraryService.generateTranslation(documentId);
+      setPollingRun((x) => x + 1);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+    }
+  }, [documentId]);
+
   return (
     <Dialog.Root
       open={open}
@@ -443,9 +454,19 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                         ))}
                       </div>
                     ) : null}
-                    <Button type="button" variant="outline" onClick={onRetryGenerate}>
-                      {doc?.audioStatus === 'success' ? '重新生成音频' : '生成音频'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={onRetryGenerate}>
+                        {doc?.audioStatus === 'success' ? '重新生成音频' : '生成音频'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onGenerateTranslation}
+                        disabled={doc?.audioStatus !== 'success'}
+                      >
+                        生成翻译
+                      </Button>
+                    </div>
                   </div>
                 ) : null}
               </div>

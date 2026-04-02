@@ -61,6 +61,10 @@ export default class DocumentLibraryService extends Service {
     return this.api.post(`${this.model}/${id}/generate-audio-text`, payload);
   }
 
+  generateTranslation(id: string) {
+    return this.api.post(`${this.model}/${id}/generate-translation`);
+  }
+
   getAudioParamsSchema() {
     return this.api.get(`${this.model}/audio-params-schema`) as Promise<AudioParamsSchema[]>;
   }

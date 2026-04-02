@@ -194,6 +194,11 @@ export class DocumentLibraryController {
     return record;
   }
 
+  @Post(':id/generate-translation')
+  generateTranslation(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.documentLibraryService.generateSentenceTranslation(id, user);
+  }
+
   @Get(':id/audio')
   async getAudio(@Param('id') id: string, @Res() res: Response) {
     const record = await this.documentLibraryService.findOne(id);

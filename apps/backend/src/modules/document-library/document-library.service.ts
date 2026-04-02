@@ -581,4 +581,23 @@ export class DocumentLibraryService {
     await this.generateAudioPipeline(id, user);
     return this.findOne(id);
   }
+
+  async generateSentenceTranslation(id: string, user?: User) {
+    const record = await this.findOne(id);
+    const rawWordTimestamps = Array.isArray(record.wordTimestamps)
+      ? (record.wordTimestamps as unknown as DocumentWordTimestamp[])
+      : null;
+    if (!rawWordTimestamps?.length) {
+      throw new Error('word timestamps not found');
+    }
+    const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(rawWordTimestamps);
+    await this.prisma.documentLibrary.update({
+      where: { id },
+      data: {
+        wordTimestamps: this.toWordTimestampJson(enrichedWordTimestamps),
+        updatedBy: user?.id ?? 'system',
+      },
+    });
+    return this.findOne(id);
+  }
 }

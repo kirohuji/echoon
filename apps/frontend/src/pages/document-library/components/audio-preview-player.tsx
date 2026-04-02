@@ -43,6 +43,9 @@ function normalizeWordTimestamps(wordTimestamps?: WordTimestamp[] | null) {
     .map((item) => ({
       text: item.text,
       start_time: Math.max(0, item.start_time ?? 0),
+      sentenceIndex: item.sentenceIndex,
+      sentenceText: item.sentenceText,
+      sentenceZh: item.sentenceZh,
     }));
 }
 
@@ -82,6 +85,7 @@ function buildSentenceStarts(words: WordTimestamp[]) {
 
 type SentenceSegment = {
   index: number;
+  startWordIndex: number;
   startTimeNs: number;
   endTimeNs: number;
   text: string;
@@ -105,6 +109,7 @@ function buildSentenceSegments(words: WordTimestamp[]) {
     const sentenceText = sentenceWords.map((item) => item.text).join(' ');
     segments.push({
       index: i,
+      startWordIndex: startIdx,
       startTimeNs,
       endTimeNs: nextSentenceStartNs ?? fallbackEndNs,
       text: sentenceText,
@@ -276,21 +281,75 @@ export function AudioPreviewPlayer({
     <div className="space-y-4">
       <div className="flex justify-center">
         <div
-          className="rounded-[28px] border border-black/10 bg-gradient-to-b from-black/[0.02] to-white p-4 shadow-sm"
+          className="bg-white p-2"
           style={{ width: IPHONE_VIEW_WIDTH, maxWidth: '100%' }}
         >
-          <div className="mb-3 flex items-center justify-between text-xs text-gray-500">
+          <div
+            ref={lyricContainerRef}
+            className="overflow-y-auto px-2 py-2 pr-6"
+            style={{ height: IPHONE_VIEW_HEIGHT - 320 }}
+          >
+            {sentenceSegments.length ? (
+              <div className="space-y-5">
+                {sentenceSegments.map((sentence, index) => (
+                  <div
+                    key={`${sentence.startTimeNs}-${sentence.index}`}
+                    data-lyric-index={index}
+                    className={cn(
+                      'w-full text-center text-base leading-7 transition-all break-words',
+                      index === activeSentenceIndex
+                        ? 'scale-[1.02] font-semibold text-black'
+                        : 'text-gray-400 hover:text-gray-600'
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className="mb-1 block w-full whitespace-normal break-words"
+                      onClick={() => seekToTime(sentence.startTimeNs / NANOSECONDS_PER_SECOND)}
+                    >
+                      {sentence.words.map((word, wordIdx) => {
+                        const globalWordIndex = sentence.startWordIndex + wordIdx;
+                        const isActiveWord = globalWordIndex === activeWordIndex;
+                        return (
+                          <span
+                            key={`${word.start_time}-${wordIdx}`}
+                            className={cn(
+                              'mr-1 rounded px-0.5',
+                              isActiveWord ? 'bg-yellow-300 text-black' : ''
+                            )}
+                          >
+                            {word.text}
+                          </span>
+                        );
+                      })}
+                    </button>
+                    {index === activeSentenceIndex ? (
+                      <div className="text-xs font-normal text-gray-500">
+                        {sentence.textZh || '暂无中文翻译'}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="pt-20 text-center text-xs text-gray-500">
+                该音频当前没有可用的句子时间戳，暂不支持歌词流模式。
+              </div>
+            )}
+          </div>
+
+          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
             <span>{formatTime(currentTime)}</span>
             <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
           </div>
 
           <div
             ref={waveContainerRef}
-            className="min-h-[56px] w-full overflow-hidden rounded-md bg-white"
+            className="mt-2 min-h-[56px] w-full overflow-hidden bg-white"
           />
 
           <input
-            className="mt-3 w-full"
+            className="mt-2 w-full"
             type="range"
             min={0}
             max={duration || 0}
@@ -347,71 +406,8 @@ export function AudioPreviewPlayer({
               </button>
             ))}
           </div>
-
-          <div
-            ref={lyricContainerRef}
-            className="mt-4 overflow-y-auto rounded-xl border border-black/10 bg-white px-4 py-6"
-            style={{ height: IPHONE_VIEW_HEIGHT - 280 }}
-          >
-            {sentenceSegments.length ? (
-              <div className="space-y-5">
-                {sentenceSegments.map((sentence, index) => (
-                  <button
-                    key={`${sentence.startTimeNs}-${sentence.index}`}
-                    type="button"
-                    data-lyric-index={index}
-                    className={cn(
-                      'block w-full text-center text-base leading-7 transition-all',
-                      index === activeSentenceIndex
-                        ? 'scale-[1.02] font-semibold text-black'
-                        : 'text-gray-400 hover:text-gray-600'
-                    )}
-                    onClick={() => seekToTime(sentence.startTimeNs / NANOSECONDS_PER_SECOND)}
-                  >
-                    {sentence.text}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="pt-20 text-center text-xs text-gray-500">
-                该音频当前没有可用的句子时间戳，暂不支持歌词流模式。
-              </div>
-            )}
-          </div>
         </div>
       </div>
-
-      {activeSentenceIndex >= 0 && sentenceSegments[activeSentenceIndex] ? (
-        <div className="rounded-lg border border-black/10 bg-black/[0.02] p-3">
-          <div className="text-xs text-gray-500">当前句中文</div>
-          <div className="mt-1 text-sm text-gray-700">
-            {sentenceSegments[activeSentenceIndex].textZh || '暂无中文翻译'}
-          </div>
-          <div className="mt-3 text-xs text-gray-500">精细定位（当前句）</div>
-          <div className="mt-1 text-sm leading-7">
-            {sentenceSegments[activeSentenceIndex].words.map((word, index) => {
-              const globalWordIndex = normalizedWords.findIndex(
-                (item) => item.start_time === word.start_time && item.text === word.text
-              );
-              return (
-                <button
-                  key={`${index}-${word.start_time}`}
-                  type="button"
-                  className={cn(
-                    'mr-1 inline rounded px-1 py-0.5 text-left transition-colors',
-                    globalWordIndex === activeWordIndex
-                      ? 'bg-yellow-300 text-black'
-                      : 'text-gray-700 hover:bg-black/5'
-                  )}
-                  onClick={() => seekToTime(word.start_time / NANOSECONDS_PER_SECOND)}
-                >
-                  {word.text}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
 
       <AudioPlayer
         ref={audioPlayerRef}
