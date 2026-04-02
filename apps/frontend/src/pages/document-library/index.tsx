@@ -70,16 +70,8 @@ export default function DocumentLibraryPage() {
     setPreviewOpen(true);
   };
 
-  const onOpenAudioManagement = async (id: string, status: LibraryItem['audioStatus']) => {
+  const onOpenAudioManagement = (id: string) => {
     openAudioPreview(id);
-    if (status !== 'pending') return;
-    try {
-      await documentLibraryService.generateAudio(id);
-      loadData();
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error(e);
-    }
   };
 
   const onRemove = async (id: string) => {
@@ -193,7 +185,7 @@ export default function DocumentLibraryPage() {
                           <Button
                             type="button"
                             size="sm"
-                            onClick={() => onOpenAudioManagement(row.id, row.audioStatus)}
+                            onClick={() => onOpenAudioManagement(row.id)}
                             disabled={row.audioStatus === 'processing'}
                           >
                             音频管理
@@ -251,7 +243,7 @@ export default function DocumentLibraryPage() {
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => onOpenAudioManagement(row.id, row.audioStatus)}
+                      onClick={() => onOpenAudioManagement(row.id)}
                       disabled={row.audioStatus === 'processing'}
                     >
                       音频管理

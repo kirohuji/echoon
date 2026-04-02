@@ -435,6 +435,10 @@ export class DocumentLibraryService {
           audioProgress: 40,
           extractedText: text,
           wordTimestamps: Prisma.JsonNull,
+          audioProvider: providerConfig.provider,
+          audioModel: providerConfig.model,
+          audioVoiceId: providerConfig.voiceId,
+          modelName: providerConfig.legacyModelName,
         },
       });
 
@@ -458,6 +462,10 @@ export class DocumentLibraryService {
           audioError: null,
           extractedText: text,
           wordTimestamps: this.toWordTimestampJson(result.wordTimestamps),
+          audioProvider: providerConfig.provider,
+          audioModel: providerConfig.model,
+          audioVoiceId: providerConfig.voiceId,
+          modelName: providerConfig.legacyModelName,
           updatedBy,
         },
       });

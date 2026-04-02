@@ -47,6 +47,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
   const [advancedParams, setAdvancedParams] = useState<Record<string, string | number | boolean>>({});
+  const [showExtractedText, setShowExtractedText] = useState(false);
 
   const objectUrlRef = useRef<string>('');
 
@@ -194,6 +195,9 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   );
   const requiresVoiceId = Boolean(modelSchema?.requiresVoiceId);
   const canRegenerate = doc?.audioStatus !== 'processing';
+  const providerLabel = selectedProvider || doc?.audioProvider || '-';
+  const modelLabel = selectedModel || doc?.audioModel || '-';
+  const voiceLabel = selectedVoiceId || doc?.audioVoiceId || '默认';
 
   const onRetryGenerate = useCallback(async () => {
     if (!documentId) return;
@@ -265,161 +269,182 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
               </div>
             </div>
 
-            <div>
-              <div className="text-sm font-medium">提取文本</div>
-              {doc?.audioStatus === 'processing' ? (
-                <div className="mt-2 max-h-64 overflow-auto rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words">
-                  {doc?.extractedText ? doc.extractedText : '正在提取/生成，请稍候...'}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-lg border border-black/10 bg-black/[0.02] px-3 py-2">
+                  <div className="text-sm font-medium">提取文本</div>
+                  <button
+                    type="button"
+                    className="text-xs text-gray-600 underline underline-offset-2"
+                    onClick={() => setShowExtractedText((prev) => !prev)}
+                  >
+                    {showExtractedText ? '折叠' : '展开'}
+                  </button>
                 </div>
-              ) : doc?.audioStatus === 'success' ? (
-                <div className="mt-2 max-h-40 overflow-auto rounded border border-black/10 bg-black/[0.02] p-3 text-xs leading-5 whitespace-pre-wrap break-words text-gray-700">
-                  {doc?.extractedText || '音频已生成，可在下方词时间戳区域点击定位播放。'}
-                </div>
-              ) : (
-                <textarea
-                  className="mt-2 max-h-64 w-full resize-y rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words outline-none focus-visible:ring-1 focus-visible:ring-black/20"
-                  value={editableText}
-                  onChange={(e) => {
-                    setTextDirty(true);
-                    setEditableText(e.target.value);
-                  }}
-                  placeholder="这里可以编辑要生成音频的文本"
-                />
-              )}
-            </div>
-
-            <div>
-              <div className="text-sm font-medium">播放器</div>
-              <div className="mt-2">
-                {doc?.audioStatus === 'success' ? (
-                  <AudioPreviewPlayer
-                    audioUrl={audioUrl}
-                    wordTimestamps={doc?.wordTimestamps}
-                  />
-                ) : (
-                  <Button type="button" variant="outline" disabled>
-                    音频生成中，完成后可播放
-                  </Button>
-                )}
-                {canRegenerate ? (
-                  <div className="mt-2 space-y-2">
-                    {doc?.audioStatus === 'failed' && doc?.audioError ? (
-                      <div className="text-xs text-red-600">{doc.audioError}</div>
-                    ) : null}
-                    <div className="space-y-2 rounded-md border border-black/10 bg-black/[0.02] p-3">
-                      <div className="text-xs font-medium text-gray-700">重生参数</div>
-                      <div className="grid gap-2 md:grid-cols-3">
-                        <select
-                          className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
-                          value={selectedProvider}
-                          onChange={(e) => {
-                            const provider = e.target.value as AudioProvider;
-                            const nextSchema = schema.find((item) => item.provider === provider);
-                            const nextModel = nextSchema?.models[0]?.model || '';
-                            setSelectedProvider(provider);
-                            setSelectedModel(nextModel);
-                            setSelectedVoiceId('');
-                            const defaults: Record<string, string | number | boolean> = {};
-                            nextSchema?.models[0]?.fields.forEach((field) => {
-                              if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
-                            });
-                            setAdvancedParams(defaults);
-                          }}
-                        >
-                          {ALL_PROVIDERS.map((provider) => (
-                            <option key={provider} value={provider}>
-                              {provider}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
-                          value={selectedModel}
-                          onChange={(e) => {
-                            const nextModel = e.target.value;
-                            setSelectedModel(nextModel);
-                            const nextModelSchema = providerSchema?.models.find((item) => item.model === nextModel);
-                            const defaults: Record<string, string | number | boolean> = {};
-                            nextModelSchema?.fields.forEach((field) => {
-                              if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
-                            });
-                            setAdvancedParams(defaults);
-                          }}
-                        >
-                          {(providerSchema?.models || []).map((item) => (
-                            <option key={item.model} value={item.model}>
-                              {item.label}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
-                          value={selectedVoiceId}
-                          onChange={(e) => setSelectedVoiceId(e.target.value)}
-                        >
-                          <option value="">{requiresVoiceId ? '请选择人声' : '默认人声'}</option>
-                          {voiceOptions.map((item) => (
-                            <option key={`${item.model}-${item.voiceId || 'default'}`} value={item.voiceId || ''}>
-                              {item.voiceLabel || item.voiceId || item.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      {modelSchema?.fields?.length ? (
-                        <div className="grid gap-2 md:grid-cols-3">
-                          {modelSchema.fields.map((field) => (
-                            <label key={field.key} className="space-y-1 text-xs text-gray-600">
-                              <div>{field.label}</div>
-                              {field.type === 'select' ? (
-                                <select
-                                  className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
-                                  value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
-                                  onChange={(e) =>
-                                    setAdvancedParams((prev) => ({ ...prev, [field.key]: e.target.value }))
-                                  }
-                                >
-                                  {(field.options || []).map((item) => (
-                                    <option key={item.value} value={item.value}>
-                                      {item.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : field.type === 'boolean' ? (
-                                <select
-                                  className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
-                                  value={String(advancedParams[field.key] ?? field.defaultValue ?? false)}
-                                  onChange={(e) =>
-                                    setAdvancedParams((prev) => ({
-                                      ...prev,
-                                      [field.key]: e.target.value === 'true',
-                                    }))
-                                  }
-                                >
-                                  <option value="true">true</option>
-                                  <option value="false">false</option>
-                                </select>
-                              ) : (
-                                <input
-                                  type={field.type === 'number' ? 'number' : 'text'}
-                                  className="h-8 w-full rounded-md border border-black/20 px-2"
-                                  value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
-                                  min={field.min}
-                                  max={field.max}
-                                  step={field.step}
-                                  onChange={(e) => {
-                                    const raw = e.target.value;
-                                    const value = field.type === 'number' ? Number(raw) : raw;
-                                    setAdvancedParams((prev) => ({ ...prev, [field.key]: value }));
-                                  }}
-                                />
-                              )}
-                            </label>
-                          ))}
-                        </div>
-                      ) : null}
+                {showExtractedText ? (
+                  doc?.audioStatus === 'processing' ? (
+                    <div className="max-h-64 overflow-auto rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words">
+                      {doc?.extractedText ? doc.extractedText : '正在提取/生成，请稍候...'}
                     </div>
+                  ) : doc?.audioStatus === 'success' ? (
+                    <div className="max-h-64 overflow-auto rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words text-gray-700">
+                      {doc?.extractedText || '暂无文本'}
+                    </div>
+                  ) : (
+                    <textarea
+                      className="max-h-64 w-full resize-y rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words outline-none focus-visible:ring-1 focus-visible:ring-black/20"
+                      value={editableText}
+                      onChange={(e) => {
+                        setTextDirty(true);
+                        setEditableText(e.target.value);
+                      }}
+                      placeholder="这里可以编辑要生成音频的文本"
+                    />
+                  )
+                ) : null}
+
+                {doc?.audioStatus === 'success' ? (
+                  <AudioPreviewPlayer audioUrl={audioUrl} wordTimestamps={doc?.wordTimestamps} />
+                ) : (
+                  <div className="rounded-lg border border-dashed border-black/20 p-6 text-center text-sm text-gray-500">
+                    {doc?.audioStatus === 'processing'
+                      ? '音频生成中，完成后可播放'
+                      : '当前无音频，配置右侧参数后可手动生成'}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-lg border border-black/10 bg-black/[0.02] p-3">
+                  <div className="text-xs font-semibold text-gray-700">当前音频配置</div>
+                  <div className="mt-2 space-y-1 text-xs text-gray-600">
+                    <div>Provider：{providerLabel}</div>
+                    <div>Model：{modelLabel}</div>
+                    <div>Voice：{voiceLabel}</div>
+                    <div>Status：{doc?.audioStatus || '-'}</div>
+                  </div>
+                </div>
+
+                {doc?.audioStatus === 'failed' && doc?.audioError ? (
+                  <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-600">
+                    {doc.audioError}
+                  </div>
+                ) : null}
+
+                {canRegenerate ? (
+                  <div className="space-y-2 rounded-md border border-black/10 bg-black/[0.02] p-3">
+                    <div className="text-xs font-medium text-gray-700">音频控制台（重生参数）</div>
+                    <div className="grid gap-2">
+                      <select
+                        className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
+                        value={selectedProvider}
+                        onChange={(e) => {
+                          const provider = e.target.value as AudioProvider;
+                          const nextSchema = schema.find((item) => item.provider === provider);
+                          const nextModel = nextSchema?.models[0]?.model || '';
+                          setSelectedProvider(provider);
+                          setSelectedModel(nextModel);
+                          setSelectedVoiceId('');
+                          const defaults: Record<string, string | number | boolean> = {};
+                          nextSchema?.models[0]?.fields.forEach((field) => {
+                            if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
+                          });
+                          setAdvancedParams(defaults);
+                        }}
+                      >
+                        {ALL_PROVIDERS.map((provider) => (
+                          <option key={provider} value={provider}>
+                            {provider}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
+                        value={selectedModel}
+                        onChange={(e) => {
+                          const nextModel = e.target.value;
+                          setSelectedModel(nextModel);
+                          const nextModelSchema = providerSchema?.models.find((item) => item.model === nextModel);
+                          const defaults: Record<string, string | number | boolean> = {};
+                          nextModelSchema?.fields.forEach((field) => {
+                            if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
+                          });
+                          setAdvancedParams(defaults);
+                        }}
+                      >
+                        {(providerSchema?.models || []).map((item) => (
+                          <option key={item.model} value={item.model}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
+                        value={selectedVoiceId}
+                        onChange={(e) => setSelectedVoiceId(e.target.value)}
+                      >
+                        <option value="">{requiresVoiceId ? '请选择人声' : '默认人声'}</option>
+                        {voiceOptions.map((item) => (
+                          <option key={`${item.model}-${item.voiceId || 'default'}`} value={item.voiceId || ''}>
+                            {item.voiceLabel || item.voiceId || item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {modelSchema?.fields?.length ? (
+                      <div className="grid gap-2">
+                        {modelSchema.fields.map((field) => (
+                          <label key={field.key} className="space-y-1 text-xs text-gray-600">
+                            <div>{field.label}</div>
+                            {field.type === 'select' ? (
+                              <select
+                                className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
+                                value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
+                                onChange={(e) =>
+                                  setAdvancedParams((prev) => ({ ...prev, [field.key]: e.target.value }))
+                                }
+                              >
+                                {(field.options || []).map((item) => (
+                                  <option key={item.value} value={item.value}>
+                                    {item.label}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : field.type === 'boolean' ? (
+                              <select
+                                className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
+                                value={String(advancedParams[field.key] ?? field.defaultValue ?? false)}
+                                onChange={(e) =>
+                                  setAdvancedParams((prev) => ({
+                                    ...prev,
+                                    [field.key]: e.target.value === 'true',
+                                  }))
+                                }
+                              >
+                                <option value="true">true</option>
+                                <option value="false">false</option>
+                              </select>
+                            ) : (
+                              <input
+                                type={field.type === 'number' ? 'number' : 'text'}
+                                className="h-8 w-full rounded-md border border-black/20 px-2"
+                                value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
+                                min={field.min}
+                                max={field.max}
+                                step={field.step}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  const value = field.type === 'number' ? Number(raw) : raw;
+                                  setAdvancedParams((prev) => ({ ...prev, [field.key]: value }));
+                                }}
+                              />
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    ) : null}
                     <Button type="button" variant="outline" onClick={onRetryGenerate}>
-                      重新生成音频
+                      {doc?.audioStatus === 'success' ? '重新生成音频' : '生成音频'}
                     </Button>
                   </div>
                 ) : null}

@@ -19,6 +19,8 @@ type AudioPreviewPlayerProps = {
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
 const SENTENCE_END_RE = /[.!?。！？；;:]$/;
 const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5];
+const IPHONE_VIEW_WIDTH = 390;
+const IPHONE_VIEW_HEIGHT = 720;
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return '00:00';
@@ -75,6 +77,36 @@ function buildSentenceStarts(words: WordTimestamp[]) {
   return Array.from(new Set(starts)).sort((a, b) => a - b);
 }
 
+type SentenceSegment = {
+  index: number;
+  startTimeNs: number;
+  endTimeNs: number;
+  text: string;
+};
+
+function buildSentenceSegments(words: WordTimestamp[]) {
+  if (!words.length) return [] as SentenceSegment[];
+
+  const starts = buildSentenceStarts(words);
+  const segments: SentenceSegment[] = [];
+  for (let i = 0; i < starts.length; i += 1) {
+    const startIdx = starts[i];
+    const endExclusive = starts[i + 1] ?? words.length;
+    const sentenceWords = words.slice(startIdx, endExclusive);
+    if (!sentenceWords.length) continue;
+    const startTimeNs = sentenceWords[0].start_time;
+    const nextSentenceStartNs = words[endExclusive]?.start_time;
+    const fallbackEndNs = startTimeNs + 2 * NANOSECONDS_PER_SECOND;
+    segments.push({
+      index: i,
+      startTimeNs,
+      endTimeNs: nextSentenceStartNs ?? fallbackEndNs,
+      text: sentenceWords.map((item) => item.text).join(' '),
+    });
+  }
+  return segments;
+}
+
 export function AudioPreviewPlayer({
   audioUrl,
   wordTimestamps,
@@ -88,8 +120,13 @@ export function AudioPreviewPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const lyricContainerRef = useRef<HTMLDivElement | null>(null);
 
   const normalizedWords = useMemo(() => normalizeWordTimestamps(wordTimestamps), [wordTimestamps]);
+  const sentenceSegments = useMemo(
+    () => buildSentenceSegments(normalizedWords),
+    [normalizedWords]
+  );
 
   const activeWordIndex = useMemo(
     () => findActiveWordIndex(normalizedWords, currentTime),
@@ -97,6 +134,16 @@ export function AudioPreviewPlayer({
   );
 
   const sentenceStarts = useMemo(() => buildSentenceStarts(normalizedWords), [normalizedWords]);
+  const activeSentenceIndex = useMemo(() => {
+    if (!sentenceSegments.length) return -1;
+    const currentNs = Math.floor(currentTime * NANOSECONDS_PER_SECOND);
+    const found = sentenceSegments.findIndex(
+      (item, index) =>
+        currentNs >= item.startTimeNs &&
+        (currentNs < item.endTimeNs || index === sentenceSegments.length - 1)
+    );
+    return found;
+  }, [currentTime, sentenceSegments]);
 
   const syncWaveProgress = (time: number) => {
     const waveSurfer = waveSurferRef.current;
@@ -205,33 +252,49 @@ export function AudioPreviewPlayer({
     };
   }, [audioUrl]);
 
+  useEffect(() => {
+    if (!lyricContainerRef.current) return;
+    if (activeSentenceIndex < 0) return;
+    const activeElement = lyricContainerRef.current.querySelector<HTMLElement>(
+      `[data-lyric-index="${activeSentenceIndex}"]`
+    );
+    if (!activeElement) return;
+    activeElement.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [activeSentenceIndex]);
+
   const hasWords = normalizedWords.length > 0;
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-black/10 bg-black/[0.02] p-3">
-        <div className="mb-3 flex items-center justify-between text-xs text-gray-600">
-          <span>{formatTime(currentTime)}</span>
-          <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
-        </div>
-
+      <div className="flex justify-center">
         <div
-          ref={waveContainerRef}
-          className="min-h-[72px] w-full overflow-hidden rounded-md bg-white"
-        />
+          className="rounded-[28px] border border-black/10 bg-gradient-to-b from-black/[0.02] to-white p-4 shadow-sm"
+          style={{ width: IPHONE_VIEW_WIDTH, maxWidth: '100%' }}
+        >
+          <div className="mb-3 flex items-center justify-between text-xs text-gray-500">
+            <span>{formatTime(currentTime)}</span>
+            <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
+          </div>
 
-        <input
-          className="mt-3 w-full"
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.05}
-          value={Math.min(currentTime, duration || 0)}
-          onChange={(e) => seekToTime(Number(e.target.value))}
-        />
+          <div
+            ref={waveContainerRef}
+            className="min-h-[56px] w-full overflow-hidden rounded-md bg-white"
+          />
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="mt-3 w-full"
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.05}
+            value={Math.min(currentTime, duration || 0)}
+            onChange={(e) => seekToTime(Number(e.target.value))}
+          />
+
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(-10)}>
+              <Iconify icon="solar:rewind-10-seconds-back-broken" width={18} />
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -240,27 +303,13 @@ export function AudioPreviewPlayer({
               disabled={!hasWords}
             >
               <Iconify icon="solar:double-alt-arrow-left-bold" width={18} />
-              上一句
             </Button>
-
-            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(-10)}>
-              <Iconify icon="solar:rewind-10-seconds-back-broken" width={18} />
-              快退 10 秒
-            </Button>
-
-            <Button className="px-3" onClick={() => void togglePlay()}>
+            <Button className="px-4" onClick={() => void togglePlay()}>
               <Iconify
                 icon={isPlaying ? 'solar:pause-circle-broken' : 'solar:play-circle-broken'}
                 width={18}
               />
-              {isPlaying ? '暂停' : '播放'}
             </Button>
-
-            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(10)}>
-              <Iconify icon="solar:rewind-10-seconds-forward-broken" width={18} />
-              快进 10 秒
-            </Button>
-
             <Button
               variant="outline"
               size="sm"
@@ -268,20 +317,21 @@ export function AudioPreviewPlayer({
               onClick={() => jumpToSentence('next')}
               disabled={!hasWords}
             >
-              下一句
               <Iconify icon="solar:double-alt-arrow-right-bold" width={18} />
+            </Button>
+            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(10)}>
+              <Iconify icon="solar:rewind-10-seconds-forward-broken" width={18} />
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">倍速</span>
+          <div className="mt-3 flex items-center justify-center gap-2">
             {PLAYBACK_RATES.map((rate) => (
               <button
                 key={rate}
                 type="button"
                 className={cn(
-                  'rounded-md px-2 py-1 text-xs transition-colors',
-                  playbackRate === rate ? 'bg-black text-white' : 'bg-white text-gray-700 ring-1 ring-black/10'
+                  'rounded-full px-2.5 py-1 text-[11px] transition-colors',
+                  playbackRate === rate ? 'bg-black text-white' : 'bg-white text-gray-600 ring-1 ring-black/10'
                 )}
                 onClick={() => setPlaybackRate(rate)}
               >
@@ -289,12 +339,43 @@ export function AudioPreviewPlayer({
               </button>
             ))}
           </div>
+
+          <div
+            ref={lyricContainerRef}
+            className="mt-4 overflow-y-auto rounded-xl border border-black/10 bg-white px-4 py-6"
+            style={{ height: IPHONE_VIEW_HEIGHT - 280 }}
+          >
+            {sentenceSegments.length ? (
+              <div className="space-y-5">
+                {sentenceSegments.map((sentence, index) => (
+                  <button
+                    key={`${sentence.startTimeNs}-${sentence.index}`}
+                    type="button"
+                    data-lyric-index={index}
+                    className={cn(
+                      'block w-full text-center text-base leading-7 transition-all',
+                      index === activeSentenceIndex
+                        ? 'scale-[1.02] font-semibold text-black'
+                        : 'text-gray-400 hover:text-gray-600'
+                    )}
+                    onClick={() => seekToTime(sentence.startTimeNs / NANOSECONDS_PER_SECOND)}
+                  >
+                    {sentence.text}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="pt-20 text-center text-xs text-gray-500">
+                该音频当前没有可用的句子时间戳，暂不支持歌词流模式。
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="rounded-lg border border-black/10">
-        <div className="border-b border-black/10 px-3 py-2 text-sm font-medium">词时间戳</div>
-        <div className="max-h-72 overflow-auto p-3 text-sm leading-7">
+        <div className="border-b border-black/10 px-3 py-2 text-sm font-medium">词时间戳（精细定位）</div>
+        <div className="max-h-48 overflow-auto p-3 text-sm leading-7">
           {hasWords ? (
             normalizedWords.map((word, index) => (
               <button
@@ -302,7 +383,7 @@ export function AudioPreviewPlayer({
                 type="button"
                 className={cn(
                   'mr-1 inline rounded px-1 py-0.5 text-left transition-colors',
-                  index === activeWordIndex ? 'bg-yellow-300 text-black' : 'text-gray-800 hover:bg-black/5'
+                  index === activeWordIndex ? 'bg-yellow-300 text-black' : 'text-gray-700 hover:bg-black/5'
                 )}
                 onClick={() => seekToTime(word.start_time / NANOSECONDS_PER_SECOND)}
               >
@@ -311,7 +392,7 @@ export function AudioPreviewPlayer({
             ))
           ) : (
             <div className="text-xs text-gray-500">
-              该音频当前没有可用的真实词时间戳，暂不支持逐词定位。
+              当前无可用词级时间戳。
             </div>
           )}
         </div>
