@@ -112,7 +112,8 @@ export class DocumentLibraryService {
     return (input || '')
       .trim()
       .toLowerCase()
-      .replace(/^[^a-z]+|[^a-z]+$/g, '');
+      .replace(/^[^a-z\s'-]+|[^a-z\s'-]+$/g, '')
+      .replace(/\s+/g, ' ');
   }
 
   async lookupEnglishWord(word: string) {
@@ -123,7 +124,28 @@ export class DocumentLibraryService {
 
     await this.ensureWordnetReady();
     try {
-      const rows = await wordnet.lookup(normalizedWord, true);
+      const variants = Array.from(
+        new Set([
+          normalizedWord,
+          normalizedWord.replace(/\s+/g, '_'),
+          normalizedWord.replace(/'/g, ''),
+          normalizedWord.replace(/\s+/g, '_').replace(/'/g, ''),
+        ])
+      ).filter(Boolean);
+
+      let rows: any[] = [];
+      for (const variant of variants) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const result = await wordnet.lookup(variant, true);
+          if (Array.isArray(result) && result.length) {
+            rows = result;
+            break;
+          }
+        } catch {
+          // try next variant
+        }
+      }
       return {
         word: normalizedWord,
         definitions: (rows || []).slice(0, 6).map((item) => ({

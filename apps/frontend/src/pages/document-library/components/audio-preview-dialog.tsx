@@ -50,6 +50,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [audioConfigDirty, setAudioConfigDirty] = useState(false);
   const [showExtractedText, setShowExtractedText] = useState(false);
   const [selectedLookupWord, setSelectedLookupWord] = useState('');
+  const [lookupCandidates, setLookupCandidates] = useState<string[]>([]);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [lookupDefinitions, setLookupDefinitions] = useState<WordLookupDefinition[]>([]);
@@ -256,7 +257,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   }, [documentId]);
 
   useEffect(() => {
-    if (!selectedLookupWord) {
+    if (!selectedLookupWord && !lookupCandidates.length) {
       setLookupDefinitions([]);
       setLookupError('');
       setLookupLoading(false);
@@ -267,26 +268,38 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     setLookupLoading(true);
     setLookupError('');
     setLookupDefinitions([]);
-    documentLibraryService
-      .lookupWord(selectedLookupWord)
-      .then((res: any) => {
-        if (cancelled) return;
-        const payload = (res?.data ?? res) as { definitions?: WordLookupDefinition[] };
-        setLookupDefinitions(Array.isArray(payload?.definitions) ? payload.definitions : []);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setLookupError('查词失败，请稍后重试');
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLookupLoading(false);
-      });
+    const tryLookup = async () => {
+      const queue = [...lookupCandidates, selectedLookupWord].filter(Boolean);
+      for (const target of queue) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const res: any = await documentLibraryService.lookupWord(target);
+          if (cancelled) return;
+          const payload = (res?.data ?? res) as { word?: string; definitions?: WordLookupDefinition[] };
+          const defs = Array.isArray(payload?.definitions) ? payload.definitions : [];
+          if (defs.length > 0) {
+            setSelectedLookupWord(String(payload?.word || target));
+            setLookupDefinitions(defs);
+            return;
+          }
+        } catch {
+          // try next candidate
+        }
+      }
+      if (cancelled) return;
+      setLookupError('未找到释义');
+      setLookupDefinitions([]);
+    };
+
+    void tryLookup().finally(() => {
+      if (cancelled) return;
+      setLookupLoading(false);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [selectedLookupWord]);
+  }, [selectedLookupWord, lookupCandidates]);
 
   return (
     <Dialog.Root
@@ -366,7 +379,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     audioUrl={audioUrl}
                     wordTimestamps={doc?.wordTimestamps}
                     activeLookupWord={selectedLookupWord}
-                    onWordLongPress={(word) => setSelectedLookupWord(word)}
+                    onWordLongPress={({ word, candidates }) => {
+                      setSelectedLookupWord(word);
+                      setLookupCandidates(candidates);
+                    }}
                   />
                 ) : (
                   <div className="rounded-lg border border-dashed border-black/20 p-6 text-center text-sm text-gray-500">
@@ -385,7 +401,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                       <button
                         type="button"
                         className="text-[11px] text-gray-500 underline underline-offset-2"
-                        onClick={() => setSelectedLookupWord('')}
+                        onClick={() => {
+                          setSelectedLookupWord('');
+                          setLookupCandidates([]);
+                        }}
                       >
                         清空
                       </button>
