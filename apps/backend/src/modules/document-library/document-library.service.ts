@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { AudioProvider, AudioStatus, Prisma, User } from '@prisma/client';
+import axios from 'axios';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { resolveDocumentAudioConfig } from './document-audio.config';
 import { DocumentAudioProviderFactory } from './document-audio-provider.factory';
 import { CreateDocumentAudioConfigInput, DocumentAudioRegenerateOverrides } from './document-audio.types';
 import { DOCUMENT_AUDIO_PARAMS_SCHEMA, sanitizeRegenerateAudioParams } from './document-audio-params.schema';
+import { DocumentWordTimestamp } from './document-audio.types';
 
 type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
   title: string;
@@ -21,6 +23,7 @@ type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
 @Injectable()
 export class DocumentLibraryService {
   private readonly audioDir = path.join(process.cwd(), 'uploads', 'audios');
+  private readonly sentenceEndRegex = /[.!?。！？；;:]$/;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -267,6 +270,85 @@ export class DocumentLibraryService {
       : Prisma.JsonNull;
   }
 
+  private buildSentenceSegments(words: DocumentWordTimestamp[]) {
+    if (!words.length) return [] as Array<{ sentenceIndex: number; text: string; startIdx: number; endIdx: number }>;
+    const starts = [0];
+    for (let i = 0; i < words.length - 1; i += 1) {
+      if (this.sentenceEndRegex.test(words[i].text || '')) starts.push(i + 1);
+    }
+    const uniqueStarts = Array.from(new Set(starts)).sort((a, b) => a - b);
+    return uniqueStarts.map((startIdx, idx) => {
+      const endIdx = (uniqueStarts[idx + 1] ?? words.length) - 1;
+      const text = words.slice(startIdx, endIdx + 1).map((item) => item.text).join(' ').trim();
+      return { sentenceIndex: idx, text, startIdx, endIdx };
+    });
+  }
+
+  private async translateSentencesToChinese(sentences: string[]) {
+    const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+    if (!apiKey || !sentences.length) return [] as string[];
+    try {
+      const response = await axios.post(
+        'https://api.deepseek.com/chat/completions',
+        {
+          model: 'deepseek-chat',
+          temperature: 0.1,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content: '你是翻译助手。请把输入句子逐句翻译为中文，保持顺序和数量一致。',
+            },
+            {
+              role: 'user',
+              content: JSON.stringify({
+                task: 'translate_to_zh_cn',
+                sentences,
+                output: { translations: ['与 sentences 数量一致的中文数组'] },
+              }),
+            },
+          ],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 60000,
+        }
+      );
+      const content = response?.data?.choices?.[0]?.message?.content;
+      if (!content) return [];
+      const parsed = JSON.parse(content) as { translations?: string[] };
+      if (!Array.isArray(parsed.translations)) return [];
+      return parsed.translations.map((item) => String(item ?? '').trim());
+    } catch {
+      return [];
+    }
+  }
+
+  private async enrichWordTimestampsWithSentenceTranslation(wordTimestamps: DocumentWordTimestamp[] | null) {
+    if (!wordTimestamps?.length) return null;
+    const words = [...wordTimestamps].sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0));
+    const sentenceSegments = this.buildSentenceSegments(words);
+    if (!sentenceSegments.length) return words;
+    const sentenceTexts = sentenceSegments.map((item) => item.text);
+    const translations = await this.translateSentencesToChinese(sentenceTexts);
+    const merged = [...words];
+    sentenceSegments.forEach((segment, idx) => {
+      const sentenceZh = translations[idx] || '';
+      for (let i = segment.startIdx; i <= segment.endIdx; i += 1) {
+        merged[i] = {
+          ...merged[i],
+          sentenceIndex: segment.sentenceIndex,
+          sentenceText: segment.text,
+          sentenceZh,
+        };
+      }
+    });
+    return merged;
+  }
+
   async startGenerateAudio(id: string, user?: User) {
     // 重置本次运行状态，便于前端展示进度/文本。
     await this.prisma.documentLibrary.update({
@@ -360,6 +442,9 @@ export class DocumentLibraryService {
         voiceId: providerConfig.voiceId,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
+      const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
+        result.wordTimestamps
+      );
 
       // 3) 写入完成状态
       await this.prisma.documentLibrary.update({
@@ -371,7 +456,7 @@ export class DocumentLibraryService {
           audioStage: 'done',
           audioError: null,
           extractedText,
-          wordTimestamps: this.toWordTimestampJson(result.wordTimestamps),
+          wordTimestamps: this.toWordTimestampJson(enrichedWordTimestamps),
           updatedBy,
         },
       });
@@ -451,6 +536,9 @@ export class DocumentLibraryService {
         params: sanitizedParams,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
+      const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
+        result.wordTimestamps
+      );
 
       await this.prisma.documentLibrary.update({
         where: { id },
@@ -461,7 +549,7 @@ export class DocumentLibraryService {
           audioStage: 'done',
           audioError: null,
           extractedText: text,
-          wordTimestamps: this.toWordTimestampJson(result.wordTimestamps),
+          wordTimestamps: this.toWordTimestampJson(enrichedWordTimestamps),
           audioProvider: providerConfig.provider,
           audioModel: providerConfig.model,
           audioVoiceId: providerConfig.voiceId,

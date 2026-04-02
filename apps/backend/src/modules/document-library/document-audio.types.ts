@@ -4,6 +4,9 @@ export type DocumentWordTimestamp = {
   text: string;
   start_time: number;
   end_time?: number;
+  sentenceIndex?: number;
+  sentenceText?: string;
+  sentenceZh?: string;
 };
 
 export type CreateDocumentAudioConfigInput = {
