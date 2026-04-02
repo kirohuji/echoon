@@ -4,6 +4,7 @@ import { AudioProvider, AudioStatus, Prisma, User } from '@prisma/client';
 import axios from 'axios';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import * as wordnet from 'wordnet';
 import { resolveDocumentAudioConfig } from './document-audio.config';
 import { DocumentAudioProviderFactory } from './document-audio-provider.factory';
 import { CreateDocumentAudioConfigInput, DocumentAudioRegenerateOverrides } from './document-audio.types';
@@ -24,6 +25,7 @@ type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
 export class DocumentLibraryService {
   private readonly audioDir = path.join(process.cwd(), 'uploads', 'audios');
   private readonly sentenceEndRegex = /[.!?。！？；;:]$/;
+  private wordnetReadyPromise: Promise<void> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -97,6 +99,45 @@ export class DocumentLibraryService {
 
   getAudioParamsSchema() {
     return DOCUMENT_AUDIO_PARAMS_SCHEMA;
+  }
+
+  private async ensureWordnetReady() {
+    if (!this.wordnetReadyPromise) {
+      this.wordnetReadyPromise = wordnet.init();
+    }
+    await this.wordnetReadyPromise;
+  }
+
+  private normalizeLookupWord(input: string) {
+    return (input || '')
+      .trim()
+      .toLowerCase()
+      .replace(/^[^a-z]+|[^a-z]+$/g, '');
+  }
+
+  async lookupEnglishWord(word: string) {
+    const normalizedWord = this.normalizeLookupWord(word);
+    if (!normalizedWord) {
+      return { word: '', definitions: [] };
+    }
+
+    await this.ensureWordnetReady();
+    try {
+      const rows = await wordnet.lookup(normalizedWord, true);
+      return {
+        word: normalizedWord,
+        definitions: (rows || []).slice(0, 6).map((item) => ({
+          partOfSpeech: item?.meta?.synsetType || 'unknown',
+          gloss: item?.glossary || '',
+          synonyms: (item?.meta?.words || [])
+            .map((w) => String(w?.word ?? '').replace(/_/g, ' '))
+            .filter(Boolean)
+            .slice(0, 6),
+        })),
+      };
+    } catch {
+      return { word: normalizedWord, definitions: [] };
+    }
   }
 
   async paginate({

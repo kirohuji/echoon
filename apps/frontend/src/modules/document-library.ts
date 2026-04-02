@@ -32,6 +32,17 @@ export type AudioParamsSchema = {
   models: AudioParamsSchemaModel[];
 };
 
+export type WordLookupDefinition = {
+  partOfSpeech: string;
+  gloss: string;
+  synonyms: string[];
+};
+
+export type WordLookupResponse = {
+  word: string;
+  definitions: WordLookupDefinition[];
+};
+
 type GenerateAudioFromTextPayload = {
   text: string;
   audioProvider?: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
@@ -71,5 +82,9 @@ export default class DocumentLibraryService extends Service {
 
   getAudioBlob(id: string) {
     return this.api.get(`${this.model}/${id}/audio`, { responseType: 'blob' });
+  }
+
+  lookupWord(word: string) {
+    return this.api.get(`${this.model}/word-lookup`, { params: { word } }) as Promise<WordLookupResponse>;
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import AudioPlayer from 'react-audio-player';
 
@@ -17,6 +17,8 @@ type WordTimestamp = {
 type AudioPreviewPlayerProps = {
   audioUrl: string;
   wordTimestamps?: WordTimestamp[] | null;
+  activeLookupWord?: string;
+  onWordLongPress?: (word: string) => void;
 };
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
@@ -24,6 +26,7 @@ const SENTENCE_END_RE = /[.!?。！？；;:]$/;
 const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5];
 const IPHONE_VIEW_WIDTH = '100%';
 const IPHONE_VIEW_HEIGHT = 720;
+const LONG_PRESS_MS = 450;
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return '00:00';
@@ -120,9 +123,31 @@ function buildSentenceSegments(words: WordTimestamp[]) {
   return segments;
 }
 
+function shouldPrependSpace(current: string, previous?: string) {
+  if (!previous) return false;
+  if (!current) return true;
+
+  // 标点前不加空格，如 "hello,"、"world!"。
+  if (/^[,.;:!?%)}\]，。！？；：]/.test(current)) return false;
+  // 英文缩写片段前不加空格，如 I've / we're / don't。
+  if (/^['’](?:s|d|m|re|ve|ll|t)\b/i.test(current)) return false;
+  // 紧跟右侧引号/括号时不加空格。
+  if (/^['’)）\]}]/.test(current)) return false;
+  // 前一个 token 是左引号或左括号时不加空格。
+  if (/^[(\[{“‘]$/.test(previous)) return false;
+
+  return true;
+}
+
+function sanitizeLookupWord(text: string) {
+  return text.replace(/^[^A-Za-z0-9\u00C0-\u024F']+|[^A-Za-z0-9\u00C0-\u024F']+$/g, '').trim();
+}
+
 export function AudioPreviewPlayer({
   audioUrl,
   wordTimestamps,
+  activeLookupWord,
+  onWordLongPress,
 }: AudioPreviewPlayerProps) {
   const audioPlayerRef = useRef<AudioPlayer>(null);
   const waveContainerRef = useRef<HTMLDivElement | null>(null);
@@ -134,8 +159,10 @@ export function AudioPreviewPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const lyricContainerRef = useRef<HTMLDivElement | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
 
   const normalizedWords = useMemo(() => normalizeWordTimestamps(wordTimestamps), [wordTimestamps]);
+  const normalizedActiveLookupWord = (activeLookupWord || '').toLowerCase();
   const sentenceSegments = useMemo(
     () => buildSentenceSegments(normalizedWords),
     [normalizedWords]
@@ -277,6 +304,34 @@ export function AudioPreviewPlayer({
 
   const hasWords = normalizedWords.length > 0;
 
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const startLongPress = (wordText: string, event: PointerEvent<HTMLSpanElement>) => {
+    clearLongPressTimer();
+    void event;
+    const lookupText = sanitizeLookupWord(wordText);
+    const displayText = lookupText || wordText;
+
+    longPressTimerRef.current = window.setTimeout(() => {
+      onWordLongPress?.(displayText);
+    }, LONG_PRESS_MS);
+  };
+
+  const cancelLongPress = () => {
+    clearLongPressTimer();
+  };
+
+  useEffect(() => {
+    return () => {
+      clearLongPressTimer();
+    };
+  }, []);
+
   return (
     <div className="space-y-4">
       <div className="flex justify-center">
@@ -311,15 +366,28 @@ export function AudioPreviewPlayer({
                         {sentence.words.map((word, wordIdx) => {
                           const globalWordIndex = sentence.startWordIndex + wordIdx;
                           const isActiveWord = globalWordIndex === activeWordIndex;
+                          const normalizedCurrentWord = sanitizeLookupWord(word.text).toLowerCase();
+                          const isLookupWordActive =
+                            Boolean(normalizedActiveLookupWord) &&
+                            normalizedCurrentWord === normalizedActiveLookupWord;
+                          const prev = sentence.words[wordIdx - 1];
+                          const prependSpace = shouldPrependSpace(word.text, prev?.text);
                           return (
                             <span
                               key={`${word.start_time}-${wordIdx}`}
                               className={cn(
                                 'rounded px-0.5',
-                                isActiveWord ? 'bg-yellow-300 text-black' : ''
+                                isActiveWord ? 'bg-yellow-300 text-black' : '',
+                                isLookupWordActive
+                                  ? 'bg-amber-100 text-black underline decoration-2 decoration-wavy decoration-amber-500'
+                                  : ''
                               )}
+                              onPointerDown={(event) => startLongPress(word.text, event)}
+                              onPointerUp={cancelLongPress}
+                              onPointerLeave={cancelLongPress}
+                              onPointerCancel={cancelLongPress}
                             >
-                              {word.text}
+                              {prependSpace ? ` ${word.text}` : word.text}
                             </span>
                           );
                         })}

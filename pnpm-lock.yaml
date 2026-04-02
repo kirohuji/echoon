@@ -204,6 +204,9 @@ importers:
       winston:
         specifier: ^3.17.0
         version: 3.17.0
+      wordnet:
+        specifier: ^2.0.0
+        version: 2.0.0
       ws:
         specifier: ^8.20.0
         version: 8.20.0
@@ -536,6 +539,9 @@ importers:
       wavesurfer.js:
         specifier: ^7.10.0
         version: 7.10.0
+      wordnet:
+        specifier: ^2.0.0
+        version: 2.0.0
       yet-another-react-lightbox:
         specifier: ^3.24.0
         version: 3.24.0(@types/react-dom@19.1.6(@types/react@19.1.8))(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -8599,6 +8605,10 @@ packages:
   word-wrap@1.2.5:
     resolution: {integrity: sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==}
     engines: {node: '>=0.10.0'}
+
+  wordnet@2.0.0:
+    resolution: {integrity: sha512-VQOEUBHU6drwXGQx37bVaRqi042IZ8NwJiT9qLtM2x1QzqgIJIRoyZa++rWrUvICK+tYz9ttfYFk1c8IiN6DVQ==}
+    engines: {node: '>= 0.10.0'}
 
   wrap-ansi@6.2.0:
     resolution: {integrity: sha512-r6lPcBGxZXlIcymEu7InxDMhdW0KDxpLgoFLcguasxCaJ/SOIZwINatK9KY/tf+ZrlywOKU0UDj3ATXUBfxJXA==}
@@ -17792,6 +17802,8 @@ snapshots:
       winston-transport: 4.9.0
 
   word-wrap@1.2.5: {}
+
+  wordnet@2.0.0: {}
 
   wrap-ansi@6.2.0:
     dependencies:

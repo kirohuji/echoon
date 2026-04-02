@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 
 import { Button } from 'src/components/ui/button';
 import { documentLibraryService } from 'src/composables/context-provider';
-import type { AudioParamsSchema } from 'src/modules/document-library';
+import type { AudioParamsSchema, WordLookupDefinition } from 'src/modules/document-library';
 import {
   DOCUMENT_AUDIO_PROVIDER_OPTIONS,
   type AudioProvider,
@@ -49,6 +49,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [advancedParams, setAdvancedParams] = useState<Record<string, string | number | boolean>>({});
   const [audioConfigDirty, setAudioConfigDirty] = useState(false);
   const [showExtractedText, setShowExtractedText] = useState(false);
+  const [selectedLookupWord, setSelectedLookupWord] = useState('');
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState('');
+  const [lookupDefinitions, setLookupDefinitions] = useState<WordLookupDefinition[]>([]);
 
   const objectUrlRef = useRef<string>('');
 
@@ -251,6 +255,39 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     }
   }, [documentId]);
 
+  useEffect(() => {
+    if (!selectedLookupWord) {
+      setLookupDefinitions([]);
+      setLookupError('');
+      setLookupLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLookupLoading(true);
+    setLookupError('');
+    setLookupDefinitions([]);
+    documentLibraryService
+      .lookupWord(selectedLookupWord)
+      .then((res: any) => {
+        if (cancelled) return;
+        const payload = (res?.data ?? res) as { definitions?: WordLookupDefinition[] };
+        setLookupDefinitions(Array.isArray(payload?.definitions) ? payload.definitions : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLookupError('查词失败，请稍后重试');
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLookupLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLookupWord]);
+
   return (
     <Dialog.Root
       open={open}
@@ -325,7 +362,12 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                 ) : null}
 
                 {doc?.audioStatus === 'success' ? (
-                  <AudioPreviewPlayer audioUrl={audioUrl} wordTimestamps={doc?.wordTimestamps} />
+                  <AudioPreviewPlayer
+                    audioUrl={audioUrl}
+                    wordTimestamps={doc?.wordTimestamps}
+                    activeLookupWord={selectedLookupWord}
+                    onWordLongPress={(word) => setSelectedLookupWord(word)}
+                  />
                 ) : (
                   <div className="rounded-lg border border-dashed border-black/20 p-6 text-center text-sm text-gray-500">
                     {doc?.audioStatus === 'processing'
@@ -336,6 +378,39 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
               </div>
 
               <div className="space-y-3">
+                <div className="rounded-lg border border-black/10 bg-white p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold text-gray-700">单词查询</div>
+                    {selectedLookupWord ? (
+                      <button
+                        type="button"
+                        className="text-[11px] text-gray-500 underline underline-offset-2"
+                        onClick={() => setSelectedLookupWord('')}
+                      >
+                        清空
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 text-xs text-gray-700">
+                    {selectedLookupWord ? `当前词：${selectedLookupWord}` : '在左侧歌词中长按单词进行查询'}
+                  </div>
+                  <div className="mt-2 max-h-44 space-y-1 overflow-auto text-[11px] text-gray-600">
+                    {lookupLoading ? <div>查询中...</div> : null}
+                    {!lookupLoading && lookupError ? <div className="text-red-500">{lookupError}</div> : null}
+                    {!lookupLoading && !lookupError && selectedLookupWord && lookupDefinitions.length === 0 ? (
+                      <div>未找到释义</div>
+                    ) : null}
+                    {!lookupLoading &&
+                      !lookupError &&
+                      lookupDefinitions.slice(0, 3).map((item, idx) => (
+                        <div key={`${item.partOfSpeech}-${idx}`} className="rounded bg-gray-50 p-1.5">
+                          <div className="font-medium text-gray-700">{item.partOfSpeech}</div>
+                          <div>{item.gloss}</div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
                 <div className="rounded-lg border border-black/10 bg-black/[0.02] p-3">
                   <div className="text-xs font-semibold text-gray-700">当前音频配置</div>
                   <div className="mt-2 space-y-1 text-xs text-gray-600">
