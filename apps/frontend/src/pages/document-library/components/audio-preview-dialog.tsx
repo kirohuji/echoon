@@ -83,6 +83,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [actionError, setActionError] = useState('');
   const [videoAnalyzingPending, setVideoAnalyzingPending] = useState(false);
   const [videoWhisperTemperature, setVideoWhisperTemperature] = useState('0.2');
+  const [videoSplitOnWord, setVideoSplitOnWord] = useState(true);
 
   const objectUrlRef = useRef<string>('');
   const videoObjectUrlRef = useRef<string>('');
@@ -396,8 +397,8 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       const parsedTemperature = Number(videoWhisperTemperature);
       const requestPayload =
         Number.isFinite(parsedTemperature) && parsedTemperature >= 0 && parsedTemperature <= 1
-          ? { whisperTemperature: parsedTemperature }
-          : undefined;
+          ? { whisperTemperature: parsedTemperature, whisperSplitOnWord: videoSplitOnWord }
+          : { whisperSplitOnWord: videoSplitOnWord };
       const res: any = await documentLibraryService.transcribeVideo(documentId, requestPayload);
       const responsePayload = res?.data ?? null;
       if (responsePayload && typeof responsePayload === 'object') {
@@ -413,7 +414,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       setActionError(String(message));
       window.alert(String(message));
     }
-  }, [documentId, videoWhisperTemperature]);
+  }, [documentId, videoWhisperTemperature, videoSplitOnWord]);
 
   useEffect(() => {
     videoAnalyzingPendingRef.current = videoAnalyzingPending;
@@ -566,6 +567,15 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                   </div>
                   {isVideoDoc ? (
                     <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1 text-[11px] text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={videoSplitOnWord}
+                          onChange={(e) => setVideoSplitOnWord(e.target.checked)}
+                          disabled={isVideoAnalyzing}
+                        />
+                        splitOnWord
+                      </label>
                       <input
                         className="h-7 w-20 rounded border border-slate-200 px-2 text-[11px] text-slate-700 outline-none focus-visible:ring-1 focus-visible:ring-indigo-300"
                         value={videoWhisperTemperature}

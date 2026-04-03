@@ -869,7 +869,10 @@ export class DocumentLibraryService {
     return snapshotPath;
   }
 
-  async transcribeVideoToWordTimestamps(videoPath: string, options?: { whisperTemperature?: number }) {
+  async transcribeVideoToWordTimestamps(
+    videoPath: string,
+    options?: { whisperTemperature?: number; whisperSplitOnWord?: boolean }
+  ) {
     const videoExt = path.extname(videoPath);
     const videoName = path.basename(videoPath, videoExt);
     const audioPath = path.join(this.videoAudioDir, `${videoName}.wav`);
@@ -878,6 +881,7 @@ export class DocumentLibraryService {
 
     const wordTimestamps = await this.whisperTranscription.transcribeFileToWordTimestamps(audioPath, {
       temperature: options?.whisperTemperature,
+      splitOnWord: options?.whisperSplitOnWord,
     });
     if (!wordTimestamps?.length) {
       throw new BadRequestException(
@@ -901,7 +905,7 @@ export class DocumentLibraryService {
   async transcribeVideoDocument(
     id: string,
     user?: User,
-    options?: { whisperTemperature?: number }
+    options?: { whisperTemperature?: number; whisperSplitOnWord?: boolean }
   ) {
     const target = await this.findOne(id);
     const isVideoFile =

@@ -281,7 +281,7 @@ export class DocumentLibraryController {
   @Post(':id/transcribe-video')
   async transcribeExistingVideo(
     @Param('id') id: string,
-    @Body() body: { whisperTemperature?: number | string },
+    @Body() body: { whisperTemperature?: number | string; whisperSplitOnWord?: boolean | string },
     @CurrentUser() user: User
   ) {
     const raw = body?.whisperTemperature;
@@ -291,6 +291,16 @@ export class DocumentLibraryController {
         : Number.isFinite(Number(raw))
           ? Number(raw)
           : undefined;
-    return this.documentLibraryService.transcribeVideoDocument(id, user, { whisperTemperature });
+    const rawSplitOnWord = body?.whisperSplitOnWord;
+    const whisperSplitOnWord =
+      typeof rawSplitOnWord === 'boolean'
+        ? rawSplitOnWord
+        : typeof rawSplitOnWord === 'string'
+          ? rawSplitOnWord.trim().toLowerCase() === 'true'
+          : undefined;
+    return this.documentLibraryService.transcribeVideoDocument(id, user, {
+      whisperTemperature,
+      whisperSplitOnWord,
+    });
   }
 }

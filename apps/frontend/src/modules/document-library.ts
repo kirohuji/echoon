@@ -108,7 +108,7 @@ export default class DocumentLibraryService extends Service {
     return this.api.get(`${this.model}/${id}/video`, { responseType: 'blob' });
   }
 
-  transcribeVideo(id: string, payload?: { whisperTemperature?: number }) {
+  transcribeVideo(id: string, payload?: { whisperTemperature?: number; whisperSplitOnWord?: boolean }) {
     return this.api.post(`${this.model}/${id}/transcribe-video`, payload ?? {});
   }
 

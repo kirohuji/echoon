@@ -57,7 +57,7 @@ export class WhisperTranscriptionService {
    */
   async transcribeFileToWordTimestamps(
     audioPath: string,
-    options?: { temperature?: number }
+    options?: { temperature?: number; splitOnWord?: boolean }
   ): Promise<DocumentWordTimestamp[] | null> {
     const url = process.env.WHISPER_INFERENCE_URL?.trim();
     if (!url) return null;
@@ -76,7 +76,9 @@ export class WhisperTranscriptionService {
         : envTemperature;
 
     const language = process.env.WHISPER_LANGUAGE?.trim();
-    const splitOnWord = process.env.WHISPER_SPLIT_ON_WORD?.trim().toLowerCase() === 'true';
+    const splitOnWordFromEnv = process.env.WHISPER_SPLIT_ON_WORD?.trim().toLowerCase() === 'true';
+    const splitOnWord =
+      typeof options?.splitOnWord === 'boolean' ? options.splitOnWord : splitOnWordFromEnv;
 
     const fileLabel = basename(audioPath);
 
