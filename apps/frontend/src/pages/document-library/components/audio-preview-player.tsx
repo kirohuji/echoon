@@ -27,7 +27,8 @@ const NANOSECONDS_PER_SECOND = 1_000_000_000;
 const SENTENCE_END_RE = /[.!?。！？；;:]$/;
 const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5];
 const IPHONE_VIEW_WIDTH = '100%';
-const IPHONE_VIEW_HEIGHT = 720;
+/** 略缩小「手机框」总高度，避免在管理弹窗里占满视口 */
+const IPHONE_VIEW_HEIGHT = 520;
 const LONG_PRESS_MS = 450;
 const SENTENCE_LOOP_GAP_MS = 2000;
 const LOOP_END_EPSILON_NS = 80_000_000; // ~80ms，避免 listen 间隔漏检句尾
@@ -456,31 +457,31 @@ export function AudioPreviewPlayer({
   }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex justify-center">
         <div
-          className="bg-white p-2"
+          className="rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-sm ring-1 ring-black/[0.03]"
           style={{ width: IPHONE_VIEW_WIDTH, maxWidth: '100%' }}
         >
           <div
             ref={lyricContainerRef}
-            className="overflow-y-auto px-2 py-2 pr-6"
-            style={{ height: IPHONE_VIEW_HEIGHT - 320 }}
+            className="overflow-y-auto px-1.5 py-1.5 pr-4"
+            style={{ height: IPHONE_VIEW_HEIGHT - 268 }}
           >
             {sentenceSegments.length ? (
-              <div className="space-y-5">
+              <div className="space-y-3">
                 {sentenceSegments.map((sentence, index) => (
                   <div
                     key={`${sentence.startTimeNs}-${sentence.index}`}
                     data-lyric-index={index}
                     className={cn(
-                      'w-full text-left text-base leading-7 transition-all break-normal',
+                      'w-full text-left text-sm leading-6 transition-all break-normal',
                       index === activeSentenceIndex
-                        ? 'scale-[1.02] font-semibold text-black'
-                        : 'text-gray-400 hover:text-gray-600',
+                        ? 'font-semibold text-slate-900'
+                        : 'text-slate-400 hover:text-slate-600',
                       sentenceLoopEnabled &&
                         loopSegmentIndex === index &&
-                        'rounded-lg px-3 py-2.5 ring-2 ring-inset ring-blue-500/60'
+                        'rounded-lg px-2 py-1.5 ring-2 ring-inset ring-blue-500/55'
                     )}
                   >
                     <button
@@ -561,7 +562,7 @@ export function AudioPreviewPlayer({
                       </span>
                     </button>
                     {index === activeSentenceIndex ? (
-                      <div className="text-left text-xs font-normal text-gray-500">
+                      <div className="text-left text-[10px] font-normal leading-snug text-slate-500">
                         {sentence.textZh || '暂无中文翻译'}
                       </div>
                     ) : null}
@@ -569,7 +570,7 @@ export function AudioPreviewPlayer({
                 ))}
               </div>
             ) : (
-              <div className="px-2 pt-16 text-center text-xs leading-5 text-gray-500">
+              <div className="px-2 py-8 text-center text-[10px] leading-snug text-slate-500">
                 {audioProvider === 'minimax' ? (
                   <>
                     MiniMax 合成的音频不提供词级时间戳。下方仍可使用波形、进度条与倍速播放；逐词高亮、句子跳转与歌词内查词不可用。
@@ -582,7 +583,7 @@ export function AudioPreviewPlayer({
           </div>
 
           {hasWords ? (
-            <div className="mt-2 space-y-2 border-t border-black/10 px-1 pt-2 text-left text-[11px] leading-snug text-gray-700">
+            <div className="mt-1.5 space-y-1 border-t border-slate-100 px-0.5 pt-1.5 text-left text-[10px] leading-snug text-slate-600">
               <label className="flex cursor-pointer items-start gap-2">
                 <input
                   type="checkbox"
@@ -613,18 +614,18 @@ export function AudioPreviewPlayer({
             </div>
           ) : null}
 
-          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+          <div className="mt-1 flex items-center justify-between text-[10px] tabular-nums text-slate-500">
             <span>{formatTime(currentTime)}</span>
             <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
           </div>
 
           <div
             ref={waveContainerRef}
-            className="mt-2 min-h-[56px] w-full overflow-hidden bg-white"
+            className="mt-1 min-h-[44px] w-full overflow-hidden bg-white"
           />
 
           <input
-            className="mt-2 w-full"
+            className="mt-1.5 h-1.5 w-full cursor-pointer accent-indigo-600"
             type="range"
             min={0}
             max={duration || 0}
@@ -633,47 +634,49 @@ export function AudioPreviewPlayer({
             onChange={(e) => seekToTime(Number(e.target.value), true)}
           />
 
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(-10)}>
-              <Iconify icon="solar:rewind-10-seconds-back-broken" width={18} />
+          <div className="mt-2 flex items-center justify-between gap-1">
+            <Button variant="outline" size="sm" className="h-7 px-1.5" onClick={() => jumpBy(-10)}>
+              <Iconify icon="solar:rewind-10-seconds-back-broken" width={16} />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="px-2"
+              className="h-7 px-1.5"
               onClick={() => jumpToSentence('previous')}
               disabled={!hasWords}
             >
-              <Iconify icon="solar:double-alt-arrow-left-bold" width={18} />
+              <Iconify icon="solar:double-alt-arrow-left-bold" width={16} />
             </Button>
-            <Button className="px-4" onClick={() => void togglePlay()}>
+            <Button size="sm" className="h-8 px-3" onClick={() => void togglePlay()}>
               <Iconify
                 icon={isPlaying ? 'solar:pause-circle-broken' : 'solar:play-circle-broken'}
-                width={18}
+                width={17}
               />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              className="px-2"
+              className="h-7 px-1.5"
               onClick={() => jumpToSentence('next')}
               disabled={!hasWords}
             >
-              <Iconify icon="solar:double-alt-arrow-right-bold" width={18} />
+              <Iconify icon="solar:double-alt-arrow-right-bold" width={16} />
             </Button>
-            <Button variant="outline" size="sm" className="px-2" onClick={() => jumpBy(10)}>
-              <Iconify icon="solar:rewind-10-seconds-forward-broken" width={18} />
+            <Button variant="outline" size="sm" className="h-7 px-1.5" onClick={() => jumpBy(10)}>
+              <Iconify icon="solar:rewind-10-seconds-forward-broken" width={16} />
             </Button>
           </div>
 
-          <div className="mt-3 flex items-center justify-center gap-2">
+          <div className="mt-2 flex items-center justify-center gap-1">
             {PLAYBACK_RATES.map((rate) => (
               <button
                 key={rate}
                 type="button"
                 className={cn(
-                  'rounded-full px-2.5 py-1 text-[11px] transition-colors',
-                  playbackRate === rate ? 'bg-black text-white' : 'bg-white text-gray-600 ring-1 ring-black/10'
+                  'rounded-full px-2 py-0.5 text-[10px] transition-colors',
+                  playbackRate === rate
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-slate-50 text-slate-600 ring-1 ring-slate-200/90'
                 )}
                 onClick={() => setPlaybackRate(rate)}
               >

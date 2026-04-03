@@ -1,3 +1,6 @@
+# 部署（deploy）与生产栈：仅 main 分支 push 触发。
+# PR 校验（ci-check）：仅当 PR 的目标分支为 main 时触发（合并进 main 前的检查）。
+# 其他分支的 push / 指向非 main 的 PR 均不会运行本工作流。
 name: Docker Compose CI
 
 on:
@@ -5,6 +8,8 @@ on:
     branches:
       - main
   pull_request:
+    branches:
+      - main
 
 jobs:
   ci-check:

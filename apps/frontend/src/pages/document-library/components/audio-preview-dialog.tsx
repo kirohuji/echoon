@@ -362,17 +362,17 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[96vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg bg-white p-4 shadow-lg"
+          className="fixed left-1/2 top-1/2 z-50 max-h-[88vh] w-[min(96vw,56rem)] max-w-[56rem] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-3 shadow-xl shadow-slate-200/50 sm:p-3.5"
           aria-busy={isAudioProcessing}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Dialog.Title className="text-base font-semibold">音频管理</Dialog.Title>
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <Dialog.Title className="truncate text-sm font-semibold text-slate-900">音频管理</Dialog.Title>
               {isAudioProcessing ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-800">
-                  <span className="relative flex h-2 w-2">
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-800">
+                  <span className="relative flex h-1.5 w-1.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-500" />
                   </span>
                   生成中
                 </span>
@@ -381,7 +381,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
             <Dialog.Close asChild>
               <button
                 type="button"
-                className="rounded-md border border-black/10 px-2 py-1 text-sm hover:bg-black/5"
+                className="shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
                 onClick={onClose}
               >
                 关闭
@@ -389,16 +389,16 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
             </Dialog.Close>
           </div>
 
-          <div className="mt-3 space-y-4">
+          <div className="mt-2.5 space-y-2.5">
             <div
               className={cn(
-                'rounded-lg border p-3 transition-colors',
-                isAudioProcessing ? 'border-blue-200 bg-blue-50/60' : 'border-transparent'
+                'rounded-lg border px-2.5 py-2 transition-colors',
+                isAudioProcessing ? 'border-blue-200/90 bg-blue-50/70' : 'border-slate-100 bg-slate-50/40'
               )}
             >
               {isAudioProcessing ? (
-                <div className="mb-2 flex items-center gap-2 text-sm text-blue-950">
-                  <Iconify icon="svg-spinners:ring-resize" width={22} className="shrink-0 text-blue-600" />
+                <div className="mb-1.5 flex items-center gap-2 text-xs text-blue-950">
+                  <Iconify icon="svg-spinners:ring-resize" width={18} className="shrink-0 text-blue-600" />
                   <span>正在处理，请勿关闭窗口…</span>
                 </div>
               ) : null}
@@ -416,7 +416,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                   style={{ width: `${Math.max(0, Math.min(100, Number(doc?.audioProgress ?? 0)))}%` }}
                 />
               </div>
-              <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+              <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-600">
                 <div className={cn(isAudioProcessing && 'font-medium text-blue-900')}>
                   {doc?.audioStage ? `阶段：${doc.audioStage}` : '阶段：-'}
                 </div>
@@ -426,13 +426,18 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-lg border border-black/10 bg-black/[0.02] px-3 py-2">
-                  <div className="text-sm font-medium">提取文本</div>
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_minmax(16rem,18.5rem)]">
+              <div className="min-w-0 space-y-2">
+                <div
+                  className={cn(
+                    'flex items-center justify-between rounded-lg border border-slate-200/90 bg-gradient-to-r from-white to-slate-50/80',
+                    'px-2.5 py-1.5 shadow-sm ring-1 ring-black/[0.03]'
+                  )}
+                >
+                  <div className="text-xs font-semibold text-slate-800">提取文本</div>
                   <button
                     type="button"
-                    className="text-xs text-gray-600 underline underline-offset-2"
+                    className="rounded-md px-1.5 py-0.5 text-[11px] font-medium text-indigo-600 hover:bg-indigo-50"
                     onClick={() => setShowExtractedText((prev) => !prev)}
                   >
                     {showExtractedText ? '折叠' : '展开'}
@@ -440,29 +445,29 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                 </div>
                 {showExtractedText ? (
                   doc?.audioStatus === 'processing' ? (
-                    <div className="relative max-h-64 overflow-auto rounded border border-blue-200/80 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words shadow-[inset_0_0_0_1px_rgba(59,130,246,0.08)]">
-                      <div className="pointer-events-none absolute inset-0 rounded bg-gradient-to-b from-blue-50/0 via-blue-50/40 to-blue-50/0 animate-pulse" />
-                      <div className="relative flex min-h-[4rem] items-start gap-2">
+                    <div className="relative max-h-44 overflow-auto rounded-lg border border-blue-200/70 bg-white p-2.5 text-[11px] leading-snug whitespace-pre-wrap break-words shadow-sm">
+                      <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-blue-50/0 via-blue-50/30 to-blue-50/0 animate-pulse" />
+                      <div className="relative flex min-h-[3rem] items-start gap-2">
                         <Iconify
                           icon="svg-spinners:3-dots-bounce"
-                          width={20}
+                          width={18}
                           className="mt-0.5 shrink-0 text-blue-500"
                         />
                         <div>
                           <div className="font-medium text-blue-900">文本同步中</div>
-                          <div className="mt-1 text-gray-600">
+                          <div className="mt-0.5 text-slate-600">
                             {doc?.extractedText ? doc.extractedText : '正在提取或等待合成，请稍候…'}
                           </div>
                         </div>
                       </div>
                     </div>
                   ) : doc?.audioStatus === 'success' ? (
-                    <div className="max-h-64 overflow-auto rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words text-gray-700">
+                    <div className="max-h-44 overflow-auto rounded-lg border border-slate-200/90 bg-white p-2.5 text-[11px] leading-snug whitespace-pre-wrap break-words text-slate-700 shadow-sm">
                       {doc?.extractedText || '暂无文本'}
                     </div>
                   ) : (
                     <textarea
-                      className="max-h-64 w-full resize-y rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words outline-none focus-visible:ring-1 focus-visible:ring-black/20"
+                      className="max-h-44 w-full resize-y rounded-lg border border-slate-200/90 bg-white p-2.5 text-[11px] leading-snug whitespace-pre-wrap break-words text-slate-800 outline-none ring-slate-200 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400/30"
                       value={editableText}
                       onChange={(e) => {
                         setTextDirty(true);
@@ -487,50 +492,44 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                 ) : (
                   <div
                     className={cn(
-                      'rounded-lg border p-8 text-center',
+                      'rounded-xl border py-6 text-center',
                       doc?.audioStatus === 'processing'
-                        ? 'border-blue-200 bg-gradient-to-b from-blue-50/80 to-white'
-                        : 'border-dashed border-black/20'
+                        ? 'border-blue-200/90 bg-gradient-to-b from-blue-50/70 to-white shadow-sm'
+                        : 'border-dashed border-slate-200 bg-slate-50/30'
                     )}
                   >
                     {doc?.audioStatus === 'processing' ? (
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="relative">
-                          <Iconify
-                            icon="svg-spinners:bars-rotate-fade"
-                            width={40}
-                            className="text-blue-600"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium text-blue-950">音频生成中</div>
-                          <p className="text-xs text-blue-800/80 animate-pulse">
-                            合成完成后将自动出现播放器，请稍候
+                      <div className="flex flex-col items-center gap-2 px-3">
+                        <Iconify icon="svg-spinners:bars-rotate-fade" width={28} className="text-blue-600" />
+                        <div>
+                          <div className="text-xs font-semibold text-blue-950">音频生成中</div>
+                          <p className="mt-0.5 text-[11px] text-blue-800/85 animate-pulse">
+                            合成完成后将自动出现播放器
                           </p>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500">当前无音频，配置右侧参数后可手动生成</p>
+                      <p className="px-3 text-xs text-slate-500">当前无音频，可在右侧配置参数后生成</p>
                     )}
                   </div>
                 )}
               </div>
 
-              <div className="space-y-3">
+              <div className="min-w-0 space-y-2">
                 <div
                   className={cn(
-                    'overflow-hidden rounded-xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-slate-50/80',
-                    'shadow-sm shadow-slate-200/40 ring-1 ring-black/[0.04]'
+                    'overflow-hidden rounded-lg border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90',
+                    'shadow-sm ring-1 ring-black/[0.03]'
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2 border-b border-slate-100/90 px-3.5 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
-                        <Iconify icon="solar:book-bookmark-bold-duotone" width={20} />
+                  <div className="flex items-start justify-between gap-1.5 border-b border-slate-100 px-2.5 py-2">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100/90">
+                        <Iconify icon="solar:book-bookmark-bold-duotone" width={17} />
                       </span>
-                      <div>
-                        <div className="text-xs font-semibold tracking-tight text-slate-800">单词释义</div>
-                        <div className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold tracking-tight text-slate-800">单词释义</div>
+                        <div className="mt-px truncate text-[10px] leading-tight text-slate-500">
                           {selectedLookupWord
                             ? 'WordNet 英英释义'
                             : doc?.wordTimestamps?.length
@@ -542,7 +541,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     {selectedLookupWord ? (
                       <button
                         type="button"
-                        className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                        className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                         onClick={() => {
                           setSelectedLookupWord('');
                           setLookupCandidates([]);
@@ -553,30 +552,30 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     ) : null}
                   </div>
 
-                  <div className="px-3.5 pb-3 pt-3">
+                  <div className="px-2.5 pb-2 pt-2">
                     {selectedLookupWord ? (
-                      <div className="mb-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
-                        <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">所选词</div>
-                        <div className="mt-0.5 text-lg font-semibold capitalize tracking-tight text-slate-900">
+                      <div className="mb-2 rounded-md border border-slate-100 bg-slate-50/80 px-2 py-1.5">
+                        <div className="text-[9px] font-medium uppercase tracking-wider text-slate-400">所选词</div>
+                        <div className="mt-px text-base font-semibold capitalize tracking-tight text-slate-900">
                           {selectedLookupWord}
                         </div>
                       </div>
                     ) : null}
 
-                    <div className="max-h-52 space-y-2.5 overflow-y-auto pr-0.5 text-[13px] leading-relaxed">
+                    <div className="max-h-[11rem] space-y-2 overflow-y-auto text-[12px] leading-snug">
                       {lookupLoading ? (
-                        <div className="flex items-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-3 py-4 text-sm text-slate-500">
-                          <Iconify icon="svg-spinners:3-dots-fade" width={22} className="text-indigo-500" />
+                        <div className="flex items-center gap-2 rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-2 py-2.5 text-xs text-slate-500">
+                          <Iconify icon="svg-spinners:3-dots-fade" width={18} className="text-indigo-500" />
                           正在查询释义…
                         </div>
                       ) : null}
                       {!lookupLoading && lookupError ? (
-                        <div className="rounded-lg border border-red-100 bg-red-50/90 px-3 py-2 text-sm text-red-700">
+                        <div className="rounded-md border border-red-100 bg-red-50/90 px-2 py-1.5 text-xs text-red-700">
                           {lookupError}
                         </div>
                       ) : null}
                       {!lookupLoading && !lookupError && selectedLookupWord && lookupDefinitions.length === 0 ? (
-                        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/40 px-3 py-5 text-center text-sm text-slate-500">
+                        <div className="rounded-md border border-dashed border-slate-200 bg-slate-50/50 px-2 py-3 text-center text-xs text-slate-500">
                           未找到该词的英文释义
                         </div>
                       ) : null}
@@ -585,27 +584,27 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                         lookupDefinitions.slice(0, 4).map((item, idx) => (
                           <div
                             key={`${item.partOfSpeech}-${idx}`}
-                            className="rounded-lg border border-white/70 bg-white/95 p-3 shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
+                            className="rounded-md border border-slate-100/90 bg-white p-2 shadow-sm"
                           >
                             <span
                               className={cn(
-                                'inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                                'inline-flex rounded-full border px-2 py-px text-[9px] font-semibold uppercase tracking-wide',
                                 partOfSpeechBadgeClass(item.partOfSpeech || '')
                               )}
                             >
                               {(item.partOfSpeech || 'unknown').replace(/_/g, ' ')}
                             </span>
-                            <p className="mt-2.5 text-sm text-slate-700">{item.gloss}</p>
+                            <p className="mt-1.5 text-xs text-slate-700">{item.gloss}</p>
                             {item.synonyms?.length ? (
-                              <div className="mt-2.5 border-t border-slate-100 pt-2">
-                                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                              <div className="mt-1.5 border-t border-slate-100 pt-1.5">
+                                <div className="mb-1 text-[9px] font-medium uppercase tracking-wide text-slate-400">
                                   相关词
                                 </div>
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-0.5">
                                   {item.synonyms.slice(0, 8).map((syn) => (
                                     <span
                                       key={syn}
-                                      className="rounded-md bg-slate-100/90 px-2 py-0.5 text-[11px] text-slate-600"
+                                      className="rounded bg-slate-100 px-1.5 py-px text-[10px] text-slate-600"
                                     >
                                       {syn}
                                     </span>
@@ -619,28 +618,55 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-black/10 bg-black/[0.02] p-3">
-                  <div className="text-xs font-semibold text-gray-700">当前音频配置</div>
-                  <div className="mt-2 space-y-1 text-xs text-gray-600">
-                    <div>Provider：{providerLabel}</div>
-                    <div>Model：{modelLabel}</div>
-                    <div>Voice：{voiceLabel}</div>
-                    <div>Status：{doc?.audioStatus || '-'}</div>
+                <div
+                  className={cn(
+                    'rounded-lg border border-slate-200/90 bg-gradient-to-br from-slate-50/80 to-white p-2.5',
+                    'shadow-sm ring-1 ring-black/[0.03]'
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
+                    <Iconify icon="solar:settings-bold-duotone" width={16} className="text-slate-500" />
+                    当前音频配置
                   </div>
+                  <dl className="mt-1.5 space-y-0.5 text-[10px] leading-tight text-slate-600">
+                    <div className="flex justify-between gap-2">
+                      <dt className="shrink-0 text-slate-400">Provider</dt>
+                      <dd className="truncate text-right font-medium text-slate-800">{providerLabel}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="shrink-0 text-slate-400">Model</dt>
+                      <dd className="truncate text-right font-medium text-slate-800">{modelLabel}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="shrink-0 text-slate-400">Voice</dt>
+                      <dd className="truncate text-right font-medium text-slate-800">{voiceLabel}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="shrink-0 text-slate-400">Status</dt>
+                      <dd className="font-medium text-slate-800">{doc?.audioStatus || '-'}</dd>
+                    </div>
+                  </dl>
                 </div>
 
                 {doc?.audioStatus === 'failed' && doc?.audioError ? (
-                  <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-600">
+                  <div className="rounded-md border border-red-200/90 bg-red-50 px-2 py-1.5 text-[11px] text-red-700">
                     {doc.audioError}
                   </div>
                 ) : null}
 
                 {canRegenerate ? (
-                  <div className="space-y-2 rounded-md border border-black/10 bg-black/[0.02] p-3">
-                    <div className="text-xs font-medium text-gray-700">音频控制台（重生参数）</div>
-                    <div className="grid gap-2">
+                  <div
+                    className={cn(
+                      'space-y-1.5 rounded-lg border border-slate-200/90 bg-white p-2.5 shadow-sm ring-1 ring-black/[0.03]'
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
+                      <Iconify icon="solar:slider-horizontal-bold-duotone" width={16} className="text-indigo-500" />
+                      音频控制台
+                    </div>
+                    <div className="grid gap-1.5">
                       <select
-                        className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
+                        className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30"
                         value={selectedProvider}
                         onChange={(e) => {
                           setAudioConfigDirty(true);
@@ -673,7 +699,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                         ))}
                       </select>
                       <select
-                        className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
+                        className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30 disabled:opacity-50"
                         value={selectedModel}
                         disabled={selectedProvider === ''}
                         onChange={(e) => {
@@ -698,7 +724,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                         ))}
                       </select>
                       <select
-                        className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
+                        className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30 disabled:opacity-50"
                         value={selectedVoiceId}
                         disabled={selectedProvider === '' || !selectedModel}
                         onChange={(e) => {
@@ -715,13 +741,13 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                       </select>
                     </div>
                     {modelSchema?.fields?.length ? (
-                      <div className="grid gap-2">
+                      <div className="grid gap-1.5">
                         {modelSchema.fields.map((field) => (
-                          <label key={field.key} className="space-y-1 text-xs text-gray-600">
-                            <div>{field.label}</div>
+                          <label key={field.key} className="space-y-0.5 text-[10px] text-slate-600">
+                            <div className="font-medium text-slate-700">{field.label}</div>
                             {field.type === 'select' ? (
                               <select
-                                className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
+                                className="h-7 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30"
                                 value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
                                 onChange={(e) =>
                                   setAdvancedParams((prev) => {
@@ -738,7 +764,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                               </select>
                             ) : field.type === 'boolean' ? (
                               <select
-                                className="h-8 w-full rounded-md border border-black/20 bg-white px-2"
+                                className="h-7 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30"
                                 value={String(advancedParams[field.key] ?? field.defaultValue ?? false)}
                                 onChange={(e) =>
                                   setAdvancedParams((prev) => {
@@ -756,7 +782,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                             ) : (
                               <input
                                 type={field.type === 'number' ? 'number' : 'text'}
-                                className="h-8 w-full rounded-md border border-black/20 px-2"
+                                className="h-7 w-full rounded-md border border-slate-200 px-2 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30"
                                 value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
                                 min={field.min}
                                 max={field.max}
@@ -775,17 +801,19 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     ) : null}
                     <div className="flex flex-col gap-1">
                       {!synthesisTextTrimmed ? (
-                        <div className="text-[11px] text-amber-700">请先在「提取文本」中填写或确认有正文，再生成音频。</div>
+                        <div className="text-[10px] leading-snug text-amber-800">请先在「提取文本」中填写或确认有正文。</div>
                       ) : null}
                       {synthesisTextTrimmed && !audioConfigReady ? (
-                        <div className="text-[11px] text-amber-700">
-                          请选择 TTS 提供商、模型{requiresVoiceId ? '与人声' : ''}后再生成。
+                        <div className="text-[10px] leading-snug text-amber-800">
+                          请选择 TTS 提供商、模型{requiresVoiceId ? '与人声' : ''}。
                         </div>
                       ) : null}
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       <Button
                         type="button"
                         variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
                         onClick={onRetryGenerate}
                         disabled={!canStartSynthesis}
                         title={
@@ -801,6 +829,8 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                       <Button
                         type="button"
                         variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
                         onClick={onGenerateTranslation}
                         disabled={
                           doc?.audioStatus !== 'success' || !doc?.wordTimestamps?.length
