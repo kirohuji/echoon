@@ -17,8 +17,10 @@ type WordTimestamp = {
 type AudioPreviewPlayerProps = {
   audioUrl: string;
   wordTimestamps?: WordTimestamp[] | null;
+  /** 用于无时间戳时的说明文案（如 minimax 不提供词级时间戳） */
+  audioProvider?: string | null;
   activeLookupWord?: string;
-  onWordLongPress?: (word: string) => void;
+  onWordLongPress?: (payload: { word: string; candidates: string[] }) => void;
 };
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
@@ -143,9 +145,40 @@ function sanitizeLookupWord(text: string) {
   return text.replace(/^[^A-Za-z0-9\u00C0-\u024F']+|[^A-Za-z0-9\u00C0-\u024F']+$/g, '').trim();
 }
 
+function joinTokens(tokens: string[]) {
+  return tokens.reduce((acc, token, index) => {
+    const prev = index > 0 ? tokens[index - 1] : undefined;
+    const withSpace = shouldPrependSpace(token, prev);
+    return `${acc}${withSpace ? ' ' : ''}${token}`;
+  }, '');
+}
+
+function buildPhraseCandidates(sentenceWords: WordTimestamp[], focusIdx: number) {
+  const candidates: string[] = [];
+  for (let length = 4; length >= 2; length -= 1) {
+    const minStart = Math.max(0, focusIdx - (length - 1));
+    const maxStart = Math.min(focusIdx, sentenceWords.length - length);
+    for (let start = minStart; start <= maxStart; start += 1) {
+      const chunk = sentenceWords.slice(start, start + length).map((item) => sanitizeLookupWord(item.text)).filter(Boolean);
+      if (chunk.length < 2) continue;
+      const phrase = joinTokens(chunk).toLowerCase();
+      if (phrase.includes(' ') && !candidates.includes(phrase)) candidates.push(phrase);
+    }
+  }
+  return candidates;
+}
+
+function tokenizeLookupPhrase(phrase: string) {
+  return phrase
+    .split(/\s+/)
+    .map((item) => sanitizeLookupWord(item).toLowerCase())
+    .filter(Boolean);
+}
+
 export function AudioPreviewPlayer({
   audioUrl,
   wordTimestamps,
+  audioProvider,
   activeLookupWord,
   onWordLongPress,
 }: AudioPreviewPlayerProps) {
@@ -163,6 +196,10 @@ export function AudioPreviewPlayer({
 
   const normalizedWords = useMemo(() => normalizeWordTimestamps(wordTimestamps), [wordTimestamps]);
   const normalizedActiveLookupWord = (activeLookupWord || '').toLowerCase();
+  const activeLookupTokens = useMemo(
+    () => tokenizeLookupPhrase(normalizedActiveLookupWord),
+    [normalizedActiveLookupWord]
+  );
   const sentenceSegments = useMemo(
     () => buildSentenceSegments(normalizedWords),
     [normalizedWords]
@@ -311,14 +348,20 @@ export function AudioPreviewPlayer({
     }
   };
 
-  const startLongPress = (wordText: string, event: PointerEvent<HTMLSpanElement>) => {
+  const startLongPress = (
+    wordText: string,
+    sentenceWords: WordTimestamp[],
+    wordIdx: number,
+    event: PointerEvent<HTMLSpanElement>
+  ) => {
     clearLongPressTimer();
     void event;
     const lookupText = sanitizeLookupWord(wordText);
     const displayText = lookupText || wordText;
+    const candidates = buildPhraseCandidates(sentenceWords, wordIdx);
 
     longPressTimerRef.current = window.setTimeout(() => {
-      onWordLongPress?.(displayText);
+      onWordLongPress?.({ word: displayText.toLowerCase(), candidates });
     }, LONG_PRESS_MS);
   };
 
@@ -362,35 +405,63 @@ export function AudioPreviewPlayer({
                       className="mb-1 block w-full"
                       onClick={() => seekToTime(sentence.startTimeNs / NANOSECONDS_PER_SECOND)}
                     >
-                      <span className="flex flex-wrap justify-start gap-x-1">
-                        {sentence.words.map((word, wordIdx) => {
-                          const globalWordIndex = sentence.startWordIndex + wordIdx;
-                          const isActiveWord = globalWordIndex === activeWordIndex;
-                          const normalizedCurrentWord = sanitizeLookupWord(word.text).toLowerCase();
-                          const isLookupWordActive =
-                            Boolean(normalizedActiveLookupWord) &&
-                            normalizedCurrentWord === normalizedActiveLookupWord;
-                          const prev = sentence.words[wordIdx - 1];
-                          const prependSpace = shouldPrependSpace(word.text, prev?.text);
-                          return (
-                            <span
-                              key={`${word.start_time}-${wordIdx}`}
-                              className={cn(
-                                'rounded px-0.5',
-                                isActiveWord ? 'bg-yellow-300 text-black' : '',
-                                isLookupWordActive
-                                  ? 'bg-amber-100 text-black underline decoration-2 decoration-wavy decoration-amber-500'
-                                  : ''
-                              )}
-                              onPointerDown={(event) => startLongPress(word.text, event)}
-                              onPointerUp={cancelLongPress}
-                              onPointerLeave={cancelLongPress}
-                              onPointerCancel={cancelLongPress}
-                            >
-                              {prependSpace ? ` ${word.text}` : word.text}
-                            </span>
-                          );
-                        })}
+                      <span className="block whitespace-normal text-left">
+                        {(() => {
+                          const highlightedIndices = new Set<number>();
+                          if (activeLookupTokens.length > 1) {
+                            for (
+                              let start = 0;
+                              start <= sentence.words.length - activeLookupTokens.length;
+                              start += 1
+                            ) {
+                              const matched = activeLookupTokens.every((token, offset) => {
+                                const target = sanitizeLookupWord(sentence.words[start + offset]?.text).toLowerCase();
+                                return target === token;
+                              });
+                              if (matched) {
+                                for (let k = 0; k < activeLookupTokens.length; k += 1) {
+                                  highlightedIndices.add(sentence.startWordIndex + start + k);
+                                }
+                              }
+                            }
+                          }
+                          return sentence.words.map((word, wordIdx) => {
+                            const globalWordIndex = sentence.startWordIndex + wordIdx;
+                            const isActiveWord = globalWordIndex === activeWordIndex;
+                            const normalizedCurrentWord = sanitizeLookupWord(word.text).toLowerCase();
+                            const isLookupWordActive =
+                              (activeLookupTokens.length <= 1 &&
+                                Boolean(normalizedActiveLookupWord) &&
+                                normalizedCurrentWord === normalizedActiveLookupWord) ||
+                              highlightedIndices.has(globalWordIndex);
+                            const prev = sentence.words[wordIdx - 1];
+                            const prependSpace = shouldPrependSpace(word.text, prev?.text);
+                            const candidates = buildPhraseCandidates(sentence.words, wordIdx);
+                            return (
+                              <span
+                                key={`${word.start_time}-${wordIdx}`}
+                                className={cn(
+                                  'rounded px-0.5',
+                                  isActiveWord ? 'bg-yellow-300 text-black' : '',
+                                  isLookupWordActive
+                                    ? 'bg-amber-100 text-black underline decoration-1 decoration-wavy decoration-amber-500'
+                                    : ''
+                                )}
+                                onClick={() =>
+                                  onWordLongPress?.({ word: normalizedCurrentWord || word.text.toLowerCase(), candidates })
+                                }
+                                onPointerDown={(event) =>
+                                  startLongPress(word.text, sentence.words, wordIdx, event)
+                                }
+                                onPointerUp={cancelLongPress}
+                                onPointerLeave={cancelLongPress}
+                                onPointerCancel={cancelLongPress}
+                              >
+                                {prependSpace ? ` ${word.text}` : word.text}
+                              </span>
+                            );
+                          });
+                        })()}
                       </span>
                     </button>
                     {index === activeSentenceIndex ? (
@@ -402,8 +473,14 @@ export function AudioPreviewPlayer({
                 ))}
               </div>
             ) : (
-              <div className="pt-20 text-center text-xs text-gray-500">
-                该音频当前没有可用的句子时间戳，暂不支持歌词流模式。
+              <div className="px-2 pt-16 text-center text-xs leading-5 text-gray-500">
+                {audioProvider === 'minimax' ? (
+                  <>
+                    MiniMax 合成的音频不提供词级时间戳。下方仍可使用波形、进度条与倍速播放；逐词高亮、句子跳转与歌词内查词不可用。
+                  </>
+                ) : (
+                  <>该音频没有词级时间戳，仅支持波形与进度控制；逐词歌词与句子跳转不可用。</>
+                )}
               </div>
             )}
           </div>

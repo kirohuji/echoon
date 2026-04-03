@@ -113,21 +113,61 @@ export const DOCUMENT_AUDIO_PROVIDER_OPTIONS: Record<AudioProvider, ProviderOpti
   ],
 };
 
-const DEFAULT_PROVIDER = AudioProvider.minimax;
+export class DocumentAudioConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DocumentAudioConfigError';
+  }
+}
 
-export function resolveDocumentAudioConfig(input: CreateDocumentAudioConfigInput): DocumentAudioConfig {
-  const provider = input.provider ?? DEFAULT_PROVIDER;
+function pickProviderOption(
+  provider: AudioProvider,
+  modelKey: string,
+  voiceId: string | null | undefined
+): ProviderOption {
   const options = DOCUMENT_AUDIO_PROVIDER_OPTIONS[provider];
-  const fallbackOption = options[0];
-  const matchedOption = options.find(
-    (option) => option.model === input.model && (!input.voiceId || option.voiceId === input.voiceId)
-  );
-  const selectedOption = matchedOption ?? fallbackOption;
+  if (!options?.length) {
+    throw new DocumentAudioConfigError('未知的 TTS 提供商');
+  }
+  const byModel = options.filter((o) => o.model === modelKey);
+  if (!byModel.length) {
+    throw new DocumentAudioConfigError(
+      `模型「${modelKey}」与当前提供商不匹配，请在音频管理中重新选择`
+    );
+  }
+  if (voiceId != null && voiceId !== '') {
+    const row = byModel.find((o) => o.voiceId === voiceId);
+    if (!row) {
+      throw new DocumentAudioConfigError('当前保存的人声与模型组合无效，请重新选择');
+    }
+    return row;
+  }
+  const auto = byModel.find((o) => o.voiceId == null);
+  if (auto) return auto;
+  return byModel[0];
+}
 
+/**
+ * 生成音频前使用：不补默认提供商/模型，配置不完整时抛 DocumentAudioConfigError。
+ */
+export function resolveDocumentAudioConfigForGeneration(
+  input: CreateDocumentAudioConfigInput
+): DocumentAudioConfig {
+  if (input.provider == null) {
+    throw new DocumentAudioConfigError('请先在音频管理中配置 TTS 提供商与模型后再生成音频');
+  }
+  const modelKey = (input.model || input.legacyModelName || '').trim();
+  if (!modelKey) {
+    throw new DocumentAudioConfigError('请先在音频管理中配置 TTS 模型后再生成音频');
+  }
+  const selectedOption = pickProviderOption(input.provider, modelKey, input.voiceId);
   return {
-    provider,
-    model: input.model || selectedOption.model,
-    voiceId: input.voiceId ?? selectedOption.voiceId,
-    legacyModelName: input.legacyModelName || input.model || selectedOption.model,
+    provider: input.provider,
+    model: selectedOption.model,
+    voiceId:
+      input.voiceId != null && input.voiceId !== ''
+        ? input.voiceId
+        : selectedOption.voiceId,
+    legacyModelName: input.legacyModelName?.trim() || selectedOption.model,
   };
 }

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 
+import { Iconify } from 'src/components/iconify';
 import { Button } from 'src/components/ui/button';
 import { documentLibraryService } from 'src/composables/context-provider';
+import { cn } from 'src/lib/utils';
 import type { AudioParamsSchema, WordLookupDefinition } from 'src/modules/document-library';
 import {
   DOCUMENT_AUDIO_PROVIDER_OPTIONS,
@@ -18,6 +20,7 @@ type WordTimestamp = {
 type AudioPreviewDocument = {
   audioProvider?: AudioProvider | null;
   audioModel?: string | null;
+  modelName?: string | null;
   audioVoiceId?: string | null;
   audioError?: string | null;
   audioProgress?: number | null;
@@ -35,6 +38,8 @@ type AudioPreviewDialogProps = {
 
 const ALL_PROVIDERS: AudioProvider[] = ['minimax', 'cartesia', 'hume', 'elevenlabs', 'deepgram'];
 
+type SelectedProvider = AudioProvider | '';
+
 export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDialogProps) {
   const [doc, setDoc] = useState<AudioPreviewDocument | null>(null);
   const [audioUrl, setAudioUrl] = useState<string>('');
@@ -43,13 +48,14 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [editableText, setEditableText] = useState<string>('');
   const [textDirty, setTextDirty] = useState(false);
   const [schema, setSchema] = useState<AudioParamsSchema[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<AudioProvider>('minimax');
+  const [selectedProvider, setSelectedProvider] = useState<SelectedProvider>('');
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
   const [advancedParams, setAdvancedParams] = useState<Record<string, string | number | boolean>>({});
   const [audioConfigDirty, setAudioConfigDirty] = useState(false);
   const [showExtractedText, setShowExtractedText] = useState(false);
   const [selectedLookupWord, setSelectedLookupWord] = useState('');
+  const [lookupCandidates, setLookupCandidates] = useState<string[]>([]);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [lookupDefinitions, setLookupDefinitions] = useState<WordLookupDefinition[]>([]);
@@ -91,10 +97,18 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
 
   useEffect(() => {
     if (!doc || audioConfigDirty) return;
-    const provider = (doc.audioProvider ?? 'minimax') as AudioProvider;
-    const providerSchema = schema.find((item) => item.provider === provider);
-    const model = doc.audioModel || providerSchema?.models[0]?.model || '';
-    const matchedModel = providerSchema?.models.find((item) => item.model === model);
+    if (!doc.audioProvider) {
+      setSelectedProvider('');
+      setSelectedModel('');
+      setSelectedVoiceId(doc.audioVoiceId || '');
+      setAdvancedParams({});
+      return;
+    }
+    const provider = doc.audioProvider as AudioProvider;
+    const docProviderSchema = schema.find((item) => item.provider === provider);
+    const model =
+      doc.audioModel || doc.modelName || docProviderSchema?.models[0]?.model || '';
+    const matchedModel = docProviderSchema?.models.find((item) => item.model === model);
     setSelectedProvider(provider);
     setSelectedModel(model);
     setSelectedVoiceId(doc.audioVoiceId || '');
@@ -103,7 +117,15 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
     });
     setAdvancedParams(defaults);
-  }, [doc?.audioProvider, doc?.audioModel, doc?.audioVoiceId, schema, doc, audioConfigDirty]);
+  }, [
+    doc?.audioProvider,
+    doc?.audioModel,
+    doc?.modelName,
+    doc?.audioVoiceId,
+    schema,
+    doc,
+    audioConfigDirty,
+  ]);
 
   useEffect(() => {
     if (open) return;
@@ -122,7 +144,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     }
   }, [doc?.audioStatus]);
 
-  // 轮询进度：直到 success/failed，然后停止（用户要求失败也停止轮询）。
+  // 仅在 generating 时轮询；pending 表示尚未开始生成，不应每 2s 打接口。
   useEffect(() => {
     if (!open || !documentId) {
       setDoc(null);
@@ -143,6 +165,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
 
         const status = data?.audioStatus;
         if (status === 'success' || status === 'failed') {
+          setPolling(false);
+          return;
+        }
+        if (status !== 'processing') {
           setPolling(false);
           return;
         }
@@ -200,35 +226,49 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     };
   }, [doc?.audioStatus, documentId, open, stopAndCleanupAudioUrl]);
 
-  const providerSchema = schema.find((item) => item.provider === selectedProvider);
+  const providerSchema =
+    selectedProvider !== ''
+      ? schema.find((item) => item.provider === selectedProvider)
+      : undefined;
   const modelSchema =
-    providerSchema?.models.find((item) => item.model === selectedModel) || providerSchema?.models[0];
-  const providerVoiceOptions = DOCUMENT_AUDIO_PROVIDER_OPTIONS[selectedProvider] || [];
+    providerSchema?.models.find((item) => item.model === selectedModel) ??
+    (selectedProvider !== '' ? providerSchema?.models[0] : undefined);
+  const providerVoiceOptions =
+    selectedProvider !== '' ? DOCUMENT_AUDIO_PROVIDER_OPTIONS[selectedProvider] || [] : [];
   const voiceOptions = providerVoiceOptions.filter(
     (item) => item.model === (selectedModel || modelSchema?.model)
   );
   const requiresVoiceId = Boolean(modelSchema?.requiresVoiceId);
   const canRegenerate = doc?.audioStatus !== 'processing';
-  const providerLabel = selectedProvider || doc?.audioProvider || '-';
-  const modelLabel = selectedModel || doc?.audioModel || '-';
+  const providerLabel =
+    selectedProvider !== '' ? selectedProvider : doc?.audioProvider ?? '未配置';
+  const modelLabel =
+    selectedModel || doc?.audioModel || doc?.modelName || '未配置';
   const voiceLabel = selectedVoiceId || doc?.audioVoiceId || '默认';
+  const synthesisTextTrimmed = (editableText || doc?.extractedText || '').trim();
+  const audioConfigReady = Boolean(
+    selectedProvider !== '' &&
+      selectedModel &&
+      (!requiresVoiceId || Boolean(selectedVoiceId))
+  );
+  const canStartSynthesis = audioConfigReady && Boolean(synthesisTextTrimmed);
 
   const onRetryGenerate = useCallback(async () => {
     if (!documentId) return;
     try {
-      // 失败后我们会停止轮询；点重试时手动重启轮询。
-      setPollingRun((x) => x + 1);
       const text = (editableText || doc?.extractedText || '').trim();
       if (!text) return;
+      if (!selectedProvider || !selectedModel) return;
       if (requiresVoiceId && !selectedVoiceId) return;
       await documentLibraryService.generateAudioFromText(documentId, {
         text,
-        audioProvider: selectedProvider,
+        audioProvider: selectedProvider as AudioProvider,
         audioModel: selectedModel || undefined,
         audioVoiceId: selectedVoiceId || undefined,
         params: advancedParams,
       });
-      // 后端会把 audioStatus 重置为 processing；当前轮询会自然拉取到新的进度/文本。
+      // 请求成功后再 bump：后端已是 processing，轮询 effect 拉到的第一条就是进行中，避免仍显示 pending 时误停轮询。
+      setPollingRun((x) => x + 1);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error(e);
@@ -256,7 +296,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   }, [documentId]);
 
   useEffect(() => {
-    if (!selectedLookupWord) {
+    if (!selectedLookupWord && !lookupCandidates.length) {
       setLookupDefinitions([]);
       setLookupError('');
       setLookupLoading(false);
@@ -267,26 +307,40 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     setLookupLoading(true);
     setLookupError('');
     setLookupDefinitions([]);
-    documentLibraryService
-      .lookupWord(selectedLookupWord)
-      .then((res: any) => {
-        if (cancelled) return;
-        const payload = (res?.data ?? res) as { definitions?: WordLookupDefinition[] };
-        setLookupDefinitions(Array.isArray(payload?.definitions) ? payload.definitions : []);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setLookupError('查词失败，请稍后重试');
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLookupLoading(false);
-      });
+    const tryLookup = async () => {
+      const queue = [...lookupCandidates, selectedLookupWord].filter(Boolean);
+      for (const target of queue) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const res: any = await documentLibraryService.lookupWord(target);
+          if (cancelled) return;
+          const payload = (res?.data ?? res) as { word?: string; definitions?: WordLookupDefinition[] };
+          const defs = Array.isArray(payload?.definitions) ? payload.definitions : [];
+          if (defs.length > 0) {
+            setSelectedLookupWord(String(payload?.word || target));
+            setLookupDefinitions(defs);
+            return;
+          }
+        } catch {
+          // try next candidate
+        }
+      }
+      if (cancelled) return;
+      setLookupError('未找到释义');
+      setLookupDefinitions([]);
+    };
+
+    void tryLookup().finally(() => {
+      if (cancelled) return;
+      setLookupLoading(false);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [selectedLookupWord]);
+  }, [selectedLookupWord, lookupCandidates]);
+
+  const isAudioProcessing = doc?.audioStatus === 'processing';
 
   return (
     <Dialog.Root
@@ -297,9 +351,23 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[96vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg bg-white p-4 shadow-lg">
+        <Dialog.Content
+          className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-[96vw] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-auto rounded-lg bg-white p-4 shadow-lg"
+          aria-busy={isAudioProcessing}
+        >
           <div className="flex items-center justify-between">
-            <Dialog.Title className="text-base font-semibold">音频管理</Dialog.Title>
+            <div className="flex items-center gap-2">
+              <Dialog.Title className="text-base font-semibold">音频管理</Dialog.Title>
+              {isAudioProcessing ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-800">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+                  </span>
+                  生成中
+                </span>
+              ) : null}
+            </div>
             <Dialog.Close asChild>
               <button
                 type="button"
@@ -312,16 +380,37 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
           </div>
 
           <div className="mt-3 space-y-4">
-            <div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-black/10">
+            <div
+              className={cn(
+                'rounded-lg border p-3 transition-colors',
+                isAudioProcessing ? 'border-blue-200 bg-blue-50/60' : 'border-transparent'
+              )}
+            >
+              {isAudioProcessing ? (
+                <div className="mb-2 flex items-center gap-2 text-sm text-blue-950">
+                  <Iconify icon="svg-spinners:ring-resize" width={22} className="shrink-0 text-blue-600" />
+                  <span>正在处理，请勿关闭窗口…</span>
+                </div>
+              ) : null}
+              <div
+                className={cn(
+                  'h-2.5 w-full overflow-hidden rounded-full bg-black/10',
+                  isAudioProcessing && 'ring-1 ring-blue-200/80'
+                )}
+              >
                 <div
-                  className="h-full rounded-full bg-black/80"
+                  className={cn(
+                    'h-full rounded-full bg-gradient-to-r from-neutral-800 to-neutral-600 transition-[width] duration-700 ease-out',
+                    isAudioProcessing && 'shadow-[0_0_12px_rgba(37,99,235,0.35)]'
+                  )}
                   style={{ width: `${Math.max(0, Math.min(100, Number(doc?.audioProgress ?? 0)))}%` }}
                 />
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
-                <div>{doc?.audioStage ? `阶段：${doc.audioStage}` : '阶段：-'}</div>
-                <div>
+                <div className={cn(isAudioProcessing && 'font-medium text-blue-900')}>
+                  {doc?.audioStage ? `阶段：${doc.audioStage}` : '阶段：-'}
+                </div>
+                <div className={cn(isAudioProcessing && 'tabular-nums text-blue-900')}>
                   {Number.isFinite(doc?.audioProgress ?? null) ? `${doc?.audioProgress ?? 0}%` : ''}
                 </div>
               </div>
@@ -341,8 +430,21 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                 </div>
                 {showExtractedText ? (
                   doc?.audioStatus === 'processing' ? (
-                    <div className="max-h-64 overflow-auto rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words">
-                      {doc?.extractedText ? doc.extractedText : '正在提取/生成，请稍候...'}
+                    <div className="relative max-h-64 overflow-auto rounded border border-blue-200/80 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words shadow-[inset_0_0_0_1px_rgba(59,130,246,0.08)]">
+                      <div className="pointer-events-none absolute inset-0 rounded bg-gradient-to-b from-blue-50/0 via-blue-50/40 to-blue-50/0 animate-pulse" />
+                      <div className="relative flex min-h-[4rem] items-start gap-2">
+                        <Iconify
+                          icon="svg-spinners:3-dots-bounce"
+                          width={20}
+                          className="mt-0.5 shrink-0 text-blue-500"
+                        />
+                        <div>
+                          <div className="font-medium text-blue-900">文本同步中</div>
+                          <div className="mt-1 text-gray-600">
+                            {doc?.extractedText ? doc.extractedText : '正在提取或等待合成，请稍候…'}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ) : doc?.audioStatus === 'success' ? (
                     <div className="max-h-64 overflow-auto rounded border border-black/10 bg-white p-3 text-xs leading-5 whitespace-pre-wrap break-words text-gray-700">
@@ -365,14 +467,41 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                   <AudioPreviewPlayer
                     audioUrl={audioUrl}
                     wordTimestamps={doc?.wordTimestamps}
+                    audioProvider={doc?.audioProvider}
                     activeLookupWord={selectedLookupWord}
-                    onWordLongPress={(word) => setSelectedLookupWord(word)}
+                    onWordLongPress={({ word, candidates }) => {
+                      setSelectedLookupWord(word);
+                      setLookupCandidates(candidates);
+                    }}
                   />
                 ) : (
-                  <div className="rounded-lg border border-dashed border-black/20 p-6 text-center text-sm text-gray-500">
-                    {doc?.audioStatus === 'processing'
-                      ? '音频生成中，完成后可播放'
-                      : '当前无音频，配置右侧参数后可手动生成'}
+                  <div
+                    className={cn(
+                      'rounded-lg border p-8 text-center',
+                      doc?.audioStatus === 'processing'
+                        ? 'border-blue-200 bg-gradient-to-b from-blue-50/80 to-white'
+                        : 'border-dashed border-black/20'
+                    )}
+                  >
+                    {doc?.audioStatus === 'processing' ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="relative">
+                          <Iconify
+                            icon="svg-spinners:bars-rotate-fade"
+                            width={40}
+                            className="text-blue-600"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium text-blue-950">音频生成中</div>
+                          <p className="text-xs text-blue-800/80 animate-pulse">
+                            合成完成后将自动出现播放器，请稍候
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">当前无音频，配置右侧参数后可手动生成</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -385,14 +514,21 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                       <button
                         type="button"
                         className="text-[11px] text-gray-500 underline underline-offset-2"
-                        onClick={() => setSelectedLookupWord('')}
+                        onClick={() => {
+                          setSelectedLookupWord('');
+                          setLookupCandidates([]);
+                        }}
                       >
                         清空
                       </button>
                     ) : null}
                   </div>
                   <div className="mt-2 text-xs text-gray-700">
-                    {selectedLookupWord ? `当前词：${selectedLookupWord}` : '在左侧歌词中长按单词进行查询'}
+                    {selectedLookupWord
+                      ? `当前词：${selectedLookupWord}`
+                      : doc?.wordTimestamps?.length
+                        ? '在左侧歌词中长按单词进行查询'
+                        : '无词级时间戳时无法在歌词中选词，请从正文复制单词后自行检索'}
                   </div>
                   <div className="mt-2 max-h-44 space-y-1 overflow-auto text-[11px] text-gray-600">
                     {lookupLoading ? <div>查询中...</div> : null}
@@ -435,8 +571,16 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                         className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
                         value={selectedProvider}
                         onChange={(e) => {
-                            setAudioConfigDirty(true);
-                          const provider = e.target.value as AudioProvider;
+                          setAudioConfigDirty(true);
+                          const raw = e.target.value;
+                          if (!raw) {
+                            setSelectedProvider('');
+                            setSelectedModel('');
+                            setSelectedVoiceId('');
+                            setAdvancedParams({});
+                            return;
+                          }
+                          const provider = raw as AudioProvider;
                           const nextSchema = schema.find((item) => item.provider === provider);
                           const nextModel = nextSchema?.models[0]?.model || '';
                           setSelectedProvider(provider);
@@ -449,6 +593,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                           setAdvancedParams(defaults);
                         }}
                       >
+                        <option value="">请选择 TTS 提供商</option>
                         {ALL_PROVIDERS.map((provider) => (
                           <option key={provider} value={provider}>
                             {provider}
@@ -458,8 +603,9 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                       <select
                         className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
                         value={selectedModel}
+                        disabled={selectedProvider === ''}
                         onChange={(e) => {
-                            setAudioConfigDirty(true);
+                          setAudioConfigDirty(true);
                           const nextModel = e.target.value;
                           setSelectedModel(nextModel);
                           const nextModelSchema = providerSchema?.models.find((item) => item.model === nextModel);
@@ -470,6 +616,9 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                           setAdvancedParams(defaults);
                         }}
                       >
+                        {selectedProvider === '' ? (
+                          <option value="">请先选择提供商</option>
+                        ) : null}
                         {(providerSchema?.models || []).map((item) => (
                           <option key={item.model} value={item.model}>
                             {item.label}
@@ -479,6 +628,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                       <select
                         className="h-9 rounded-md border border-black/20 bg-white px-2 text-xs"
                         value={selectedVoiceId}
+                        disabled={selectedProvider === '' || !selectedModel}
                         onChange={(e) => {
                           setAudioConfigDirty(true);
                           setSelectedVoiceId(e.target.value);
@@ -551,18 +701,47 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                         ))}
                       </div>
                     ) : null}
+                    <div className="flex flex-col gap-1">
+                      {!synthesisTextTrimmed ? (
+                        <div className="text-[11px] text-amber-700">请先在「提取文本」中填写或确认有正文，再生成音频。</div>
+                      ) : null}
+                      {synthesisTextTrimmed && !audioConfigReady ? (
+                        <div className="text-[11px] text-amber-700">
+                          请选择 TTS 提供商、模型{requiresVoiceId ? '与人声' : ''}后再生成。
+                        </div>
+                      ) : null}
                     <div className="flex gap-2">
-                      <Button type="button" variant="outline" onClick={onRetryGenerate}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onRetryGenerate}
+                        disabled={!canStartSynthesis}
+                        title={
+                          !synthesisTextTrimmed
+                            ? '提取文本为空'
+                            : !audioConfigReady
+                              ? '请完成 TTS 配置'
+                              : undefined
+                        }
+                      >
                         {doc?.audioStatus === 'success' ? '重新生成音频' : '生成音频'}
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         onClick={onGenerateTranslation}
-                        disabled={doc?.audioStatus !== 'success'}
+                        disabled={
+                          doc?.audioStatus !== 'success' || !doc?.wordTimestamps?.length
+                        }
+                        title={
+                          !doc?.wordTimestamps?.length
+                            ? '需要词级时间戳才能按句写入中文翻译（MiniMax 等提供商不提供）'
+                            : undefined
+                        }
                       >
                         生成翻译
                       </Button>
+                    </div>
                     </div>
                   </div>
                 ) : null}

@@ -1,13 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
-import { AudioProvider, AudioStatus, Prisma, User } from '@prisma/client';
+import { AudioProvider, AudioStatus, DocumentLibrary, Prisma, User } from '@prisma/client';
 import axios from 'axios';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as wordnet from 'wordnet';
-import { resolveDocumentAudioConfig } from './document-audio.config';
+import {
+  DocumentAudioConfigError,
+  resolveDocumentAudioConfigForGeneration,
+} from './document-audio.config';
 import { DocumentAudioProviderFactory } from './document-audio-provider.factory';
-import { CreateDocumentAudioConfigInput, DocumentAudioRegenerateOverrides } from './document-audio.types';
+import {
+  CreateDocumentAudioConfigInput,
+  DocumentAudioConfig,
+  DocumentAudioRegenerateOverrides,
+} from './document-audio.types';
 import { DOCUMENT_AUDIO_PARAMS_SCHEMA, sanitizeRegenerateAudioParams } from './document-audio-params.schema';
 import { DocumentWordTimestamp } from './document-audio.types';
 
@@ -19,6 +26,8 @@ type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
   fileSize: number;
   filePath: string;
   tagIds: string[];
+  /** 创建时即写入（纯文本资料），避免仅存在磁盘文件时前端「提取文本」一直为空 */
+  extractedText?: string | null;
 };
 
 @Injectable()
@@ -33,12 +42,17 @@ export class DocumentLibraryService {
   ) {}
 
   async create(input: CreateDocumentLibraryInput, user?: User) {
-    const audioConfig = resolveDocumentAudioConfig({
-      provider: input.provider,
-      model: input.model,
-      voiceId: input.voiceId,
-      legacyModelName: input.legacyModelName,
-    });
+    const initialText =
+      typeof input.extractedText === 'string' && input.extractedText.trim().length > 0
+        ? input.extractedText.trim()
+        : undefined;
+
+    const modelNameStored =
+      input.legacyModelName?.trim() || input.model?.trim() || null;
+    const audioModelStored = input.model?.trim() || null;
+    // 未跑迁移时 DB 上 modelName 可能仍为 NOT NULL，用空串占位；已迁移为可空时同样合法。
+    const modelNameForDb = modelNameStored ?? '';
+    const voiceStored = input.voiceId?.trim() || null;
 
     const record = await this.prisma.documentLibrary.create({
       data: {
@@ -48,10 +62,12 @@ export class DocumentLibraryService {
         mimeType: input.mimeType,
         fileSize: input.fileSize,
         filePath: input.filePath,
-        modelName: audioConfig.legacyModelName,
-        audioProvider: audioConfig.provider,
-        audioModel: audioConfig.model,
-        audioVoiceId: audioConfig.voiceId,
+        ...(initialText !== undefined ? { extractedText: initialText } : {}),
+        modelName: modelNameForDb,
+        // 未配置时不传 audioProvider，旧库 NOT NULL + DEFAULT(minimax) 可走库默认值；新库可空时由后续更新写入。
+        ...(input.provider != null ? { audioProvider: input.provider } : {}),
+        audioModel: audioModelStored,
+        audioVoiceId: voiceStored,
         audioStatus: AudioStatus.pending,
         userId: user?.id ?? 'system',
         createdBy: user?.id ?? 'system',
@@ -70,6 +86,35 @@ export class DocumentLibraryService {
     }
 
     return this.findOne(record.id);
+  }
+
+  /**
+   * 生成音频前校验：库内记录 + 可选本次请求覆盖项是否构成完整 TTS 配置。
+   */
+  assertTtsConfigForGeneration(
+    record: DocumentLibrary,
+    overrides?: DocumentAudioRegenerateOverrides
+  ): DocumentAudioConfig {
+    try {
+      return resolveDocumentAudioConfigForGeneration({
+        provider: (overrides?.audioProvider ?? record.audioProvider) ?? undefined,
+        model:
+          overrides?.audioModel ??
+          record.audioModel ??
+          record.modelName ??
+          null,
+        voiceId:
+          overrides?.audioVoiceId !== undefined
+            ? overrides.audioVoiceId
+            : record.audioVoiceId,
+        legacyModelName: record.modelName ?? undefined,
+      });
+    } catch (e) {
+      if (e instanceof DocumentAudioConfigError) {
+        throw new BadRequestException(e.message);
+      }
+      throw e;
+    }
   }
 
   async findOne(id: string) {
@@ -112,7 +157,8 @@ export class DocumentLibraryService {
     return (input || '')
       .trim()
       .toLowerCase()
-      .replace(/^[^a-z]+|[^a-z]+$/g, '');
+      .replace(/^[^a-z\s'-]+|[^a-z\s'-]+$/g, '')
+      .replace(/\s+/g, ' ');
   }
 
   async lookupEnglishWord(word: string) {
@@ -123,7 +169,28 @@ export class DocumentLibraryService {
 
     await this.ensureWordnetReady();
     try {
-      const rows = await wordnet.lookup(normalizedWord, true);
+      const variants = Array.from(
+        new Set([
+          normalizedWord,
+          normalizedWord.replace(/\s+/g, '_'),
+          normalizedWord.replace(/'/g, ''),
+          normalizedWord.replace(/\s+/g, '_').replace(/'/g, ''),
+        ])
+      ).filter(Boolean);
+
+      let rows: any[] = [];
+      for (const variant of variants) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const result = await wordnet.lookup(variant, true);
+          if (Array.isArray(result) && result.length) {
+            rows = result;
+            break;
+          }
+        } catch {
+          // try next variant
+        }
+      }
       return {
         word: normalizedWord,
         definitions: (rows || []).slice(0, 6).map((item) => ({
@@ -202,23 +269,31 @@ export class DocumentLibraryService {
     user?: User,
   ) {
     const existing = await this.findOne(id);
-    const audioConfig = resolveDocumentAudioConfig({
-      provider: data.audioProvider ?? existing.audioProvider,
-      model: data.audioModel ?? existing.audioModel ?? data.modelName ?? existing.modelName,
-      voiceId: data.audioVoiceId ?? existing.audioVoiceId,
-      legacyModelName: data.modelName ?? existing.modelName,
-    });
+    const patchAudio =
+      data.modelName !== undefined ||
+      data.audioModel !== undefined ||
+      data.audioProvider !== undefined ||
+      data.audioVoiceId !== undefined;
+
+    const nextProvider =
+      data.audioProvider !== undefined ? data.audioProvider : existing.audioProvider;
+    const nextAudioModel =
+      data.audioModel !== undefined ? data.audioModel : existing.audioModel;
+    const nextModelName =
+      data.modelName !== undefined ? data.modelName : existing.modelName;
+    const nextVoiceId =
+      data.audioVoiceId !== undefined ? data.audioVoiceId : existing.audioVoiceId;
 
     await this.prisma.documentLibrary.update({
       where: { id },
       data: {
         ...(data.title !== undefined ? { title: data.title } : {}),
-        ...(data.modelName !== undefined || data.audioModel !== undefined || data.audioProvider !== undefined
+        ...(patchAudio
           ? {
-              modelName: audioConfig.legacyModelName,
-              audioProvider: audioConfig.provider,
-              audioModel: audioConfig.model,
-              audioVoiceId: audioConfig.voiceId,
+              audioProvider: nextProvider,
+              audioModel: nextAudioModel,
+              modelName: nextModelName ?? nextAudioModel ?? '',
+              audioVoiceId: nextVoiceId,
             }
           : {}),
         updatedBy: user?.id ?? 'system',
@@ -323,42 +398,6 @@ export class DocumentLibraryService {
       const text = words.slice(startIdx, endIdx + 1).map((item) => item.text).join(' ').trim();
       return { sentenceIndex: idx, text, startIdx, endIdx };
     });
-  }
-
-  private splitTextToSentences(text: string) {
-    const normalized = (text || '').replace(/\s+/g, ' ').trim();
-    if (!normalized) return [];
-    const parts = normalized
-      .split(/(?<=[.!?。！？；;:])\s+/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-    return parts.length ? parts : [normalized];
-  }
-
-  private splitSentenceToTokens(sentence: string) {
-    const tokens = sentence.match(/[\u4e00-\u9fff]|[A-Za-z0-9']+|[^\s]/g) ?? [];
-    return tokens.filter(Boolean);
-  }
-
-  private buildPseudoWordTimestampsFromText(text: string): DocumentWordTimestamp[] | null {
-    const sentences = this.splitTextToSentences(text);
-    if (!sentences.length) return null;
-    const avgSecondsPerToken = 0.28;
-    let cursorSeconds = 0;
-    const output: DocumentWordTimestamp[] = [];
-    for (const sentence of sentences) {
-      const tokens = this.splitSentenceToTokens(sentence);
-      const sentenceTokens = tokens.length ? tokens : [sentence];
-      for (const token of sentenceTokens) {
-        output.push({
-          text: token,
-          start_time: Math.floor(cursorSeconds * 1_000_000_000),
-        });
-        cursorSeconds += avgSecondsPerToken;
-      }
-      cursorSeconds += 0.35;
-    }
-    return output.length ? output : null;
   }
 
   private parseTranslationsContent(content: string, sentenceCount: number) {
@@ -531,11 +570,11 @@ export class DocumentLibraryService {
       if (!target.filePath) {
         throw new Error('documentLibrary.filePath is empty');
       }
-      const providerConfig = resolveDocumentAudioConfig({
-        provider: target.audioProvider,
+      const providerConfig = resolveDocumentAudioConfigForGeneration({
+        provider: target.audioProvider ?? undefined,
         model: target.audioModel ?? target.modelName,
         voiceId: target.audioVoiceId,
-        legacyModelName: target.modelName,
+        legacyModelName: target.modelName ?? undefined,
       });
 
       // 1) 提取文本
@@ -575,6 +614,12 @@ export class DocumentLibraryService {
         throw new Error(`Unsupported document fileType for extraction: ${fileType}`);
       }
 
+      if (!extractedText.trim()) {
+        throw new DocumentAudioConfigError(
+          '未能从资料中得到可用于合成的文本，请检查 PDF 或文本文件是否包含正文'
+        );
+      }
+
       await this.prisma.documentLibrary.update({
         where: { id },
         data: {
@@ -598,10 +643,8 @@ export class DocumentLibraryService {
         voiceId: providerConfig.voiceId,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
-      const baseWordTimestamps =
-        result.wordTimestamps ?? this.buildPseudoWordTimestampsFromText(extractedText);
       const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
-        baseWordTimestamps
+        result.wordTimestamps
       );
 
       // 3) 写入完成状态
@@ -619,12 +662,17 @@ export class DocumentLibraryService {
         },
       });
     } catch (error) {
+      const audioError =
+        error instanceof DocumentAudioConfigError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'generate audio pipeline failed';
       await this.prisma.documentLibrary.update({
         where: { id },
         data: {
           audioStatus: AudioStatus.failed,
-          audioError:
-            error instanceof Error ? error.message : 'generate audio pipeline failed',
+          audioError,
           audioStage: 'failed',
           // 保留当前 extractedText（如已写入），进度标记为 0 更符合语义
           audioProgress: 0,
@@ -635,6 +683,7 @@ export class DocumentLibraryService {
   }
 
   async startGenerateAudioFromText(id: string, text: string, user?: User) {
+    const trimmed = text.trim();
     return this.prisma.documentLibrary.update({
       where: { id },
       data: {
@@ -642,7 +691,7 @@ export class DocumentLibraryService {
         audioProgress: 40,
         audioStage: 'generating_audio',
         audioError: null,
-        extractedText: text,
+        extractedText: trimmed,
         wordTimestamps: Prisma.JsonNull,
         updatedBy: user?.id ?? 'system',
       },
@@ -660,11 +709,23 @@ export class DocumentLibraryService {
       const target = await this.findOne(id);
       if (!target) return;
 
-      const providerConfig = resolveDocumentAudioConfig({
-        provider: overrides?.audioProvider ?? target.audioProvider,
-        model: overrides?.audioModel ?? target.audioModel ?? target.modelName,
-        voiceId: overrides?.audioVoiceId ?? target.audioVoiceId,
-        legacyModelName: target.modelName,
+      const textTrimmed = text.trim();
+      if (!textTrimmed) {
+        throw new DocumentAudioConfigError('提取文本为空，无法生成音频');
+      }
+
+      const providerConfig = resolveDocumentAudioConfigForGeneration({
+        provider: (overrides?.audioProvider ?? target.audioProvider) ?? undefined,
+        model:
+          overrides?.audioModel ??
+          target.audioModel ??
+          target.modelName ??
+          null,
+        voiceId:
+          overrides?.audioVoiceId !== undefined
+            ? overrides.audioVoiceId
+            : target.audioVoiceId,
+        legacyModelName: target.modelName ?? undefined,
       });
       const sanitizedParams = sanitizeRegenerateAudioParams(
         providerConfig.provider,
@@ -676,7 +737,7 @@ export class DocumentLibraryService {
         data: {
           audioStage: 'generating_audio',
           audioProgress: 40,
-          extractedText: text,
+          extractedText: textTrimmed,
           wordTimestamps: Prisma.JsonNull,
           audioProvider: providerConfig.provider,
           audioModel: providerConfig.model,
@@ -688,15 +749,14 @@ export class DocumentLibraryService {
       const provider = this.documentAudioProviderFactory.getProvider(providerConfig.provider);
       const result = await provider.generateAudio({
         id,
-        text,
+        text: textTrimmed,
         model: providerConfig.model,
         voiceId: providerConfig.voiceId,
         params: sanitizedParams,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
-      const baseWordTimestamps = result.wordTimestamps ?? this.buildPseudoWordTimestampsFromText(text);
       const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
-        baseWordTimestamps
+        result.wordTimestamps
       );
 
       await this.prisma.documentLibrary.update({
@@ -707,7 +767,7 @@ export class DocumentLibraryService {
           audioProgress: 100,
           audioStage: 'done',
           audioError: null,
-          extractedText: text,
+          extractedText: textTrimmed,
           wordTimestamps: this.toWordTimestampJson(enrichedWordTimestamps),
           audioProvider: providerConfig.provider,
           audioModel: providerConfig.model,
@@ -717,12 +777,17 @@ export class DocumentLibraryService {
         },
       });
     } catch (error) {
+      const audioError =
+        error instanceof DocumentAudioConfigError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'generate audio from text failed';
       await this.prisma.documentLibrary.update({
         where: { id },
         data: {
           audioStatus: AudioStatus.failed,
-          audioError:
-            error instanceof Error ? error.message : 'generate audio from text failed',
+          audioError,
           audioStage: 'failed',
           audioProgress: 0,
           updatedBy,
@@ -746,12 +811,11 @@ export class DocumentLibraryService {
     const rawWordTimestamps = Array.isArray(record.wordTimestamps)
       ? (record.wordTimestamps as unknown as DocumentWordTimestamp[])
       : null;
-    const baseWordTimestamps =
-      rawWordTimestamps?.length
-        ? rawWordTimestamps
-        : this.buildPseudoWordTimestampsFromText(record.extractedText || '');
+    const baseWordTimestamps = rawWordTimestamps?.length ? rawWordTimestamps : null;
     if (!baseWordTimestamps?.length) {
-      throw new Error('word timestamps and extractedText are both empty');
+      throw new BadRequestException(
+        '当前文档没有词级时间戳，无法按句生成翻译（部分 TTS 不提供该数据，例如 MiniMax）'
+      );
     }
     const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
       baseWordTimestamps

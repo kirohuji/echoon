@@ -1,28 +1,49 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
+const SCHEMA_HINT = [
+  '数据库里还没有当前 schema 对应的表（Prisma 报错 P2021：表不存在）。',
+  '请先在 apps/backend 目录执行其一，再运行 seed：',
+  '  pnpm exec prisma db push',
+  '  或  pnpm exec prisma migrate deploy',
+  '并确认 DATABASE_URL 指向的就是你要初始化的那套库。',
+].join('\n');
+
+function exitIfMissingTable(e: unknown): void {
+  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2021') {
+    console.error(SCHEMA_HINT);
+    process.exit(1);
+  }
+}
+
 async function main() {
   // 清空相关表（按外键依赖从子表到父表删除，保证可重复 seed）
-  await prisma.attachment.deleteMany({});
-  await prisma.message.deleteMany({});
-  await prisma.participant.deleteMany({});
-  await prisma.conversation.deleteMany({});
-  await prisma.document.deleteMany({});
-  await prisma.documentLibraryTag.deleteMany({});
-  await prisma.documentLibrary.deleteMany({});
-  await prisma.tag.deleteMany({});
-  await prisma.file.deleteMany({});
-  await prisma.refreshToken.deleteMany({});
-  await prisma.verificationCode.deleteMany({});
-  await prisma.personal.deleteMany({});
-  await prisma.roleAssignment.deleteMany({});
-  await prisma.permission.deleteMany({});
-  await prisma.role.deleteMany({});
-  // Profile.id 同时是 User.id 外键，需先删 Profile 再删 User。
-  await prisma.profile.deleteMany({});
-  await prisma.user.deleteMany({});
+  try {
+    await prisma.attachment.deleteMany({});
+    await prisma.message.deleteMany({});
+    await prisma.participant.deleteMany({});
+    await prisma.conversation.deleteMany({});
+    await prisma.document.deleteMany({});
+    await prisma.documentLibraryTag.deleteMany({});
+    await prisma.documentLibrary.deleteMany({});
+    await prisma.tag.deleteMany({});
+    await prisma.file.deleteMany({});
+    await prisma.refreshToken.deleteMany({});
+    await prisma.verificationCode.deleteMany({});
+    await prisma.personal.deleteMany({});
+    await prisma.roleAssignment.deleteMany({});
+    await prisma.permission.deleteMany({});
+    await prisma.role.deleteMany({});
+    // Profile.id 同时是 User.id 外键，需先删 Profile 再删 User。
+    await prisma.profile.deleteMany({});
+    await prisma.user.deleteMany({});
+  } catch (e) {
+    // exitIfMissingTable(e);
+    console.error(e);
+    throw e;
+  }
 
   // 1. 创建顶级权限
   await prisma.permission.createMany({
