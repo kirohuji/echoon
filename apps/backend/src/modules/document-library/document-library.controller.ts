@@ -279,7 +279,18 @@ export class DocumentLibraryController {
   }
 
   @Post(':id/transcribe-video')
-  async transcribeExistingVideo(@Param('id') id: string, @CurrentUser() user: User) {
-    return this.documentLibraryService.transcribeVideoDocument(id, user);
+  async transcribeExistingVideo(
+    @Param('id') id: string,
+    @Body() body: { whisperTemperature?: number | string },
+    @CurrentUser() user: User
+  ) {
+    const raw = body?.whisperTemperature;
+    const whisperTemperature =
+      raw === undefined || raw === null || raw === ''
+        ? undefined
+        : Number.isFinite(Number(raw))
+          ? Number(raw)
+          : undefined;
+    return this.documentLibraryService.transcribeVideoDocument(id, user, { whisperTemperature });
   }
 }

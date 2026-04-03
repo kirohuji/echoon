@@ -869,14 +869,16 @@ export class DocumentLibraryService {
     return snapshotPath;
   }
 
-  async transcribeVideoToWordTimestamps(videoPath: string) {
+  async transcribeVideoToWordTimestamps(videoPath: string, options?: { whisperTemperature?: number }) {
     const videoExt = path.extname(videoPath);
     const videoName = path.basename(videoPath, videoExt);
     const audioPath = path.join(this.videoAudioDir, `${videoName}.wav`);
 
     await this.extractAudioFromVideo(videoPath, audioPath);
 
-    const wordTimestamps = await this.whisperTranscription.transcribeFileToWordTimestamps(audioPath);
+    const wordTimestamps = await this.whisperTranscription.transcribeFileToWordTimestamps(audioPath, {
+      temperature: options?.whisperTemperature,
+    });
     if (!wordTimestamps?.length) {
       throw new BadRequestException(
         '未生成词级时间戳，请确认 WHISPER_INFERENCE_URL 可用且支持 verbose_json words 输出'
@@ -896,7 +898,11 @@ export class DocumentLibraryService {
     };
   }
 
-  async transcribeVideoDocument(id: string, user?: User) {
+  async transcribeVideoDocument(
+    id: string,
+    user?: User,
+    options?: { whisperTemperature?: number }
+  ) {
     const target = await this.findOne(id);
     const isVideoFile =
       (target.fileType || '').toLowerCase() === 'mp4' ||
@@ -921,7 +927,8 @@ export class DocumentLibraryService {
 
     try {
       const { audioPath, wordTimestamps, analysisSnapshotPath } = await this.transcribeVideoToWordTimestamps(
-        target.filePath
+        target.filePath,
+        options
       );
 
       await this.prisma.documentLibrary.update({

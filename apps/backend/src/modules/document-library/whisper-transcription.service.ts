@@ -55,13 +55,25 @@ export class WhisperTranscriptionService {
   /**
    * 未配置 WHISPER_INFERENCE_URL 时返回 null；推理失败时记录日志并返回 null，不抛错。
    */
-  async transcribeFileToWordTimestamps(audioPath: string): Promise<DocumentWordTimestamp[] | null> {
+  async transcribeFileToWordTimestamps(
+    audioPath: string,
+    options?: { temperature?: number }
+  ): Promise<DocumentWordTimestamp[] | null> {
     const url = process.env.WHISPER_INFERENCE_URL?.trim();
     if (!url) return null;
 
     const timeoutRaw = process.env.WHISPER_TIMEOUT_MS?.trim();
     const timeoutMs =
       timeoutRaw && !Number.isNaN(Number(timeoutRaw)) ? Number(timeoutRaw) : 600_000;
+    const envTemperatureRaw = process.env.WHISPER_TEMPERATURE?.trim();
+    const envTemperature =
+      envTemperatureRaw && !Number.isNaN(Number(envTemperatureRaw))
+        ? Number(envTemperatureRaw)
+        : 0.2;
+    const temperature =
+      typeof options?.temperature === 'number' && Number.isFinite(options.temperature)
+        ? options.temperature
+        : envTemperature;
 
     const language = process.env.WHISPER_LANGUAGE?.trim();
     const splitOnWord = process.env.WHISPER_SPLIT_ON_WORD?.trim().toLowerCase() === 'true';
@@ -77,7 +89,7 @@ export class WhisperTranscriptionService {
       const form = new FormData();
       form.append('file', new Blob([new Uint8Array(buf)]), fileLabel);
       form.append('response_format', 'verbose_json');
-      form.append('temperature', '0.0');
+      form.append('temperature', String(temperature));
       if (language) {
         form.append('language', language);
       }

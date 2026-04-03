@@ -82,6 +82,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [lookupDefinitions, setLookupDefinitions] = useState<WordLookupDefinition[]>([]);
   const [actionError, setActionError] = useState('');
   const [videoAnalyzingPending, setVideoAnalyzingPending] = useState(false);
+  const [videoWhisperTemperature, setVideoWhisperTemperature] = useState('0.2');
 
   const objectUrlRef = useRef<string>('');
   const videoObjectUrlRef = useRef<string>('');
@@ -392,10 +393,15 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       );
       // 立即重启轮询，确保状态快速更新。
       setPollingRun((x) => x + 1);
-      const res: any = await documentLibraryService.transcribeVideo(documentId);
-      const payload = res?.data ?? null;
-      if (payload && typeof payload === 'object') {
-        setDoc(payload as AudioPreviewDocument);
+      const parsedTemperature = Number(videoWhisperTemperature);
+      const requestPayload =
+        Number.isFinite(parsedTemperature) && parsedTemperature >= 0 && parsedTemperature <= 1
+          ? { whisperTemperature: parsedTemperature }
+          : undefined;
+      const res: any = await documentLibraryService.transcribeVideo(documentId, requestPayload);
+      const responsePayload = res?.data ?? null;
+      if (responsePayload && typeof responsePayload === 'object') {
+        setDoc(responsePayload as AudioPreviewDocument);
       }
       setPollingRun((x) => x + 1);
     } catch (e: any) {
@@ -407,7 +413,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       setActionError(String(message));
       window.alert(String(message));
     }
-  }, [documentId]);
+  }, [documentId, videoWhisperTemperature]);
 
   useEffect(() => {
     videoAnalyzingPendingRef.current = videoAnalyzingPending;
@@ -559,23 +565,33 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     {isVideoDoc ? '视频预览' : '音频内容'}
                   </div>
                   {isVideoDoc ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={onTranscribeVideo}
-                      disabled={!canRegenerate || isVideoAnalyzing}
-                    >
-                      {isVideoAnalyzing ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <Iconify icon="svg-spinners:3-dots-scale" width={14} />
-                          分析中...
-                        </span>
-                      ) : (
-                        '分析视频'
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <input
+                        className="h-7 w-20 rounded border border-slate-200 px-2 text-[11px] text-slate-700 outline-none focus-visible:ring-1 focus-visible:ring-indigo-300"
+                        value={videoWhisperTemperature}
+                        onChange={(e) => setVideoWhisperTemperature(e.target.value)}
+                        placeholder="0.2"
+                        title="Whisper temperature (0-1)"
+                        disabled={isVideoAnalyzing}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={onTranscribeVideo}
+                        disabled={!canRegenerate || isVideoAnalyzing}
+                      >
+                        {isVideoAnalyzing ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Iconify icon="svg-spinners:3-dots-scale" width={14} />
+                            分析中...
+                          </span>
+                        ) : (
+                          '分析视频'
+                        )}
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
                 {isVideoDoc && videoUrl ? (
