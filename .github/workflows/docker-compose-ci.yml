@@ -1,6 +1,12 @@
 # 部署（deploy）与生产栈：仅 main 分支 push 触发。
 # PR 校验（ci-check）：仅当 PR 的目标分支为 main 时触发（合并进 main 前的检查）。
 # 其他分支的 push / 指向非 main 的 PR 均不会运行本工作流。
+#
+# 远程浏览器访问管理端登录失败（CORS / Network Error / OPTIONS 204）时，请在仓库 Secrets 或 self-hosted 的 .env 中配置：
+#   FRONTEND_ORIGINS = 管理后台的完整 Origin，如 http://115.159.95.166:2605
+#   BETTER_AUTH_URL   = 后端公网根地址，如 http://115.159.95.166:2604
+#   BETTER_AUTH_SECRET = 生产随机密钥（≥32 字符）
+#   VITE_SERVER_URL   = 与浏览器访问 API 一致，如 http://115.159.95.166:2604（勿写容器内 backend:3000）
 name: Docker Compose CI
 
 on:
@@ -23,6 +29,10 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
+      VITE_AUTH_BASE_URL: ${{ secrets.VITE_AUTH_BASE_URL }}
+      FRONTEND_ORIGINS: ${{ secrets.FRONTEND_ORIGINS }}
+      BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
       MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
       MINIMAX_GROUP_ID: ${{ secrets.MINIMAX_GROUP_ID }}
       CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
@@ -82,6 +92,10 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
+      VITE_AUTH_BASE_URL: ${{ secrets.VITE_AUTH_BASE_URL }}
+      FRONTEND_ORIGINS: ${{ secrets.FRONTEND_ORIGINS }}
+      BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
       MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
       MINIMAX_GROUP_ID: ${{ secrets.MINIMAX_GROUP_ID }}
       CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
@@ -103,6 +117,15 @@ jobs:
           fetch-depth: 0
           lfs: false
           submodules: false
+
+      - name: CORS / 登录相关变量提示
+        run: |
+          if [ -z "${FRONTEND_ORIGINS:-}" ]; then
+            echo "::warning::FRONTEND_ORIGINS 未设置。公网访问管理端时请在仓库 Secrets 中设置，例如 http://你的IP:2605，否则浏览器会报 CORS / Network Error。"
+          fi
+          if [ -z "${VITE_SERVER_URL:-}" ]; then
+            echo "::warning::VITE_SERVER_URL 未设置。构建出的前端会默认指向容器内 backend:3000，浏览器无法访问。请设为公网 API 地址，例如 http://你的IP:2604"
+          fi
 
       - name: Build images
         run: docker compose -f docker-compose.yml build backend backend-migrate frontend client

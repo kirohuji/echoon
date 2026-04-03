@@ -66,6 +66,11 @@ services:
       PORT: 3000
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       JWT_SECRET: ${JWT_SECRET:-dev-change-me}
+      # 浏览器访问「管理前端」的完整 Origin，逗号分隔。生产环境必填，否则 CORS 默认只允许 localhost:5173，远程登录会失败。
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+      # better-auth：对外暴露的后端根地址（与浏览器里访问 API 的协议+主机+端口一致，不要带 /api）
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-better-auth-secret-min-32-chars-long-key}
       REDIS_URL: ${REDIS_URL:-}
       # TTS providers (used by /document-library audio generation)
       MINIMAX_API_KEY: ${MINIMAX_API_KEY:-}
@@ -86,7 +91,9 @@ services:
       dockerfile: apps/frontend/Dockerfile
       args:
         PNPM_REGISTRY: ${PNPM_REGISTRY:-https://registry.npmmirror.com}
+        # 构建进静态资源的 API 根路径：须与浏览器可访问地址一致。无全局 /api/v1 前缀时请填「http://公网IP:2604」；若后端挂了 /api/v1 则填带此前缀的 URL。
         VITE_SERVER_URL: ${VITE_SERVER_URL:-http://backend:3000}
+        VITE_AUTH_BASE_URL: ${VITE_AUTH_BASE_URL:-}
         VITE_ASSET_URL: ${VITE_ASSET_URL:-}
         VITE_BASE_PATH: ${VITE_BASE_PATH:-}
         VITE_PIPETCAT_URL: ${VITE_PIPETCAT_URL:-}
