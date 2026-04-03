@@ -23,6 +23,15 @@ type AudioPreviewPlayerProps = {
   activeLookupWord?: string;
   onWordLongPress?: (payload: { word: string; candidates: string[] }) => void;
   lyricContainerHeight?: number;
+  onSyncTime?: (time: number) => void;
+  onSyncPlayState?: (isPlaying: boolean) => void;
+  onSyncPlaybackRate?: (rate: number) => void;
+  externalSyncSignal?: {
+    nonce: number;
+    time: number;
+    isPlaying: boolean;
+    playbackRate: number;
+  };
 };
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
@@ -193,6 +202,10 @@ export function AudioPreviewPlayer({
   activeLookupWord,
   onWordLongPress,
   lyricContainerHeight,
+  onSyncTime,
+  onSyncPlayState,
+  onSyncPlaybackRate,
+  externalSyncSignal,
 }: AudioPreviewPlayerProps) {
   const audioPlayerRef = useRef<AudioPlayer>(null);
   const waveformRef = useRef<AudioWaveformHandle | null>(null);
@@ -331,7 +344,24 @@ export function AudioPreviewPlayer({
     const audioElement = audioPlayerRef.current?.audioEl?.current;
     if (!audioElement) return;
     audioElement.playbackRate = playbackRate;
-  }, [audioUrl, playbackRate]);
+    onSyncPlaybackRate?.(playbackRate);
+  }, [audioUrl, playbackRate, onSyncPlaybackRate]);
+
+  useEffect(() => {
+    if (!externalSyncSignal) return;
+    const audioElement = audioPlayerRef.current?.audioEl?.current;
+    if (!audioElement) return;
+    const nextRate = externalSyncSignal.playbackRate || 1;
+    if (playbackRate !== nextRate) {
+      setPlaybackRate(nextRate);
+    }
+    seekToTime(externalSyncSignal.time, false);
+    if (externalSyncSignal.isPlaying) {
+      void audioElement.play();
+    } else {
+      audioElement.pause();
+    }
+  }, [externalSyncSignal?.nonce]);
 
   useEffect(() => {
     setDuration(0);
@@ -655,10 +685,12 @@ export function AudioPreviewPlayer({
         onPlay={() => {
           setIsPlaying(true);
           isPlayingRef.current = true;
+          onSyncPlayState?.(true);
         }}
         onPause={() => {
           setIsPlaying(false);
           isPlayingRef.current = false;
+          onSyncPlayState?.(false);
         }}
         onEnded={() => {
           setIsPlaying(false);
@@ -675,6 +707,7 @@ export function AudioPreviewPlayer({
         onListen={(time) => {
           setCurrentTime(time);
           syncWaveProgress(time);
+          onSyncTime?.(time);
 
           const segments = sentenceSegmentsRef.current;
           if (!sentenceLoopEnabledRef.current || !segments.length) return;

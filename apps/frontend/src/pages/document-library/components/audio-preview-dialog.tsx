@@ -84,6 +84,15 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
 
   const objectUrlRef = useRef<string>('');
   const videoObjectUrlRef = useRef<string>('');
+  const syncingFromAudioRef = useRef(false);
+  const syncingFromVideoRef = useRef(false);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const [videoSyncSignal, setVideoSyncSignal] = useState({
+    nonce: 0,
+    time: 0,
+    isPlaying: false,
+    playbackRate: 1,
+  });
 
   const stopAndCleanupAudioUrl = useCallback(() => {
     if (objectUrlRef.current) {
@@ -521,12 +530,79 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                   ) : null}
                 </div>
                 {isVideoDoc && videoUrl ? (
-                  <video
-                    className="h-[22rem] w-full rounded-lg border border-slate-200/90 bg-black object-contain"
-                    src={videoUrl}
-                    controls
-                    preload="metadata"
-                  />
+                  <div className="relative">
+                    <video
+                      ref={videoElementRef}
+                      className="h-[22rem] w-full rounded-lg border border-slate-200/90 bg-black object-contain"
+                      src={videoUrl}
+                      controls={false}
+                      muted
+                      preload="metadata"
+                      playsInline
+                      disablePictureInPicture
+                      controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
+                      onPlay={() => {
+                        if (syncingFromAudioRef.current) {
+                          syncingFromAudioRef.current = false;
+                          return;
+                        }
+                        syncingFromVideoRef.current = true;
+                        setVideoSyncSignal((prev) => ({
+                          ...prev,
+                          nonce: prev.nonce + 1,
+                          isPlaying: true,
+                        }));
+                      }}
+                      onPause={() => {
+                        if (syncingFromAudioRef.current) {
+                          syncingFromAudioRef.current = false;
+                          return;
+                        }
+                        syncingFromVideoRef.current = true;
+                        const currentTime = videoElementRef.current?.currentTime ?? 0;
+                        setVideoSyncSignal((prev) => ({
+                          ...prev,
+                          nonce: prev.nonce + 1,
+                          time: currentTime,
+                          isPlaying: false,
+                        }));
+                      }}
+                      onRateChange={() => {
+                        if (syncingFromAudioRef.current) {
+                          syncingFromAudioRef.current = false;
+                          return;
+                        }
+                        const rate = videoElementRef.current?.playbackRate ?? 1;
+                        syncingFromVideoRef.current = true;
+                        setVideoSyncSignal((prev) => ({
+                          ...prev,
+                          nonce: prev.nonce + 1,
+                          playbackRate: rate,
+                        }));
+                      }}
+                      onSeeked={() => {
+                        if (syncingFromAudioRef.current) {
+                          syncingFromAudioRef.current = false;
+                          return;
+                        }
+                        const currentTime = videoElementRef.current?.currentTime ?? 0;
+                        syncingFromVideoRef.current = true;
+                        setVideoSyncSignal((prev) => ({
+                          ...prev,
+                          nonce: prev.nonce + 1,
+                          time: currentTime,
+                        }));
+                      }}
+                    />
+                    {isAudioProcessing ? (
+                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/35">
+                        <div className="flex items-center gap-2 rounded-md bg-white/90 px-3 py-2 text-xs font-medium text-slate-800 shadow">
+                          <Iconify icon="svg-spinners:3-dots-scale" width={18} className="text-blue-600" />
+                          视频分析执行中...
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : isVideoDoc ? (
                   <div className="flex h-[22rem] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-500">
                     视频暂不可预览
@@ -550,6 +626,40 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     audioProvider={doc?.audioProvider}
                     activeLookupWord={selectedLookupWord}
                     lyricContainerHeight={150}
+                    externalSyncSignal={videoSyncSignal}
+                    onSyncTime={(time) => {
+                      const videoEl = videoElementRef.current;
+                      if (!videoEl || syncingFromVideoRef.current) {
+                        syncingFromVideoRef.current = false;
+                        return;
+                      }
+                      if (Math.abs((videoEl.currentTime ?? 0) - time) > 0.2) {
+                        syncingFromAudioRef.current = true;
+                        videoEl.currentTime = time;
+                      }
+                    }}
+                    onSyncPlayState={(isPlaying) => {
+                      const videoEl = videoElementRef.current;
+                      if (!videoEl || syncingFromVideoRef.current) {
+                        syncingFromVideoRef.current = false;
+                        return;
+                      }
+                      syncingFromAudioRef.current = true;
+                      if (isPlaying) {
+                        void videoEl.play().catch(() => null);
+                      } else {
+                        videoEl.pause();
+                      }
+                    }}
+                    onSyncPlaybackRate={(rate) => {
+                      const videoEl = videoElementRef.current;
+                      if (!videoEl || syncingFromVideoRef.current) {
+                        syncingFromVideoRef.current = false;
+                        return;
+                      }
+                      syncingFromAudioRef.current = true;
+                      videoEl.playbackRate = rate;
+                    }}
                     onWordLongPress={({ word, candidates }) => {
                       setSelectedLookupWord(word);
                       setLookupCandidates(candidates);
