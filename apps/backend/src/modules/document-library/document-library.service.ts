@@ -16,7 +16,7 @@ import {
 } from './document-audio.types';
 import { DOCUMENT_AUDIO_PARAMS_SCHEMA, sanitizeRegenerateAudioParams } from './document-audio-params.schema';
 import { DocumentWordTimestamp } from './document-audio.types';
-import { lookupEnglishFirstHit, lookupOneEnglishWord } from './english-wordnet.lookup';
+import { lookupEnglishFirstHit } from './english-wordnet.lookup';
 
 type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
   title: string;
@@ -143,10 +143,6 @@ export class DocumentLibraryService {
 
   getAudioParamsSchema() {
     return DOCUMENT_AUDIO_PARAMS_SCHEMA;
-  }
-
-  lookupEnglishWord(word: string) {
-    return lookupOneEnglishWord(word);
   }
 
   lookupEnglishWordFirstMatch(candidates: unknown) {

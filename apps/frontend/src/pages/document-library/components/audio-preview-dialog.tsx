@@ -34,6 +34,15 @@ type AudioPreviewDocument = {
   wordTimestamps?: WordTimestamp[] | null;
 };
 
+function partOfSpeechBadgeClass(pos: string) {
+  const p = pos.toLowerCase();
+  if (p.includes('noun')) return 'border-sky-200/90 bg-sky-50 text-sky-900';
+  if (p.includes('verb')) return 'border-emerald-200/90 bg-emerald-50 text-emerald-900';
+  if (p.includes('adjective')) return 'border-amber-200/90 bg-amber-50 text-amber-950';
+  if (p.includes('adverb')) return 'border-violet-200/90 bg-violet-50 text-violet-900';
+  return 'border-slate-200/90 bg-slate-50 text-slate-800';
+}
+
 type AudioPreviewDialogProps = {
   open: boolean;
   documentId: string | null;
@@ -508,13 +517,32 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
               </div>
 
               <div className="space-y-3">
-                <div className="rounded-lg border border-black/10 bg-white p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold text-gray-700">单词查询</div>
+                <div
+                  className={cn(
+                    'overflow-hidden rounded-xl border border-slate-200/90 bg-gradient-to-br from-white via-white to-slate-50/80',
+                    'shadow-sm shadow-slate-200/40 ring-1 ring-black/[0.04]'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2 border-b border-slate-100/90 px-3.5 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                        <Iconify icon="solar:book-bookmark-bold-duotone" width={20} />
+                      </span>
+                      <div>
+                        <div className="text-xs font-semibold tracking-tight text-slate-800">单词释义</div>
+                        <div className="mt-0.5 text-[11px] leading-snug text-slate-500">
+                          {selectedLookupWord
+                            ? 'WordNet 英英释义'
+                            : doc?.wordTimestamps?.length
+                              ? '在左侧歌词中长按单词'
+                              : '无词级时间戳时可在正文中选词后自行查词典'}
+                        </div>
+                      </div>
+                    </div>
                     {selectedLookupWord ? (
                       <button
                         type="button"
-                        className="text-[11px] text-gray-500 underline underline-offset-2"
+                        className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
                         onClick={() => {
                           setSelectedLookupWord('');
                           setLookupCandidates([]);
@@ -524,27 +552,70 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                       </button>
                     ) : null}
                   </div>
-                  <div className="mt-2 text-xs text-gray-700">
-                    {selectedLookupWord
-                      ? `当前词：${selectedLookupWord}`
-                      : doc?.wordTimestamps?.length
-                        ? '在左侧歌词中长按单词进行查询'
-                        : '无词级时间戳时无法在歌词中选词，请从正文复制单词后自行检索'}
-                  </div>
-                  <div className="mt-2 max-h-44 space-y-1 overflow-auto text-[11px] text-gray-600">
-                    {lookupLoading ? <div>查询中...</div> : null}
-                    {!lookupLoading && lookupError ? <div className="text-red-500">{lookupError}</div> : null}
-                    {!lookupLoading && !lookupError && selectedLookupWord && lookupDefinitions.length === 0 ? (
-                      <div>未找到释义</div>
-                    ) : null}
-                    {!lookupLoading &&
-                      !lookupError &&
-                      lookupDefinitions.slice(0, 3).map((item, idx) => (
-                        <div key={`${item.partOfSpeech}-${idx}`} className="rounded bg-gray-50 p-1.5">
-                          <div className="font-medium text-gray-700">{item.partOfSpeech}</div>
-                          <div>{item.gloss}</div>
+
+                  <div className="px-3.5 pb-3 pt-3">
+                    {selectedLookupWord ? (
+                      <div className="mb-3 rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+                        <div className="text-[10px] font-medium uppercase tracking-wider text-slate-400">所选词</div>
+                        <div className="mt-0.5 text-lg font-semibold capitalize tracking-tight text-slate-900">
+                          {selectedLookupWord}
                         </div>
-                      ))}
+                      </div>
+                    ) : null}
+
+                    <div className="max-h-52 space-y-2.5 overflow-y-auto pr-0.5 text-[13px] leading-relaxed">
+                      {lookupLoading ? (
+                        <div className="flex items-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-3 py-4 text-sm text-slate-500">
+                          <Iconify icon="svg-spinners:3-dots-fade" width={22} className="text-indigo-500" />
+                          正在查询释义…
+                        </div>
+                      ) : null}
+                      {!lookupLoading && lookupError ? (
+                        <div className="rounded-lg border border-red-100 bg-red-50/90 px-3 py-2 text-sm text-red-700">
+                          {lookupError}
+                        </div>
+                      ) : null}
+                      {!lookupLoading && !lookupError && selectedLookupWord && lookupDefinitions.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/40 px-3 py-5 text-center text-sm text-slate-500">
+                          未找到该词的英文释义
+                        </div>
+                      ) : null}
+                      {!lookupLoading &&
+                        !lookupError &&
+                        lookupDefinitions.slice(0, 4).map((item, idx) => (
+                          <div
+                            key={`${item.partOfSpeech}-${idx}`}
+                            className="rounded-lg border border-white/70 bg-white/95 p-3 shadow-[0_1px_3px_rgba(15,23,42,0.06)]"
+                          >
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                                partOfSpeechBadgeClass(item.partOfSpeech || '')
+                              )}
+                            >
+                              {(item.partOfSpeech || 'unknown').replace(/_/g, ' ')}
+                            </span>
+                            <p className="mt-2.5 text-sm text-slate-700">{item.gloss}</p>
+                            {item.synonyms?.length ? (
+                              <div className="mt-2.5 border-t border-slate-100 pt-2">
+                                <div className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                                  相关词
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {item.synonyms.slice(0, 8).map((syn) => (
+                                    <span
+                                      key={syn}
+                                      className="rounded-md bg-slate-100/90 px-2 py-0.5 text-[11px] text-slate-600"
+                                    >
+                                      {syn}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 </div>
 

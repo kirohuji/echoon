@@ -9,7 +9,6 @@ import {
   Param,
   Post,
   Put,
-  Query,
   Res,
   UploadedFile,
   UseGuards,
@@ -150,11 +149,6 @@ export class DocumentLibraryController {
   @Get('audio-params-schema')
   getAudioParamsSchema() {
     return this.documentLibraryService.getAudioParamsSchema();
-  }
-
-  @Get('word-lookup')
-  wordLookup(@Query('word') word: string) {
-    return this.documentLibraryService.lookupEnglishWord(word);
   }
 
   @Post('word-lookup')

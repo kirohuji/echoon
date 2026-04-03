@@ -104,11 +104,6 @@ export default class DocumentLibraryService extends Service {
     return this.api.get(`${this.model}/${id}/audio`, { responseType: 'blob' });
   }
 
-  lookupWord(word: string) {
-    return this.api.get(`${this.model}/word-lookup`, { params: { word } }) as Promise<unknown>;
-  }
-
-  /** 按顺序尝试候选（短语 + 单词），单次 POST。返回值需用 parseWordLookupResponse 解析。 */
   lookupWordCandidates(candidates: string[]) {
     return this.api.post(`${this.model}/word-lookup`, { candidates }) as Promise<unknown>;
   }

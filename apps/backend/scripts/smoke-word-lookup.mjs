@@ -104,18 +104,12 @@ async function runHttpSmoke() {
 
   const auth = { Authorization: `Bearer ${tok}` };
 
-  const getQ = await httpJson('GET', `/document-library/word-lookup?word=${encodeURIComponent('hello')}`, {
-    headers: auth,
-  });
-  console.log('GET /document-library/word-lookup', getQ.status);
-
   const lr = await httpJson('POST', '/document-library/word-lookup', {
     body: { candidates: ['hello'] },
     headers: auth,
   });
   console.log('POST /document-library/word-lookup', lr.status);
   const out = unwrapApiData(lr.body);
-  console.log(JSON.stringify(lr.body, null, 2).slice(0, 1200));
 
   const defs = out?.definitions ?? lr.body?.data?.definitions;
   const n = Array.isArray(defs) ? defs.length : 0;

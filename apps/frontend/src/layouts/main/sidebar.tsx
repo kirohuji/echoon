@@ -3,7 +3,7 @@ import { usePathname } from 'src/routes/hooks';
 
 const items = [
   { label: '用户管理', to: '/main/users' },
-  { label: '会话管理', to: '/main/conversations' },
+  // { label: '会话管理', to: '/main/conversations' },
   { label: '资料库', to: '/main/document-library' },
   { label: '标签库', to: '/main/tags' },
 ];
