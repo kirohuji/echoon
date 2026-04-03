@@ -8,12 +8,14 @@ import { DeepgramDocumentAudioProvider } from './providers/deepgram-document-aud
 import { ElevenLabsDocumentAudioProvider } from './providers/elevenlabs-document-audio.provider';
 import { HumeDocumentAudioProvider } from './providers/hume-document-audio.provider';
 import { MinimaxDocumentAudioProvider } from './providers/minimax-document-audio.provider';
+import { WhisperTranscriptionService } from './whisper-transcription.service';
 
 @Module({
   imports: [PrismaModule.forRoot({ isGlobal: true })],
   controllers: [DocumentLibraryController],
   providers: [
     DocumentLibraryService,
+    WhisperTranscriptionService,
     DocumentAudioProviderFactory,
     MinimaxDocumentAudioProvider,
     CartesiaDocumentAudioProvider,

@@ -1,0 +1,25 @@
+# 独立启动：在 infra/whisper 目录执行
+#   docker compose up -d
+#
+# 可通过本目录 .env 覆盖（见 .env.example）：
+#   WHISPER_GGML_MODEL   默认 ggml-medium.bin
+#   WHISPER_BIND         默认 0.0.0.0（测试期可被外网访问）；收尾改为 127.0.0.1 仅本机
+#   WHISPER_HOST_PORT    宿主机端口，默认 2610
+
+services:
+  whisper:
+    image: ghcr.io/ggml-org/whisper.cpp:main
+    command:
+      - whisper-server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - -m
+      - /models/${WHISPER_GGML_MODEL:-ggml-medium.bin}
+      - --convert
+    volumes:
+      - ./models:/models
+    ports:
+      - "${WHISPER_BIND:-0.0.0.0}:${WHISPER_HOST_PORT:-2610}:8080"
+    restart: unless-stopped

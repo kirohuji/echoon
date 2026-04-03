@@ -42,6 +42,11 @@ jobs:
       HUME_API_KEY: ${{ secrets.HUME_API_KEY }}
       HUME_API_SECRET: ${{ secrets.HUME_API_SECRET }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      # Whisper-server：仅当服务可用且该 URL 非空时，后端才会做词级时间戳补全
+      WHISPER_INFERENCE_URL: ${{ secrets.WHISPER_INFERENCE_URL }}
+      WHISPER_LANGUAGE: ${{ secrets.WHISPER_LANGUAGE || 'en' }}
+      WHISPER_TIMEOUT_MS: ${{ secrets.WHISPER_TIMEOUT_MS || '600000' }}
+      WHISPER_SPLIT_ON_WORD: ${{ secrets.WHISPER_SPLIT_ON_WORD || 'true' }}
     steps:
       - name: Configure git transport
         run: |
@@ -105,6 +110,11 @@ jobs:
       HUME_API_KEY: ${{ secrets.HUME_API_KEY }}
       HUME_API_SECRET: ${{ secrets.HUME_API_SECRET }}
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      # Whisper-server：仅当服务可用且该 URL 非空时，后端才会做词级时间戳补全
+      WHISPER_INFERENCE_URL: ${{ secrets.WHISPER_INFERENCE_URL }}
+      WHISPER_LANGUAGE: ${{ secrets.WHISPER_LANGUAGE || 'en' }}
+      WHISPER_TIMEOUT_MS: ${{ secrets.WHISPER_TIMEOUT_MS || '600000' }}
+      WHISPER_SPLIT_ON_WORD: ${{ secrets.WHISPER_SPLIT_ON_WORD || 'true' }}
     steps:
       - name: Configure git transport
         run: |

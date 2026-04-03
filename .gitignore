@@ -37,6 +37,15 @@ lerna-debug.log*
 .env
 .env.*
 !.env.example
+!infra/whisper/.env.example
+!infra/whisper/deploy.env.example
+infra/whisper/deploy.env
+
+# Whisper ggml 模型目录（根 compose 默认挂载 ./whisper-models）
+whisper-models
+
+# Whisper 测试/探测临时输出
+infra/whisper/tmp/
 
 # temp directory
 .temp

@@ -17,6 +17,7 @@ import {
 import { DOCUMENT_AUDIO_PARAMS_SCHEMA, sanitizeRegenerateAudioParams } from './document-audio-params.schema';
 import { DocumentWordTimestamp } from './document-audio.types';
 import { lookupEnglishFirstHit } from './english-wordnet.lookup';
+import { WhisperTranscriptionService } from './whisper-transcription.service';
 
 type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
   title: string;
@@ -37,7 +38,8 @@ export class DocumentLibraryService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly documentAudioProviderFactory: DocumentAudioProviderFactory
+    private readonly documentAudioProviderFactory: DocumentAudioProviderFactory,
+    private readonly whisperTranscription: WhisperTranscriptionService
   ) {}
 
   async create(input: CreateDocumentLibraryInput, user?: User) {
@@ -328,6 +330,17 @@ export class DocumentLibraryService {
       : Prisma.JsonNull;
   }
 
+  /** TTS 已带词时间戳则沿用；否则在配置了 WHISPER_INFERENCE_URL 时尝试 whisper-server 补全。 */
+  private async resolveWordTimestampsForSave(
+    audioPath: string,
+    providerWordTimestamps: DocumentWordTimestamp[] | null
+  ): Promise<DocumentWordTimestamp[] | null> {
+    if (providerWordTimestamps?.length) {
+      return providerWordTimestamps;
+    }
+    return this.whisperTranscription.transcribeFileToWordTimestamps(audioPath);
+  }
+
   private buildSentenceSegments(words: DocumentWordTimestamp[]) {
     if (!words.length) return [] as Array<{ sentenceIndex: number; text: string; startIdx: number; endIdx: number }>;
     const starts = [0];
@@ -585,8 +598,9 @@ export class DocumentLibraryService {
         voiceId: providerConfig.voiceId,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
+      const rawWordTimestamps = await this.resolveWordTimestampsForSave(audioPath, result.wordTimestamps);
       const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
-        result.wordTimestamps
+        rawWordTimestamps
       );
 
       // 3) 写入完成状态
@@ -697,8 +711,9 @@ export class DocumentLibraryService {
         params: sanitizedParams,
       });
       const audioPath = await this.writeAudioFile(id, result.fileExtension, result.audioBuffer);
+      const rawWordTimestamps = await this.resolveWordTimestampsForSave(audioPath, result.wordTimestamps);
       const enrichedWordTimestamps = await this.enrichWordTimestampsWithSentenceTranslation(
-        result.wordTimestamps
+        rawWordTimestamps
       );
 
       await this.prisma.documentLibrary.update({
