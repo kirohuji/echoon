@@ -41,6 +41,130 @@ function sidebarUserLines(user: Record<string, unknown> | null) {
   return { line1, line2 };
 }
 
+type SidebarUserBarProps = {
+  collapsed: boolean;
+  loading: boolean;
+  userRecord: Record<string, unknown> | null;
+  line1: string;
+  line2: string;
+  avatarUrl: string;
+  avatarLetter: string;
+  signingOut: boolean;
+  onLogout: () => void;
+};
+
+function SidebarUserBar({
+  collapsed,
+  loading,
+  userRecord,
+  line1,
+  line2,
+  avatarUrl,
+  avatarLetter,
+  signingOut,
+  onLogout,
+}: SidebarUserBarProps) {
+  if (loading) {
+    return (
+      <div
+        className={cn(
+          'animate-pulse rounded-lg bg-slate-200/40',
+          collapsed ? 'mx-auto h-16 w-11' : 'flex gap-3 py-0.5',
+        )}
+      >
+        {!collapsed ? (
+          <>
+            <div className="h-11 w-11 shrink-0 rounded-full bg-slate-200/60" />
+            <div className="min-w-0 flex-1 space-y-2 pt-1">
+              <div className="flex items-center gap-2">
+                <div className="h-3.5 min-w-0 flex-1 rounded bg-slate-200/60" />
+                <div className="h-7 w-7 shrink-0 rounded-lg bg-slate-200/60" />
+              </div>
+              <div className="h-3 w-[45%] rounded bg-slate-200/60" />
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (!userRecord) return null;
+
+  const tip = [line1, line2].filter(Boolean).join(' · ');
+
+  const avatarInner = avatarUrl ? (
+    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+  ) : (
+    <span className="text-sm font-semibold tracking-tight text-indigo-700">{avatarLetter}</span>
+  );
+
+  if (collapsed) {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <div
+          className="flex h-10 w-10 shrink-0 overflow-hidden rounded-full bg-indigo-50"
+          title={tip}
+        >
+          <div className="flex h-full w-full items-center justify-center">{avatarInner}</div>
+        </div>
+        <button
+          type="button"
+          onClick={onLogout}
+          disabled={signingOut}
+          title={signingOut ? '正在退出…' : '退出登录'}
+          aria-label="退出登录"
+          className={cn(
+            'flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition',
+            'hover:bg-slate-100 hover:text-red-600',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/35',
+            'disabled:pointer-events-none disabled:opacity-45',
+          )}
+        >
+          <Iconify icon="solar:logout-3-bold-duotone" width={20} className="shrink-0" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 gap-3 py-0.5">
+      <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-indigo-50">
+        <div className="flex h-full w-full items-center justify-center">{avatarInner}</div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-1">
+          <p
+            className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-slate-900"
+            title={line1}
+          >
+            {line1}
+          </p>
+          <button
+            type="button"
+            onClick={onLogout}
+            disabled={signingOut}
+            title={signingOut ? '正在退出…' : '退出登录'}
+            aria-label="退出登录"
+            className={cn(
+              'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition',
+              'hover:bg-slate-100 hover:text-red-600',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/35',
+              'disabled:pointer-events-none disabled:opacity-50',
+            )}
+          >
+            <Iconify icon="solar:logout-3-bold-duotone" width={20} className="shrink-0" />
+          </button>
+        </div>
+        {line2 ? (
+          <p className="mt-1 truncate text-xs leading-snug text-slate-500" title={line2}>
+            {line2}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function MainSidebar() {
   const pathname = usePathname();
   const navigate = useNavigate();
@@ -85,6 +209,10 @@ export function MainSidebar() {
       setSigningOut(false);
     }
   }, [checkUserSession, navigate]);
+
+  const onLogout = useCallback(() => {
+    handleSignOut().catch(() => null);
+  }, [handleSignOut]);
 
   return (
     <aside
@@ -155,99 +283,18 @@ export function MainSidebar() {
         })}
       </nav>
 
-      <div className="mt-auto border-t border-slate-100 pt-3">
-        {loading ? (
-          <div
-            className={cn(
-              'animate-pulse bg-slate-200/70',
-              collapsed ? 'mx-auto h-12 w-12 rounded-full' : 'h-[4.25rem] rounded-lg',
-            )}
-          />
-        ) : userRecord ? (
-          <div className={cn('flex flex-col', collapsed ? 'items-center gap-2.5' : 'gap-2.5 px-0.5')}>
-            {collapsed ? (
-              <>
-                <div
-                  className="flex justify-center"
-                  title={[line1, line2].filter(Boolean).join(' · ')}
-                >
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt=""
-                      className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-white shadow-sm"
-                    />
-                  ) : (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-lg font-semibold text-indigo-700 ring-2 ring-white shadow-sm">
-                      {avatarLetter}
-                    </div>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleSignOut().catch(() => null);
-                  }}
-                  disabled={signingOut}
-                  title={signingOut ? '正在退出…' : '退出登录'}
-                  aria-label="退出登录"
-                  className={cn(
-                    'flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-medium transition',
-                    'text-slate-600 hover:bg-white hover:text-red-600 hover:shadow-sm',
-                    'ring-1 ring-transparent hover:ring-slate-200/80',
-                    'disabled:pointer-events-none disabled:opacity-50',
-                  )}
-                >
-                  <Iconify icon="solar:logout-3-bold-duotone" width={20} className="shrink-0" />
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="flex items-end gap-3">
-                  <div className="shrink-0">
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt=""
-                        className="h-14 w-14 rounded-full object-cover ring-2 ring-white shadow-sm"
-                      />
-                    ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100 text-lg font-semibold text-indigo-700 ring-2 ring-white shadow-sm">
-                        {avatarLetter}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-1 pb-px">
-                    <div className="truncate text-sm font-medium leading-snug text-slate-900">
-                      {line1}
-                    </div>
-                    <div className="min-w-0 truncate text-xs leading-snug text-slate-500">
-                      {line2 || '\u00A0'}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleSignOut().catch(() => null);
-                  }}
-                  disabled={signingOut}
-                  title={signingOut ? '正在退出…' : '退出登录'}
-                  aria-label="退出登录"
-                  className={cn(
-                    'flex w-full items-center justify-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition',
-                    'text-slate-600 hover:bg-white hover:text-red-600 hover:shadow-sm',
-                    'ring-1 ring-transparent hover:ring-slate-200/80',
-                    'disabled:pointer-events-none disabled:opacity-50',
-                  )}
-                >
-                  <Iconify icon="solar:logout-3-bold-duotone" width={20} className="shrink-0" />
-                  <span className="truncate">{signingOut ? '退出中…' : '退出登录'}</span>
-                </button>
-              </>
-            )}
-          </div>
-        ) : null}
+      <div className="mt-auto pt-3">
+        <SidebarUserBar
+          collapsed={collapsed}
+          loading={loading}
+          userRecord={userRecord}
+          line1={line1}
+          line2={line2}
+          avatarUrl={avatarUrl}
+          avatarLetter={avatarLetter}
+          signingOut={signingOut}
+          onLogout={onLogout}
+        />
       </div>
     </aside>
   );
