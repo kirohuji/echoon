@@ -45,7 +45,8 @@ function flattenVerboseJsonToWordTimestamps(data: WhisperVerboseJson): DocumentW
   }
 
   out.sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0));
-  return refineWhisperWordFragments(out);
+  // return refineWhisperWordFragments(out);
+  return out;
 }
 
 /** whisper 词级对齐常把同一英文词切成多段（如 Remo+ving、Re+mo+ving）；在时间间隔极短时按规则并回一条。 */

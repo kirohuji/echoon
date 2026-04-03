@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 
 import { Iconify } from 'src/components/iconify';
-import { Button } from 'src/components/ui/button';
 import { documentLibraryService } from 'src/composables/context-provider';
 import { cn } from 'src/lib/utils';
 import {
@@ -10,46 +9,16 @@ import {
   type AudioParamsSchema,
   type WordLookupDefinition,
 } from 'src/modules/document-library';
+import { AudioTtsSidebar } from './audio-preview-tts-sidebar';
 import {
-  DOCUMENT_AUDIO_PROVIDER_OPTIONS,
-  type AudioProvider,
-} from '../audio-provider-options';
-import { AudioPreviewPlayer } from './audio-preview-player';
-
-type WordTimestamp = {
-  start_time: number;
-  text: string;
-};
-
-type AudioPreviewDocument = {
-  fileType?: string | null;
-  mimeType?: string | null;
-  audioProvider?: AudioProvider | null;
-  audioModel?: string | null;
-  modelName?: string | null;
-  audioVoiceId?: string | null;
-  audioError?: string | null;
-  audioProgress?: number | null;
-  audioStage?: string | null;
-  audioStatus?: 'pending' | 'processing' | 'success' | 'failed' | null;
-  extractedText?: string | null;
-  wordTimestamps?: WordTimestamp[] | null;
-};
-
-function isVideoDocument(doc: AudioPreviewDocument | null) {
-  const ext = (doc?.fileType || '').toLowerCase();
-  const mime = (doc?.mimeType || '').toLowerCase();
-  return mime.startsWith('video/') || ['mp4', 'mov', 'mkv', 'avi', 'webm', 'm4v'].includes(ext);
-}
-
-function partOfSpeechBadgeClass(pos: string) {
-  const p = pos.toLowerCase();
-  if (p.includes('noun')) return 'border-sky-200/90 bg-sky-50 text-sky-900';
-  if (p.includes('verb')) return 'border-emerald-200/90 bg-emerald-50 text-emerald-900';
-  if (p.includes('adjective')) return 'border-amber-200/90 bg-amber-50 text-amber-950';
-  if (p.includes('adverb')) return 'border-violet-200/90 bg-violet-50 text-violet-900';
-  return 'border-slate-200/90 bg-slate-50 text-slate-800';
-}
+  isVideoDocument,
+  type AudioPreviewDocument,
+  type SelectedProvider,
+} from './audio-preview-dialog.types';
+import { WordLookupSidebar } from './audio-preview-word-lookup-sidebar';
+import type { AudioProvider } from '../audio-provider-options';
+import { AudioDocumentPanel } from './audio-document-panel';
+import { VideoDocumentPanel } from './video-document-panel';
 
 type AudioPreviewDialogProps = {
   open: boolean;
@@ -57,14 +26,9 @@ type AudioPreviewDialogProps = {
   onClose: () => void;
 };
 
-const ALL_PROVIDERS: AudioProvider[] = ['minimax', 'cartesia', 'hume', 'elevenlabs', 'deepgram'];
-
-type SelectedProvider = AudioProvider | '';
-
 export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDialogProps) {
   const [doc, setDoc] = useState<AudioPreviewDocument | null>(null);
   const [audioUrl, setAudioUrl] = useState<string>('');
-  const [polling, setPolling] = useState(false);
   const [pollingRun, setPollingRun] = useState(0);
   const [editableText, setEditableText] = useState<string>('');
   const [textDirty, setTextDirty] = useState(false);
@@ -131,7 +95,6 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       .catch(() => setSchema([]));
   }, [open]);
 
-  // 把提取文本同步到可编辑文本：processing 阶段不覆盖用户输入
   useEffect(() => {
     if (!doc) return;
     if (doc?.audioStatus === 'processing') return;
@@ -180,29 +143,25 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     setAudioConfigDirty(false);
   }, [documentId]);
 
-  // 当重新开始生成时，清空“已手动编辑”的标记
   useEffect(() => {
     if (doc?.audioStatus === 'processing') {
       setTextDirty(false);
       setEditableText(doc?.extractedText ?? '');
     }
-  }, [doc?.audioStatus]);
+  }, [doc?.audioStatus, doc?.extractedText]);
 
-  // 仅在 generating 时轮询；pending 表示尚未开始生成，不应每 2s 打接口。
   useEffect(() => {
     if (!open || !documentId) {
       setDoc(null);
       stopAndCleanupAudioUrl();
       stopAndCleanupVideoUrl();
-      setPolling(false);
-      return;
+      return () => {};
     }
 
     let cancelled = false;
     let timer: number | undefined;
-    setPolling(true);
 
-    const loop = async () => {
+    const loop = async (): Promise<void> => {
       try {
         const data = await refresh();
         if (cancelled) return;
@@ -210,7 +169,6 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
 
         const status = data?.audioStatus;
         if (status === 'success' || status === 'failed') {
-          setPolling(false);
           return;
         }
         if (status === 'pending' && videoAnalyzingPendingRef.current) {
@@ -218,13 +176,11 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
           return;
         }
         if (status !== 'processing') {
-          setPolling(false);
           return;
         }
 
         timer = window.setTimeout(loop, 2000);
       } catch (e) {
-        // 保底：避免轮询直接打爆控制台
         // eslint-disable-next-line no-console
         console.error(e);
         timer = window.setTimeout(loop, 3000);
@@ -236,17 +192,17 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     return () => {
       cancelled = true;
       if (timer) window.clearTimeout(timer);
-      setPolling(false);
     };
   }, [open, documentId, refresh, stopAndCleanupAudioUrl, stopAndCleanupVideoUrl, pollingRun]);
 
-  // audioStatus=success 后拉取 blob，并生成 objectURL 供播放
   useEffect(() => {
     const audioStatus = doc?.audioStatus;
-    if (!open || !documentId) return;
+    if (!open || !documentId) {
+      return () => {};
+    }
     if (audioStatus !== 'success') {
       stopAndCleanupAudioUrl();
-      return;
+      return () => {};
     }
 
     let cancelled = false;
@@ -276,13 +232,15 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   }, [doc?.audioStatus, documentId, open, stopAndCleanupAudioUrl]);
 
   useEffect(() => {
-    if (!open || !documentId) return;
+    if (!open || !documentId) {
+      return () => {};
+    }
     const mime = doc?.mimeType || '';
     const ext = (doc?.fileType || '').toLowerCase();
     const isVideo = mime.startsWith('video/') || ['mp4', 'mov', 'mkv', 'avi', 'webm', 'm4v'].includes(ext);
     if (!isVideo) {
       stopAndCleanupVideoUrl();
-      return;
+      return () => {};
     }
     let cancelled = false;
     const loadVideo = async () => {
@@ -301,38 +259,13 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
         console.error(e);
       }
     };
-    void loadVideo();
+    loadVideo();
     return () => {
       cancelled = true;
     };
   }, [documentId, doc?.fileType, doc?.mimeType, open, stopAndCleanupVideoUrl]);
 
-  const providerSchema =
-    selectedProvider !== ''
-      ? schema.find((item) => item.provider === selectedProvider)
-      : undefined;
-  const modelSchema =
-    providerSchema?.models.find((item) => item.model === selectedModel) ??
-    (selectedProvider !== '' ? providerSchema?.models[0] : undefined);
-  const providerVoiceOptions =
-    selectedProvider !== '' ? DOCUMENT_AUDIO_PROVIDER_OPTIONS[selectedProvider] || [] : [];
-  const voiceOptions = providerVoiceOptions.filter(
-    (item) => item.model === (selectedModel || modelSchema?.model)
-  );
-  const requiresVoiceId = Boolean(modelSchema?.requiresVoiceId);
   const canRegenerate = doc?.audioStatus !== 'processing';
-  const providerLabel =
-    selectedProvider !== '' ? selectedProvider : doc?.audioProvider ?? '未配置';
-  const modelLabel =
-    selectedModel || doc?.audioModel || doc?.modelName || '未配置';
-  const voiceLabel = selectedVoiceId || doc?.audioVoiceId || '默认';
-  const synthesisTextTrimmed = (editableText || doc?.extractedText || '').trim();
-  const audioConfigReady = Boolean(
-    selectedProvider !== '' &&
-      selectedModel &&
-      (!requiresVoiceId || Boolean(selectedVoiceId))
-  );
-  const canStartSynthesis = audioConfigReady && Boolean(synthesisTextTrimmed);
 
   const onRetryGenerate = useCallback(async () => {
     if (!documentId) return;
@@ -340,7 +273,14 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       const text = (editableText || doc?.extractedText || '').trim();
       if (!text) return;
       if (!selectedProvider || !selectedModel) return;
+
+      const requiresVoiceId = Boolean(
+        schema
+          .find((item) => item.provider === selectedProvider)
+          ?.models.find((m) => m.model === selectedModel)?.requiresVoiceId
+      );
       if (requiresVoiceId && !selectedVoiceId) return;
+
       await documentLibraryService.generateAudioFromText(documentId, {
         text,
         audioProvider: selectedProvider as AudioProvider,
@@ -348,7 +288,6 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
         audioVoiceId: selectedVoiceId || undefined,
         params: advancedParams,
       });
-      // 请求成功后再 bump：后端已是 processing，轮询 effect 拉到的第一条就是进行中，避免仍显示 pending 时误停轮询。
       setPollingRun((x) => x + 1);
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -362,7 +301,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     selectedModel,
     selectedVoiceId,
     advancedParams,
-    requiresVoiceId,
+    schema,
   ]);
 
   const onGenerateTranslation = useCallback(async () => {
@@ -381,7 +320,6 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     try {
       setVideoAnalyzingPending(true);
       setActionError('');
-      // 点击后立即进入“分析中”视觉状态，避免等后端轮询返回才有反馈。
       setDoc((prev) =>
         prev
           ? {
@@ -392,7 +330,6 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
             }
           : prev
       );
-      // 立即重启轮询，确保状态快速更新。
       setPollingRun((x) => x + 1);
       const parsedTemperature = Number(videoWhisperTemperature);
       const requestPayload =
@@ -421,8 +358,9 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   }, [videoAnalyzingPending]);
 
   useEffect(() => {
-    if (!videoAnalyzingPending) return;
-    // 请求已被后端接收后，由真实状态驱动；本地“pending”标记可释放。
+    if (!videoAnalyzingPending) {
+      return () => {};
+    }
     if (
       doc?.audioStatus === 'processing' ||
       doc?.audioStatus === 'success' ||
@@ -430,6 +368,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     ) {
       setVideoAnalyzingPending(false);
     }
+    return () => {};
   }, [videoAnalyzingPending, doc?.audioStatus]);
 
   useEffect(() => {
@@ -437,7 +376,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       setLookupDefinitions([]);
       setLookupError('');
       setLookupLoading(false);
-      return;
+      return () => {};
     }
 
     let cancelled = false;
@@ -457,14 +396,14 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
           return;
         }
       } catch {
-        // 网络或服务错误：与「无释义」区分时可在此打日志
+        // ignore
       }
       if (cancelled) return;
       setLookupError('未找到释义');
       setLookupDefinitions([]);
     };
 
-    void tryLookup().finally(() => {
+    tryLookup().finally(() => {
       if (cancelled) return;
       setLookupLoading(false);
     });
@@ -477,6 +416,11 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const isAudioProcessing = doc?.audioStatus === 'processing';
   const isVideoDoc = isVideoDocument(doc);
   const isVideoAnalyzing = isVideoDoc && (isAudioProcessing || videoAnalyzingPending);
+
+  const onWordLongPress = useCallback((payload: { word: string; candidates: string[] }) => {
+    setSelectedLookupWord(payload.word);
+    setLookupCandidates(payload.candidates);
+  }, []);
 
   return (
     <Dialog.Root
@@ -555,350 +499,75 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
             </div>
 
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(14rem,16rem)]">
-              <div className="min-w-0 space-y-2">
-                <div
-                  className={cn(
-                    'flex items-center justify-between rounded-lg border border-slate-200/90 bg-gradient-to-r from-white to-slate-50/80',
-                    'px-2.5 py-1.5 shadow-sm ring-1 ring-black/[0.03]'
-                  )}
-                >
-                  <div className="text-xs font-semibold text-slate-800">
-                    {isVideoDoc ? '视频预览' : '音频内容'}
-                  </div>
-                  {isVideoDoc ? (
-                    <div className="flex items-center gap-2">
-                      <label className="inline-flex items-center gap-1 text-[11px] text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={videoSplitOnWord}
-                          onChange={(e) => setVideoSplitOnWord(e.target.checked)}
-                          disabled={isVideoAnalyzing}
-                        />
-                        splitOnWord
-                      </label>
-                      <input
-                        className="h-7 w-20 rounded border border-slate-200 px-2 text-[11px] text-slate-700 outline-none focus-visible:ring-1 focus-visible:ring-indigo-300"
-                        value={videoWhisperTemperature}
-                        onChange={(e) => setVideoWhisperTemperature(e.target.value)}
-                        placeholder="0.2"
-                        title="Whisper temperature (0-1)"
-                        disabled={isVideoAnalyzing}
-                      />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={onTranscribeVideo}
-                        disabled={!canRegenerate || isVideoAnalyzing}
-                      >
-                        {isVideoAnalyzing ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            <Iconify icon="svg-spinners:3-dots-scale" width={14} />
-                            分析中...
-                          </span>
-                        ) : (
-                          '分析视频'
-                        )}
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-                {isVideoDoc && videoUrl ? (
-                  <div className="relative">
-                    <video
-                      ref={videoElementRef}
-                      className="h-[22rem] w-full rounded-lg border border-slate-200/90 bg-black object-contain"
-                      src={videoUrl}
-                      controls={false}
-                      muted
-                      preload="metadata"
-                      playsInline
-                      disablePictureInPicture
-                      controlsList="nodownload noplaybackrate noremoteplayback nofullscreen"
-                      onPlay={() => {
-                        if (syncingFromAudioRef.current) {
-                          syncingFromAudioRef.current = false;
-                          return;
-                        }
-                        syncingFromVideoRef.current = true;
-                        setVideoSyncSignal((prev) => ({
-                          ...prev,
-                          nonce: prev.nonce + 1,
-                          isPlaying: true,
-                        }));
-                      }}
-                      onPause={() => {
-                        if (syncingFromAudioRef.current) {
-                          syncingFromAudioRef.current = false;
-                          return;
-                        }
-                        syncingFromVideoRef.current = true;
-                        const currentTime = videoElementRef.current?.currentTime ?? 0;
-                        setVideoSyncSignal((prev) => ({
-                          ...prev,
-                          nonce: prev.nonce + 1,
-                          time: currentTime,
-                          isPlaying: false,
-                        }));
-                      }}
-                      onRateChange={() => {
-                        if (syncingFromAudioRef.current) {
-                          syncingFromAudioRef.current = false;
-                          return;
-                        }
-                        const rate = videoElementRef.current?.playbackRate ?? 1;
-                        syncingFromVideoRef.current = true;
-                        setVideoSyncSignal((prev) => ({
-                          ...prev,
-                          nonce: prev.nonce + 1,
-                          playbackRate: rate,
-                        }));
-                      }}
-                      onSeeked={() => {
-                        if (syncingFromAudioRef.current) {
-                          syncingFromAudioRef.current = false;
-                          return;
-                        }
-                        const currentTime = videoElementRef.current?.currentTime ?? 0;
-                        syncingFromVideoRef.current = true;
-                        setVideoSyncSignal((prev) => ({
-                          ...prev,
-                          nonce: prev.nonce + 1,
-                          time: currentTime,
-                        }));
-                      }}
-                    />
-                    {isVideoAnalyzing ? (
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/35">
-                        <div className="flex items-center gap-2 rounded-md bg-white/90 px-3 py-2 text-xs font-medium text-slate-800 shadow">
-                          <Iconify icon="svg-spinners:3-dots-scale" width={18} className="text-blue-600" />
-                          视频分析执行中...
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : isVideoDoc ? (
-                  <div className="flex h-[22rem] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-500">
-                    视频暂不可预览
-                  </div>
-                ) : (
-                  <textarea
-                    className="h-[22rem] w-full resize-none rounded-lg border border-slate-200/90 bg-white p-2.5 text-[11px] leading-snug whitespace-pre-wrap break-words text-slate-800 outline-none ring-slate-200 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400/30"
-                    value={editableText}
-                    onChange={(e) => {
-                      setTextDirty(true);
-                      setEditableText(e.target.value);
-                    }}
-                    placeholder="这里可以编辑要生成音频的文本"
-                  />
-                )}
-
-                {doc?.audioStatus === 'success' ? (
-                  <AudioPreviewPlayer
-                    audioUrl={audioUrl}
-                    wordTimestamps={doc?.wordTimestamps}
-                    audioProvider={doc?.audioProvider}
-                    activeLookupWord={selectedLookupWord}
-                    lyricContainerHeight={150}
-                    externalSyncSignal={videoSyncSignal}
-                    onSyncTime={(time) => {
-                      const videoEl = videoElementRef.current;
-                      if (!videoEl || syncingFromVideoRef.current) {
-                        syncingFromVideoRef.current = false;
-                        return;
-                      }
-                      if (Math.abs((videoEl.currentTime ?? 0) - time) > 0.2) {
-                        syncingFromAudioRef.current = true;
-                        videoEl.currentTime = time;
-                      }
-                    }}
-                    onSyncPlayState={(isPlaying) => {
-                      const videoEl = videoElementRef.current;
-                      if (!videoEl || syncingFromVideoRef.current) {
-                        syncingFromVideoRef.current = false;
-                        return;
-                      }
-                      syncingFromAudioRef.current = true;
-                      if (isPlaying) {
-                        void videoEl.play().catch(() => null);
-                      } else {
-                        videoEl.pause();
-                      }
-                    }}
-                    onSyncPlaybackRate={(rate) => {
-                      const videoEl = videoElementRef.current;
-                      if (!videoEl || syncingFromVideoRef.current) {
-                        syncingFromVideoRef.current = false;
-                        return;
-                      }
-                      syncingFromAudioRef.current = true;
-                      videoEl.playbackRate = rate;
-                    }}
-                    onWordLongPress={({ word, candidates }) => {
-                      setSelectedLookupWord(word);
-                      setLookupCandidates(candidates);
-                    }}
-                  />
-                ) : (
-                  <div
-                    className={cn(
-                      'rounded-xl border py-6 text-center',
-                      doc?.audioStatus === 'processing'
-                        ? 'border-blue-200/90 bg-gradient-to-b from-blue-50/70 to-white shadow-sm'
-                        : 'border-dashed border-slate-200 bg-slate-50/30'
-                    )}
-                  >
-                    {doc?.audioStatus === 'processing' ? (
-                      <div className="flex flex-col items-center gap-2 px-3">
-                        <Iconify icon="svg-spinners:bars-rotate-fade" width={28} className="text-blue-600" />
-                        <div>
-                          <div className="text-xs font-semibold text-blue-950">音频生成中</div>
-                          <p className="mt-0.5 text-[11px] text-blue-800/85 animate-pulse">
-                            合成完成后将自动出现播放器
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="px-3 text-xs text-slate-500">当前无音频，可在右侧配置参数后生成</p>
-                    )}
-                  </div>
-                )}
-              </div>
+              {isVideoDoc ? (
+                <VideoDocumentPanel
+                  doc={doc}
+                  videoUrl={videoUrl}
+                  audioUrl={audioUrl}
+                  videoElementRef={videoElementRef}
+                  videoWhisperTemperature={videoWhisperTemperature}
+                  setVideoWhisperTemperature={setVideoWhisperTemperature}
+                  videoSplitOnWord={videoSplitOnWord}
+                  setVideoSplitOnWord={setVideoSplitOnWord}
+                  onTranscribeVideo={onTranscribeVideo}
+                  canRegenerate={canRegenerate}
+                  isVideoAnalyzing={isVideoAnalyzing}
+                  videoSyncSignal={videoSyncSignal}
+                  setVideoSyncSignal={setVideoSyncSignal}
+                  syncingFromAudioRef={syncingFromAudioRef}
+                  syncingFromVideoRef={syncingFromVideoRef}
+                  selectedLookupWord={selectedLookupWord}
+                  onWordLongPress={onWordLongPress}
+                />
+              ) : (
+                <AudioDocumentPanel
+                  doc={doc}
+                  audioUrl={audioUrl}
+                  editableText={editableText}
+                  onEditableTextChange={(v) => {
+                    setTextDirty(true);
+                    setEditableText(v);
+                  }}
+                  videoElementRef={videoElementRef}
+                  videoSyncSignal={videoSyncSignal}
+                  syncingFromAudioRef={syncingFromAudioRef}
+                  syncingFromVideoRef={syncingFromVideoRef}
+                  selectedLookupWord={selectedLookupWord}
+                  onWordLongPress={onWordLongPress}
+                />
+              )}
 
               <div className="min-w-0 space-y-2">
-                <div
-                  className={cn(
-                    'overflow-hidden rounded-lg border border-slate-200/90 bg-gradient-to-br from-white to-slate-50/90',
-                    'shadow-sm ring-1 ring-black/[0.03]'
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-1.5 border-b border-slate-100 px-2.5 py-2">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100/90">
-                        <Iconify icon="solar:book-bookmark-bold-duotone" width={17} />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold tracking-tight text-slate-800">单词释义</div>
-                        <div className="mt-px truncate text-[10px] leading-tight text-slate-500">
-                          {selectedLookupWord
-                            ? 'WordNet 英英释义'
-                            : doc?.wordTimestamps?.length
-                              ? '在左侧歌词中长按单词'
-                              : '无词级时间戳时可在正文中选词后自行查词典'}
-                        </div>
-                      </div>
-                    </div>
-                    {selectedLookupWord ? (
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                        onClick={() => {
-                          setSelectedLookupWord('');
-                          setLookupCandidates([]);
-                        }}
-                      >
-                        清空
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <div className="px-2.5 pb-2 pt-2">
-                    {selectedLookupWord ? (
-                      <div className="mb-2 rounded-md border border-slate-100 bg-slate-50/80 px-2 py-1.5">
-                        <div className="text-[9px] font-medium uppercase tracking-wider text-slate-400">所选词</div>
-                        <div className="mt-px text-base font-semibold capitalize tracking-tight text-slate-900">
-                          {selectedLookupWord}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div className="max-h-[11rem] space-y-2 overflow-y-auto text-[12px] leading-snug">
-                      {lookupLoading ? (
-                        <div className="flex items-center gap-2 rounded-md border border-dashed border-slate-200 bg-slate-50/60 px-2 py-2.5 text-xs text-slate-500">
-                          <Iconify icon="svg-spinners:3-dots-fade" width={18} className="text-indigo-500" />
-                          正在查询释义…
-                        </div>
-                      ) : null}
-                      {!lookupLoading && lookupError ? (
-                        <div className="rounded-md border border-red-100 bg-red-50/90 px-2 py-1.5 text-xs text-red-700">
-                          {lookupError}
-                        </div>
-                      ) : null}
-                      {!lookupLoading && !lookupError && selectedLookupWord && lookupDefinitions.length === 0 ? (
-                        <div className="rounded-md border border-dashed border-slate-200 bg-slate-50/50 px-2 py-3 text-center text-xs text-slate-500">
-                          未找到该词的英文释义
-                        </div>
-                      ) : null}
-                      {!lookupLoading &&
-                        !lookupError &&
-                        lookupDefinitions.slice(0, 4).map((item, idx) => (
-                          <div
-                            key={`${item.partOfSpeech}-${idx}`}
-                            className="rounded-md border border-slate-100/90 bg-white p-2 shadow-sm"
-                          >
-                            <span
-                              className={cn(
-                                'inline-flex rounded-full border px-2 py-px text-[9px] font-semibold uppercase tracking-wide',
-                                partOfSpeechBadgeClass(item.partOfSpeech || '')
-                              )}
-                            >
-                              {(item.partOfSpeech || 'unknown').replace(/_/g, ' ')}
-                            </span>
-                            <p className="mt-1.5 text-xs text-slate-700">{item.gloss}</p>
-                            {item.synonyms?.length ? (
-                              <div className="mt-1.5 border-t border-slate-100 pt-1.5">
-                                <div className="mb-1 text-[9px] font-medium uppercase tracking-wide text-slate-400">
-                                  相关词
-                                </div>
-                                <div className="flex flex-wrap gap-0.5">
-                                  {item.synonyms.slice(0, 8).map((syn) => (
-                                    <span
-                                      key={syn}
-                                      className="rounded bg-slate-100 px-1.5 py-px text-[10px] text-slate-600"
-                                    >
-                                      {syn}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </div>
+                <WordLookupSidebar
+                  doc={doc}
+                  selectedLookupWord={selectedLookupWord}
+                  lookupLoading={lookupLoading}
+                  lookupError={lookupError}
+                  lookupDefinitions={lookupDefinitions}
+                  onClearLookup={() => {
+                    setSelectedLookupWord('');
+                    setLookupCandidates([]);
+                  }}
+                />
 
                 {!isVideoDoc ? (
-                  <div
-                    className={cn(
-                      'rounded-lg border border-slate-200/90 bg-gradient-to-br from-slate-50/80 to-white p-2.5',
-                      'shadow-sm ring-1 ring-black/[0.03]'
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
-                      <Iconify icon="solar:settings-bold-duotone" width={16} className="text-slate-500" />
-                      当前音频配置
-                    </div>
-                    <dl className="mt-1.5 space-y-0.5 text-[10px] leading-tight text-slate-600">
-                      <div className="flex justify-between gap-2">
-                        <dt className="shrink-0 text-slate-400">Provider</dt>
-                        <dd className="truncate text-right font-medium text-slate-800">{providerLabel}</dd>
-                      </div>
-                      <div className="flex justify-between gap-2">
-                        <dt className="shrink-0 text-slate-400">Model</dt>
-                        <dd className="truncate text-right font-medium text-slate-800">{modelLabel}</dd>
-                      </div>
-                      <div className="flex justify-between gap-2">
-                        <dt className="shrink-0 text-slate-400">Voice</dt>
-                        <dd className="truncate text-right font-medium text-slate-800">{voiceLabel}</dd>
-                      </div>
-                      <div className="flex justify-between gap-2">
-                        <dt className="shrink-0 text-slate-400">Status</dt>
-                        <dd className="font-medium text-slate-800">{doc?.audioStatus || '-'}</dd>
-                      </div>
-                    </dl>
-                  </div>
+                  <AudioTtsSidebar
+                    doc={doc}
+                    canRegenerate={canRegenerate}
+                    schema={schema}
+                    selectedProvider={selectedProvider}
+                    setSelectedProvider={setSelectedProvider}
+                    setSelectedModel={setSelectedModel}
+                    setSelectedVoiceId={setSelectedVoiceId}
+                    setAdvancedParams={setAdvancedParams}
+                    setAudioConfigDirty={setAudioConfigDirty}
+                    selectedModel={selectedModel}
+                    selectedVoiceId={selectedVoiceId}
+                    advancedParams={advancedParams}
+                    editableText={editableText}
+                    onRetryGenerate={onRetryGenerate}
+                    onGenerateTranslation={onGenerateTranslation}
+                  />
                 ) : null}
 
                 {doc?.audioStatus === 'failed' && doc?.audioError ? (
@@ -911,200 +580,6 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     {actionError}
                   </div>
                 ) : null}
-
-                {canRegenerate && !isVideoDoc ? (
-                  <div
-                    className={cn(
-                      'space-y-1.5 rounded-lg border border-slate-200/90 bg-white p-2.5 shadow-sm ring-1 ring-black/[0.03]'
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
-                      <Iconify icon="solar:slider-horizontal-bold-duotone" width={16} className="text-indigo-500" />
-                      音频控制台
-                    </div>
-                    <div className="grid gap-1.5">
-                      <select
-                        className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30"
-                        value={selectedProvider}
-                        onChange={(e) => {
-                          setAudioConfigDirty(true);
-                          const raw = e.target.value;
-                          if (!raw) {
-                            setSelectedProvider('');
-                            setSelectedModel('');
-                            setSelectedVoiceId('');
-                            setAdvancedParams({});
-                            return;
-                          }
-                          const provider = raw as AudioProvider;
-                          const nextSchema = schema.find((item) => item.provider === provider);
-                          const nextModel = nextSchema?.models[0]?.model || '';
-                          setSelectedProvider(provider);
-                          setSelectedModel(nextModel);
-                          setSelectedVoiceId('');
-                          const defaults: Record<string, string | number | boolean> = {};
-                          nextSchema?.models[0]?.fields.forEach((field) => {
-                            if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
-                          });
-                          setAdvancedParams(defaults);
-                        }}
-                      >
-                        <option value="">请选择 TTS 提供商</option>
-                        {ALL_PROVIDERS.map((provider) => (
-                          <option key={provider} value={provider}>
-                            {provider}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30 disabled:opacity-50"
-                        value={selectedModel}
-                        disabled={selectedProvider === ''}
-                        onChange={(e) => {
-                          setAudioConfigDirty(true);
-                          const nextModel = e.target.value;
-                          setSelectedModel(nextModel);
-                          const nextModelSchema = providerSchema?.models.find((item) => item.model === nextModel);
-                          const defaults: Record<string, string | number | boolean> = {};
-                          nextModelSchema?.fields.forEach((field) => {
-                            if (field.defaultValue !== undefined) defaults[field.key] = field.defaultValue;
-                          });
-                          setAdvancedParams(defaults);
-                        }}
-                      >
-                        {selectedProvider === '' ? (
-                          <option value="">请先选择提供商</option>
-                        ) : null}
-                        {(providerSchema?.models || []).map((item) => (
-                          <option key={item.model} value={item.model}>
-                            {item.label}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className="h-8 rounded-md border border-slate-200 bg-white px-2 text-[11px] text-slate-800 outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30 disabled:opacity-50"
-                        value={selectedVoiceId}
-                        disabled={selectedProvider === '' || !selectedModel}
-                        onChange={(e) => {
-                          setAudioConfigDirty(true);
-                          setSelectedVoiceId(e.target.value);
-                        }}
-                      >
-                        <option value="">{requiresVoiceId ? '请选择人声' : '默认人声'}</option>
-                        {voiceOptions.map((item) => (
-                          <option key={`${item.model}-${item.voiceId || 'default'}`} value={item.voiceId || ''}>
-                            {item.voiceLabel || item.voiceId || item.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {modelSchema?.fields?.length ? (
-                      <div className="grid gap-1.5">
-                        {modelSchema.fields.map((field) => (
-                          <label key={field.key} className="space-y-0.5 text-[10px] text-slate-600">
-                            <div className="font-medium text-slate-700">{field.label}</div>
-                            {field.type === 'select' ? (
-                              <select
-                                className="h-7 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30"
-                                value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
-                                onChange={(e) =>
-                                  setAdvancedParams((prev) => {
-                                    setAudioConfigDirty(true);
-                                    return { ...prev, [field.key]: e.target.value };
-                                  })
-                                }
-                              >
-                                {(field.options || []).map((item) => (
-                                  <option key={item.value} value={item.value}>
-                                    {item.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : field.type === 'boolean' ? (
-                              <select
-                                className="h-7 w-full rounded-md border border-slate-200 bg-white px-2 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30"
-                                value={String(advancedParams[field.key] ?? field.defaultValue ?? false)}
-                                onChange={(e) =>
-                                  setAdvancedParams((prev) => {
-                                    setAudioConfigDirty(true);
-                                    return {
-                                      ...prev,
-                                      [field.key]: e.target.value === 'true',
-                                    };
-                                  })
-                                }
-                              >
-                                <option value="true">true</option>
-                                <option value="false">false</option>
-                              </select>
-                            ) : (
-                              <input
-                                type={field.type === 'number' ? 'number' : 'text'}
-                                className="h-7 w-full rounded-md border border-slate-200 px-2 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/30"
-                                value={String(advancedParams[field.key] ?? field.defaultValue ?? '')}
-                                min={field.min}
-                                max={field.max}
-                                step={field.step}
-                                onChange={(e) => {
-                                  const raw = e.target.value;
-                                  const value = field.type === 'number' ? Number(raw) : raw;
-                                  setAudioConfigDirty(true);
-                                  setAdvancedParams((prev) => ({ ...prev, [field.key]: value }));
-                                }}
-                              />
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                    ) : null}
-                    <div className="flex flex-col gap-1">
-                      {!synthesisTextTrimmed ? (
-                        <div className="text-[10px] leading-snug text-amber-800">请先在「提取文本」中填写或确认有正文。</div>
-                      ) : null}
-                      {synthesisTextTrimmed && !audioConfigReady ? (
-                        <div className="text-[10px] leading-snug text-amber-800">
-                          请选择 TTS 提供商、模型{requiresVoiceId ? '与人声' : ''}。
-                        </div>
-                      ) : null}
-                    <div className="flex flex-wrap gap-1.5">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={onRetryGenerate}
-                        disabled={!canStartSynthesis}
-                        title={
-                          !synthesisTextTrimmed
-                            ? '提取文本为空'
-                            : !audioConfigReady
-                              ? '请完成 TTS 配置'
-                              : undefined
-                        }
-                      >
-                        {doc?.audioStatus === 'success' ? '重新生成音频' : '生成音频'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={onGenerateTranslation}
-                        disabled={
-                          doc?.audioStatus !== 'success' || !doc?.wordTimestamps?.length
-                        }
-                        title={
-                          !doc?.wordTimestamps?.length
-                            ? '需要词级时间戳才能按句写入中文翻译（MiniMax 等提供商不提供）'
-                            : undefined
-                        }
-                      >
-                        生成翻译
-                      </Button>
-                    </div>
-                    </div>
-                  </div>
-                ) : null}
               </div>
             </div>
           </div>
@@ -1113,4 +588,3 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     </Dialog.Root>
   );
 }
-
