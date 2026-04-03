@@ -63,14 +63,22 @@ export class DocumentLibraryController {
         ? JSON.parse(body.tagIds)
         : [];
 
+    const ext = path.extname(file.originalname).replace('.', '').toLowerCase();
+    const isPlainTextUpload =
+      ext === 'txt' ||
+      ext === 'md' ||
+      (typeof file.mimetype === 'string' && file.mimetype.startsWith('text/'));
+    const extractedTextFromFile = isPlainTextUpload ? file.buffer.toString('utf8') : undefined;
+
     return this.documentLibraryService.create(
       {
         title: body.title?.trim() || file.originalname,
         fileName: file.originalname,
-        fileType: path.extname(file.originalname).replace('.', '').toLowerCase(),
+        fileType: ext,
         mimeType: file.mimetype,
         fileSize: file.size,
         filePath,
+        extractedText: extractedTextFromFile,
         provider: body.audioProvider,
         model: body.audioModel,
         voiceId: body.audioVoiceId,
@@ -120,6 +128,7 @@ export class DocumentLibraryController {
         mimeType: 'text/plain',
         fileSize,
         filePath,
+        extractedText: text,
         provider: body.audioProvider,
         model: body.audioModel,
         voiceId: body.audioVoiceId,
@@ -171,9 +180,11 @@ export class DocumentLibraryController {
 
   @Post(':id/generate-audio')
   async generateAudio(@Param('id') id: string, @CurrentUser() user: User) {
+    const target = await this.documentLibraryService.findOne(id);
+    this.documentLibraryService.assertTtsConfigForGeneration(target);
     // 先立即返回“开始生成”的记录，前端即可轮询进度。
     const record = await this.documentLibraryService.startGenerateAudio(id, user);
-    // 后台异步执行：解析PDF -> minimax TTS -> 写入音频文件。
+    // 后台异步执行：解析PDF -> TTS -> 写入音频文件。
     void this.documentLibraryService.generateAudioPipeline(id, user);
     return record;
   }
@@ -186,15 +197,17 @@ export class DocumentLibraryController {
   ) {
     const text = body?.text?.toString?.() ?? '';
     if (!text.trim()) {
-      throw new Error('text is empty');
+      throw new BadRequestException('提取文本为空，无法生成音频');
     }
 
+    const target = await this.documentLibraryService.findOne(id);
     const overrides: DocumentAudioRegenerateOverrides = {
       audioProvider: body.audioProvider,
       audioModel: body.audioModel,
       audioVoiceId: body.audioVoiceId,
       params: body.params,
     };
+    this.documentLibraryService.assertTtsConfigForGeneration(target, overrides);
     const record = await this.documentLibraryService.startGenerateAudioFromText(id, text, user);
     void this.documentLibraryService.generateAudioTextPipeline(id, text, overrides, user);
     return record;

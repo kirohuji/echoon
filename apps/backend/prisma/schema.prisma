@@ -270,8 +270,8 @@ model DocumentLibrary {
   mimeType    String
   fileSize    Int
   filePath    String
-  modelName   String
-  audioProvider AudioProvider @default(minimax)
+  modelName   String?
+  audioProvider AudioProvider?
   audioModel  String?
   audioVoiceId String?
   audioStatus AudioStatus @default(pending)

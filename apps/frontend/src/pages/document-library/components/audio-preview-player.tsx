@@ -17,8 +17,10 @@ type WordTimestamp = {
 type AudioPreviewPlayerProps = {
   audioUrl: string;
   wordTimestamps?: WordTimestamp[] | null;
+  /** 用于无时间戳时的说明文案（如 minimax 不提供词级时间戳） */
+  audioProvider?: string | null;
   activeLookupWord?: string;
-  onWordLongPress?: (word: string) => void;
+  onWordLongPress?: (payload: { word: string; candidates: string[] }) => void;
 };
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
@@ -27,6 +29,8 @@ const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5];
 const IPHONE_VIEW_WIDTH = '100%';
 const IPHONE_VIEW_HEIGHT = 720;
 const LONG_PRESS_MS = 450;
+const SENTENCE_LOOP_GAP_MS = 2000;
+const LOOP_END_EPSILON_NS = 80_000_000; // ~80ms，避免 listen 间隔漏检句尾
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return '00:00';
@@ -143,9 +147,46 @@ function sanitizeLookupWord(text: string) {
   return text.replace(/^[^A-Za-z0-9\u00C0-\u024F']+|[^A-Za-z0-9\u00C0-\u024F']+$/g, '').trim();
 }
 
+function joinTokens(tokens: string[]) {
+  return tokens.reduce((acc, token, index) => {
+    const prev = index > 0 ? tokens[index - 1] : undefined;
+    const withSpace = shouldPrependSpace(token, prev);
+    return `${acc}${withSpace ? ' ' : ''}${token}`;
+  }, '');
+}
+
+function buildPhraseCandidates(sentenceWords: WordTimestamp[], focusIdx: number) {
+  const candidates: string[] = [];
+  for (let length = 4; length >= 2; length -= 1) {
+    const minStart = Math.max(0, focusIdx - (length - 1));
+    const maxStart = Math.min(focusIdx, sentenceWords.length - length);
+    for (let start = minStart; start <= maxStart; start += 1) {
+      const chunk = sentenceWords.slice(start, start + length).map((item) => sanitizeLookupWord(item.text)).filter(Boolean);
+      if (chunk.length < 2) continue;
+      const phrase = joinTokens(chunk).toLowerCase();
+      if (phrase.includes(' ') && !candidates.includes(phrase)) candidates.push(phrase);
+    }
+  }
+  return candidates;
+}
+
+function tokenizeLookupPhrase(phrase: string) {
+  return phrase
+    .split(/\s+/)
+    .map((item) => sanitizeLookupWord(item).toLowerCase())
+    .filter(Boolean);
+}
+
+function segmentIndexForWordIndex(segments: SentenceSegment[], wordIndex: number) {
+  return segments.findIndex(
+    (s) => wordIndex >= s.startWordIndex && wordIndex < s.startWordIndex + s.words.length
+  );
+}
+
 export function AudioPreviewPlayer({
   audioUrl,
   wordTimestamps,
+  audioProvider,
   activeLookupWord,
   onWordLongPress,
 }: AudioPreviewPlayerProps) {
@@ -158,15 +199,45 @@ export function AudioPreviewPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [showWordTimestamps, setShowWordTimestamps] = useState(true);
+  const [sentenceLoopEnabled, setSentenceLoopEnabled] = useState(false);
+  const [loopSegmentIndex, setLoopSegmentIndex] = useState(0);
   const lyricContainerRef = useRef<HTMLDivElement | null>(null);
   const longPressTimerRef = useRef<number | null>(null);
+  const loopGapTimerRef = useRef<number | null>(null);
+  const sentenceLoopPendingRef = useRef(false);
+  const isPlayingRef = useRef(false);
+  const seekToTimeRef = useRef<(t: number, userIntent?: boolean) => void>(() => {});
+  const sentenceLoopEnabledRef = useRef(false);
+  const loopSegmentIndexRef = useRef(0);
+
+  useEffect(() => {
+    sentenceLoopEnabledRef.current = sentenceLoopEnabled;
+  }, [sentenceLoopEnabled]);
+  useEffect(() => {
+    loopSegmentIndexRef.current = loopSegmentIndex;
+  }, [loopSegmentIndex]);
+
+  const durationRef = useRef(duration);
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
 
   const normalizedWords = useMemo(() => normalizeWordTimestamps(wordTimestamps), [wordTimestamps]);
   const normalizedActiveLookupWord = (activeLookupWord || '').toLowerCase();
+  const activeLookupTokens = useMemo(
+    () => tokenizeLookupPhrase(normalizedActiveLookupWord),
+    [normalizedActiveLookupWord]
+  );
   const sentenceSegments = useMemo(
     () => buildSentenceSegments(normalizedWords),
     [normalizedWords]
   );
+
+  const sentenceSegmentsRef = useRef<SentenceSegment[]>([]);
+  useEffect(() => {
+    sentenceSegmentsRef.current = sentenceSegments;
+  }, [sentenceSegments]);
 
   const activeWordIndex = useMemo(
     () => findActiveWordIndex(normalizedWords, currentTime),
@@ -197,7 +268,7 @@ export function AudioPreviewPlayer({
     }, 0);
   };
 
-  const seekToTime = (nextTime: number) => {
+  const seekToTime = (nextTime: number, userIntent = false) => {
     const audioElement = audioPlayerRef.current?.audioEl?.current;
     if (!audioElement) return;
 
@@ -205,10 +276,19 @@ export function AudioPreviewPlayer({
     audioElement.currentTime = clampedTime;
     setCurrentTime(clampedTime);
     syncWaveProgress(clampedTime);
+    if (userIntent) {
+      sentenceLoopPendingRef.current = false;
+      if (loopGapTimerRef.current) {
+        window.clearTimeout(loopGapTimerRef.current);
+        loopGapTimerRef.current = null;
+      }
+    }
   };
 
+  seekToTimeRef.current = seekToTime;
+
   const jumpBy = (deltaSeconds: number) => {
-    seekToTime(currentTime + deltaSeconds);
+    seekToTime(currentTime + deltaSeconds, true);
   };
 
   const jumpToSentence = (direction: 'previous' | 'next') => {
@@ -218,14 +298,22 @@ export function AudioPreviewPlayer({
 
     if (direction === 'previous') {
       const previousStart = [...sentenceStarts].reverse().find((index) => index < Math.max(currentIndex, 0));
-      const targetIndex = previousStart ?? 0;
-      seekToTime((normalizedWords[targetIndex]?.start_time ?? 0) / NANOSECONDS_PER_SECOND);
+      const targetWordIndex = previousStart ?? 0;
+      seekToTime((normalizedWords[targetWordIndex]?.start_time ?? 0) / NANOSECONDS_PER_SECOND, true);
+      if (sentenceLoopEnabled) {
+        const si = segmentIndexForWordIndex(sentenceSegments, targetWordIndex);
+        if (si >= 0) setLoopSegmentIndex(si);
+      }
       return;
     }
 
     const nextStart = sentenceStarts.find((index) => index > currentIndex);
     if (nextStart === undefined) return;
-    seekToTime((normalizedWords[nextStart]?.start_time ?? 0) / NANOSECONDS_PER_SECOND);
+    seekToTime((normalizedWords[nextStart]?.start_time ?? 0) / NANOSECONDS_PER_SECOND, true);
+    if (sentenceLoopEnabled) {
+      const si = segmentIndexForWordIndex(sentenceSegments, nextStart);
+      if (si >= 0) setLoopSegmentIndex(si);
+    }
   };
 
   const togglePlay = async () => {
@@ -238,6 +326,11 @@ export function AudioPreviewPlayer({
     }
 
     audioElement.pause();
+    sentenceLoopPendingRef.current = false;
+    if (loopGapTimerRef.current) {
+      window.clearTimeout(loopGapTimerRef.current);
+      loopGapTimerRef.current = null;
+    }
   };
 
   useEffect(() => {
@@ -250,7 +343,31 @@ export function AudioPreviewPlayer({
     setDuration(0);
     setCurrentTime(0);
     setIsPlaying(false);
+    setShowWordTimestamps(true);
+    setSentenceLoopEnabled(false);
+    setLoopSegmentIndex(0);
+    sentenceLoopPendingRef.current = false;
+    if (loopGapTimerRef.current) {
+      window.clearTimeout(loopGapTimerRef.current);
+      loopGapTimerRef.current = null;
+    }
   }, [audioUrl]);
+
+  useEffect(() => {
+    if (!sentenceLoopEnabled) {
+      sentenceLoopPendingRef.current = false;
+      if (loopGapTimerRef.current) {
+        window.clearTimeout(loopGapTimerRef.current);
+        loopGapTimerRef.current = null;
+      }
+    }
+  }, [sentenceLoopEnabled]);
+
+  useEffect(() => {
+    return () => {
+      if (loopGapTimerRef.current) window.clearTimeout(loopGapTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!audioUrl || !waveContainerRef.current) return undefined;
@@ -283,7 +400,7 @@ export function AudioPreviewPlayer({
 
     waveSurfer.on('interaction', () => {
       if (syncingWaveRef.current) return;
-      seekToTime(waveSurfer.getCurrentTime?.() ?? 0);
+      seekToTime(waveSurfer.getCurrentTime?.() ?? 0, true);
     });
 
     return () => {
@@ -311,14 +428,20 @@ export function AudioPreviewPlayer({
     }
   };
 
-  const startLongPress = (wordText: string, event: PointerEvent<HTMLSpanElement>) => {
+  const startLongPress = (
+    wordText: string,
+    sentenceWords: WordTimestamp[],
+    wordIdx: number,
+    event: PointerEvent<HTMLSpanElement>
+  ) => {
     clearLongPressTimer();
     void event;
     const lookupText = sanitizeLookupWord(wordText);
     const displayText = lookupText || wordText;
+    const candidates = buildPhraseCandidates(sentenceWords, wordIdx);
 
     longPressTimerRef.current = window.setTimeout(() => {
-      onWordLongPress?.(displayText);
+      onWordLongPress?.({ word: displayText.toLowerCase(), candidates });
     }, LONG_PRESS_MS);
   };
 
@@ -354,43 +477,87 @@ export function AudioPreviewPlayer({
                       'w-full text-left text-base leading-7 transition-all break-normal',
                       index === activeSentenceIndex
                         ? 'scale-[1.02] font-semibold text-black'
-                        : 'text-gray-400 hover:text-gray-600'
+                        : 'text-gray-400 hover:text-gray-600',
+                      sentenceLoopEnabled &&
+                        loopSegmentIndex === index &&
+                        'rounded-lg px-3 py-2.5 ring-2 ring-inset ring-blue-500/60'
                     )}
                   >
                     <button
                       type="button"
-                      className="mb-1 block w-full"
-                      onClick={() => seekToTime(sentence.startTimeNs / NANOSECONDS_PER_SECOND)}
+                      className="mb-1 block w-full rounded text-left"
+                      onClick={() => {
+                        seekToTime(sentence.startTimeNs / NANOSECONDS_PER_SECOND, true);
+                        if (sentenceLoopEnabled) setLoopSegmentIndex(index);
+                      }}
                     >
-                      <span className="flex flex-wrap justify-start gap-x-1">
-                        {sentence.words.map((word, wordIdx) => {
-                          const globalWordIndex = sentence.startWordIndex + wordIdx;
-                          const isActiveWord = globalWordIndex === activeWordIndex;
-                          const normalizedCurrentWord = sanitizeLookupWord(word.text).toLowerCase();
-                          const isLookupWordActive =
-                            Boolean(normalizedActiveLookupWord) &&
-                            normalizedCurrentWord === normalizedActiveLookupWord;
-                          const prev = sentence.words[wordIdx - 1];
-                          const prependSpace = shouldPrependSpace(word.text, prev?.text);
-                          return (
-                            <span
-                              key={`${word.start_time}-${wordIdx}`}
-                              className={cn(
-                                'rounded px-0.5',
-                                isActiveWord ? 'bg-yellow-300 text-black' : '',
-                                isLookupWordActive
-                                  ? 'bg-amber-100 text-black underline decoration-2 decoration-wavy decoration-amber-500'
-                                  : ''
-                              )}
-                              onPointerDown={(event) => startLongPress(word.text, event)}
-                              onPointerUp={cancelLongPress}
-                              onPointerLeave={cancelLongPress}
-                              onPointerCancel={cancelLongPress}
-                            >
-                              {prependSpace ? ` ${word.text}` : word.text}
-                            </span>
-                          );
-                        })}
+                      <span className="block whitespace-normal text-left">
+                        {showWordTimestamps ? (
+                          (() => {
+                            const highlightedIndices = new Set<number>();
+                            if (activeLookupTokens.length > 1) {
+                              for (
+                                let start = 0;
+                                start <= sentence.words.length - activeLookupTokens.length;
+                                start += 1
+                              ) {
+                                const matched = activeLookupTokens.every((token, offset) => {
+                                  const target = sanitizeLookupWord(
+                                    sentence.words[start + offset]?.text
+                                  ).toLowerCase();
+                                  return target === token;
+                                });
+                                if (matched) {
+                                  for (let k = 0; k < activeLookupTokens.length; k += 1) {
+                                    highlightedIndices.add(sentence.startWordIndex + start + k);
+                                  }
+                                }
+                              }
+                            }
+                            return sentence.words.map((word, wordIdx) => {
+                              const globalWordIndex = sentence.startWordIndex + wordIdx;
+                              const isActiveWord = globalWordIndex === activeWordIndex;
+                              const normalizedCurrentWord = sanitizeLookupWord(word.text).toLowerCase();
+                              const isLookupWordActive =
+                                (activeLookupTokens.length <= 1 &&
+                                  Boolean(normalizedActiveLookupWord) &&
+                                  normalizedCurrentWord === normalizedActiveLookupWord) ||
+                                highlightedIndices.has(globalWordIndex);
+                              const prev = sentence.words[wordIdx - 1];
+                              const prependSpace = shouldPrependSpace(word.text, prev?.text);
+                              const candidates = buildPhraseCandidates(sentence.words, wordIdx);
+                              return (
+                                <span
+                                  key={`${word.start_time}-${wordIdx}`}
+                                  className={cn(
+                                    'rounded px-0.5',
+                                    isActiveWord ? 'bg-yellow-300 text-black' : '',
+                                    isLookupWordActive
+                                      ? 'bg-amber-100 text-black underline decoration-1 decoration-wavy decoration-amber-500'
+                                      : ''
+                                  )}
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    onWordLongPress?.({
+                                      word: normalizedCurrentWord || word.text.toLowerCase(),
+                                      candidates,
+                                    });
+                                  }}
+                                  onPointerDown={(event) =>
+                                    startLongPress(word.text, sentence.words, wordIdx, event)
+                                  }
+                                  onPointerUp={cancelLongPress}
+                                  onPointerLeave={cancelLongPress}
+                                  onPointerCancel={cancelLongPress}
+                                >
+                                  {prependSpace ? ` ${word.text}` : word.text}
+                                </span>
+                              );
+                            });
+                          })()
+                        ) : (
+                          sentence.text
+                        )}
                       </span>
                     </button>
                     {index === activeSentenceIndex ? (
@@ -402,11 +569,49 @@ export function AudioPreviewPlayer({
                 ))}
               </div>
             ) : (
-              <div className="pt-20 text-center text-xs text-gray-500">
-                该音频当前没有可用的句子时间戳，暂不支持歌词流模式。
+              <div className="px-2 pt-16 text-center text-xs leading-5 text-gray-500">
+                {audioProvider === 'minimax' ? (
+                  <>
+                    MiniMax 合成的音频不提供词级时间戳。下方仍可使用波形、进度条与倍速播放；逐词高亮、句子跳转与歌词内查词不可用。
+                  </>
+                ) : (
+                  <>该音频没有词级时间戳，仅支持波形与进度控制；逐词歌词与句子跳转不可用。</>
+                )}
               </div>
             )}
           </div>
+
+          {hasWords ? (
+            <div className="mt-2 space-y-2 border-t border-black/10 px-1 pt-2 text-left text-[11px] leading-snug text-gray-700">
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 shrink-0"
+                  checked={showWordTimestamps}
+                  onChange={(e) => setShowWordTimestamps(e.target.checked)}
+                />
+                <span>显示词级时间戳（逐词高亮、划词查词）</span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 shrink-0"
+                  checked={sentenceLoopEnabled}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setSentenceLoopEnabled(on);
+                    if (on && sentenceSegments.length > 0) {
+                      const si = activeSentenceIndex >= 0 ? activeSentenceIndex : 0;
+                      setLoopSegmentIndex(Math.min(si, sentenceSegments.length - 1));
+                    }
+                  }}
+                />
+                <span>
+                  单句循环：句末自动暂停 2 秒后重播该句；用「上一句/下一句」或点击歌词行可切换要循环的句子。
+                </span>
+              </label>
+            </div>
+          ) : null}
 
           <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
             <span>{formatTime(currentTime)}</span>
@@ -425,7 +630,7 @@ export function AudioPreviewPlayer({
             max={duration || 0}
             step={0.05}
             value={Math.min(currentTime, duration || 0)}
-            onChange={(e) => seekToTime(Number(e.target.value))}
+            onChange={(e) => seekToTime(Number(e.target.value), true)}
           />
 
           <div className="mt-3 flex items-center justify-between gap-2">
@@ -485,10 +690,17 @@ export function AudioPreviewPlayer({
         controls={false}
         preload="metadata"
         listenInterval={200}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
+        onPlay={() => {
+          setIsPlaying(true);
+          isPlayingRef.current = true;
+        }}
+        onPause={() => {
+          setIsPlaying(false);
+          isPlayingRef.current = false;
+        }}
         onEnded={() => {
           setIsPlaying(false);
+          isPlayingRef.current = false;
           setCurrentTime(0);
           syncWaveProgress(0);
         }}
@@ -501,6 +713,36 @@ export function AudioPreviewPlayer({
         onListen={(time) => {
           setCurrentTime(time);
           syncWaveProgress(time);
+
+          const segments = sentenceSegmentsRef.current;
+          if (!sentenceLoopEnabledRef.current || !segments.length) return;
+          if (!isPlayingRef.current || sentenceLoopPendingRef.current) return;
+
+          const seg = segments[loopSegmentIndexRef.current];
+          if (!seg) return;
+
+          const tNs = Math.floor(time * NANOSECONDS_PER_SECOND);
+          const dur = durationRef.current;
+          const durationNs =
+            dur > 0 && Number.isFinite(dur) ? Math.floor(dur * NANOSECONDS_PER_SECOND) : seg.endTimeNs;
+          const effectiveEndNs = Math.min(seg.endTimeNs, durationNs);
+          if (tNs < effectiveEndNs - LOOP_END_EPSILON_NS) return;
+
+          const audioElement = audioPlayerRef.current?.audioEl?.current;
+          if (!audioElement) return;
+
+          sentenceLoopPendingRef.current = true;
+          audioElement.pause();
+
+          if (loopGapTimerRef.current) window.clearTimeout(loopGapTimerRef.current);
+          const startSec = seg.startTimeNs / NANOSECONDS_PER_SECOND;
+          loopGapTimerRef.current = window.setTimeout(() => {
+            loopGapTimerRef.current = null;
+            seekToTimeRef.current(startSec, false);
+            void audioElement.play().finally(() => {
+              sentenceLoopPendingRef.current = false;
+            });
+          }, SENTENCE_LOOP_GAP_MS);
         }}
         style={{ display: 'none' }}
       />

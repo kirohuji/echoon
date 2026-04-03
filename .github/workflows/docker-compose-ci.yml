@@ -22,6 +22,11 @@ jobs:
       MINIMAX_GROUP_ID: ${{ secrets.MINIMAX_GROUP_ID }}
       CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
       CARTERSIA_API_KEY: ${{ secrets.CARTERSIA_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+      HUME_API_KEY: ${{ secrets.HUME_API_KEY }}
+      HUME_API_SECRET: ${{ secrets.HUME_API_SECRET }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
     steps:
       - name: Configure git transport
         run: |
@@ -76,6 +81,11 @@ jobs:
       MINIMAX_GROUP_ID: ${{ secrets.MINIMAX_GROUP_ID }}
       CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
       CARTERSIA_API_KEY: ${{ secrets.CARTERSIA_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+      HUME_API_KEY: ${{ secrets.HUME_API_KEY }}
+      HUME_API_SECRET: ${{ secrets.HUME_API_SECRET }}
+      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
     steps:
       - name: Configure git transport
         run: |
