@@ -1,9 +1,11 @@
 import {
-  Body,
   BadRequestException,
+  Body,
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Post,
   Put,
@@ -24,6 +26,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { DocumentLibraryService } from './document-library.service';
 import { DocumentAudioRegenerateOverrides } from './document-audio.types';
+import { WordLookupBatchDto } from './dto/word-lookup.dto';
 
 type AudioConfigBody = {
   audioProvider?: AudioProvider;
@@ -152,6 +155,12 @@ export class DocumentLibraryController {
   @Get('word-lookup')
   wordLookup(@Query('word') word: string) {
     return this.documentLibraryService.lookupEnglishWord(word);
+  }
+
+  @Post('word-lookup')
+  @HttpCode(HttpStatus.OK)
+  wordLookupBatch(@Body() body: WordLookupBatchDto) {
+    return this.documentLibraryService.lookupEnglishWordFirstMatch(body.candidates);
   }
 
   @Post('pagination')

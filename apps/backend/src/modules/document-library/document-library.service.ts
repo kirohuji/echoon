@@ -4,7 +4,6 @@ import { AudioProvider, AudioStatus, DocumentLibrary, Prisma, User } from '@pris
 import axios from 'axios';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import * as wordnet from 'wordnet';
 import {
   DocumentAudioConfigError,
   resolveDocumentAudioConfigForGeneration,
@@ -17,6 +16,7 @@ import {
 } from './document-audio.types';
 import { DOCUMENT_AUDIO_PARAMS_SCHEMA, sanitizeRegenerateAudioParams } from './document-audio-params.schema';
 import { DocumentWordTimestamp } from './document-audio.types';
+import { lookupEnglishFirstHit, lookupOneEnglishWord } from './english-wordnet.lookup';
 
 type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
   title: string;
@@ -34,7 +34,6 @@ type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
 export class DocumentLibraryService {
   private readonly audioDir = path.join(process.cwd(), 'uploads', 'audios');
   private readonly sentenceEndRegex = /[.!?。！？；;:]$/;
-  private wordnetReadyPromise: Promise<void> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -146,65 +145,12 @@ export class DocumentLibraryService {
     return DOCUMENT_AUDIO_PARAMS_SCHEMA;
   }
 
-  private async ensureWordnetReady() {
-    if (!this.wordnetReadyPromise) {
-      this.wordnetReadyPromise = wordnet.init();
-    }
-    await this.wordnetReadyPromise;
+  lookupEnglishWord(word: string) {
+    return lookupOneEnglishWord(word);
   }
 
-  private normalizeLookupWord(input: string) {
-    return (input || '')
-      .trim()
-      .toLowerCase()
-      .replace(/^[^a-z\s'-]+|[^a-z\s'-]+$/g, '')
-      .replace(/\s+/g, ' ');
-  }
-
-  async lookupEnglishWord(word: string) {
-    const normalizedWord = this.normalizeLookupWord(word);
-    if (!normalizedWord) {
-      return { word: '', definitions: [] };
-    }
-
-    await this.ensureWordnetReady();
-    try {
-      const variants = Array.from(
-        new Set([
-          normalizedWord,
-          normalizedWord.replace(/\s+/g, '_'),
-          normalizedWord.replace(/'/g, ''),
-          normalizedWord.replace(/\s+/g, '_').replace(/'/g, ''),
-        ])
-      ).filter(Boolean);
-
-      let rows: any[] = [];
-      for (const variant of variants) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const result = await wordnet.lookup(variant, true);
-          if (Array.isArray(result) && result.length) {
-            rows = result;
-            break;
-          }
-        } catch {
-          // try next variant
-        }
-      }
-      return {
-        word: normalizedWord,
-        definitions: (rows || []).slice(0, 6).map((item) => ({
-          partOfSpeech: item?.meta?.synsetType || 'unknown',
-          gloss: item?.glossary || '',
-          synonyms: (item?.meta?.words || [])
-            .map((w) => String(w?.word ?? '').replace(/_/g, ' '))
-            .filter(Boolean)
-            .slice(0, 6),
-        })),
-      };
-    } catch {
-      return { word: normalizedWord, definitions: [] };
-    }
+  lookupEnglishWordFirstMatch(candidates: unknown) {
+    return lookupEnglishFirstHit(candidates);
   }
 
   async paginate({

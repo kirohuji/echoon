@@ -43,6 +43,26 @@ export type WordLookupResponse = {
   definitions: WordLookupDefinition[];
 };
 
+/** 后端 SuccessResponseInterceptor：`{ success, code, data: T }`；axios 拦截器已返回 response.data。 */
+function unwrapEchoonPayload<T>(raw: unknown): T {
+  if (raw && typeof raw === 'object' && 'data' in raw && (raw as { success?: boolean }).success === true) {
+    return (raw as { data: T }).data;
+  }
+  return raw as T;
+}
+
+export function parseWordLookupResponse(raw: unknown): WordLookupResponse | null {
+  const inner = unwrapEchoonPayload<unknown>(raw);
+  if (!inner || typeof inner !== 'object') {
+    return null;
+  }
+  const obj = inner as { word?: unknown; definitions?: unknown };
+  if (!Array.isArray(obj.definitions)) {
+    return null;
+  }
+  return { word: String(obj.word ?? ''), definitions: obj.definitions as WordLookupDefinition[] };
+}
+
 type GenerateAudioFromTextPayload = {
   text: string;
   audioProvider?: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
@@ -85,6 +105,11 @@ export default class DocumentLibraryService extends Service {
   }
 
   lookupWord(word: string) {
-    return this.api.get(`${this.model}/word-lookup`, { params: { word } }) as Promise<WordLookupResponse>;
+    return this.api.get(`${this.model}/word-lookup`, { params: { word } }) as Promise<unknown>;
+  }
+
+  /** 按顺序尝试候选（短语 + 单词），单次 POST。返回值需用 parseWordLookupResponse 解析。 */
+  lookupWordCandidates(candidates: string[]) {
+    return this.api.post(`${this.model}/word-lookup`, { candidates }) as Promise<unknown>;
   }
 }

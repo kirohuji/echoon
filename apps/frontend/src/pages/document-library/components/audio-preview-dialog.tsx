@@ -5,7 +5,11 @@ import { Iconify } from 'src/components/iconify';
 import { Button } from 'src/components/ui/button';
 import { documentLibraryService } from 'src/composables/context-provider';
 import { cn } from 'src/lib/utils';
-import type { AudioParamsSchema, WordLookupDefinition } from 'src/modules/document-library';
+import {
+  parseWordLookupResponse,
+  type AudioParamsSchema,
+  type WordLookupDefinition,
+} from 'src/modules/document-library';
 import {
   DOCUMENT_AUDIO_PROVIDER_OPTIONS,
   type AudioProvider,
@@ -309,21 +313,18 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     setLookupDefinitions([]);
     const tryLookup = async () => {
       const queue = [...lookupCandidates, selectedLookupWord].filter(Boolean);
-      for (const target of queue) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const res: any = await documentLibraryService.lookupWord(target);
-          if (cancelled) return;
-          const payload = (res?.data ?? res) as { word?: string; definitions?: WordLookupDefinition[] };
-          const defs = Array.isArray(payload?.definitions) ? payload.definitions : [];
-          if (defs.length > 0) {
-            setSelectedLookupWord(String(payload?.word || target));
-            setLookupDefinitions(defs);
-            return;
-          }
-        } catch {
-          // try next candidate
+      try {
+        const raw = await documentLibraryService.lookupWordCandidates(queue);
+        if (cancelled) return;
+        const payload = parseWordLookupResponse(raw);
+        const defs = payload?.definitions ?? [];
+        if (defs.length > 0) {
+          setSelectedLookupWord(String(payload?.word || selectedLookupWord));
+          setLookupDefinitions(defs);
+          return;
         }
+      } catch {
+        // 网络或服务错误：与「无释义」区分时可在此打日志
       }
       if (cancelled) return;
       setLookupError('未找到释义');

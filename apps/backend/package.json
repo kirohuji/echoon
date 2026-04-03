@@ -21,6 +21,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "smoke:wordnet": "node ./scripts/smoke-word-lookup.mjs",
+    "smoke:wordnet:offline": "node ./scripts/smoke-word-lookup.mjs --offline",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
@@ -83,6 +85,7 @@
     "tesseract.js": "^6.0.0",
     "uuid": "^11.1.0",
     "winston": "^3.17.0",
+    "wink-lemmatizer": "^3.0.4",
     "wordnet": "^2.0.0",
     "ws": "^8.20.0",
     "zod": "^3.24.2"
