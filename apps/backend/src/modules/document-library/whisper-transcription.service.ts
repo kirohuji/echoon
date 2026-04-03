@@ -45,7 +45,147 @@ function flattenVerboseJsonToWordTimestamps(data: WhisperVerboseJson): DocumentW
   }
 
   out.sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0));
-  return out;
+  return refineWhisperWordFragments(out);
+}
+
+/** whisper 词级对齐常把同一英文词切成多段（如 Remo+ving、Re+mo+ving）；在时间间隔极短时按规则并回一条。 */
+const MAX_FRAGMENT_MERGE_GAP_NS = 120_000_000;
+
+const NO_MERGE_BEFORE_FRAGMENT = new Set([
+  'a',
+  'an',
+  'the',
+  'to',
+  'of',
+  'in',
+  'on',
+  'at',
+  'is',
+  'be',
+  'am',
+  'are',
+  'was',
+  'were',
+  'it',
+  'if',
+  'as',
+  'by',
+  'do',
+  'so',
+  'we',
+  'he',
+  'me',
+  'my',
+  'us',
+  'no',
+  'go',
+  'up',
+  'or',
+  'this',
+  'that',
+  'these',
+  'those',
+  'what',
+  'which',
+  'who',
+  'how',
+  'why',
+  'can',
+  'could',
+  'would',
+  'should',
+  'may',
+  'might',
+  'must',
+  'shall',
+  'will',
+  'not',
+  'but',
+  'and',
+  'nor',
+  'yet',
+  'for',
+  'with',
+  'from',
+  'into',
+  'onto',
+  'about',
+  'against',
+  'between',
+  'through',
+  'during',
+  'before',
+  'after',
+]);
+
+function looksLikeEnglishContinuationFragment(lower: string): boolean {
+  if (!/^[a-z]+$/.test(lower)) return false;
+  if (lower.length < 2) return false;
+  if (/^(?:ing|ed|es|ly|er|al|ic|ous|ive|ish|ment|ness|less|ful|tion|sion|ity|ory|ary)$/.test(lower)) {
+    return true;
+  }
+  if (lower.length >= 3 && /^l{1,2}ing$/.test(lower)) return true;
+  if (lower.length >= 3 && /^[bcdfghjklmnpqrstvwxyz]ing$/.test(lower)) return true;
+  if (lower.length >= 5 && /^[bcdfghjklmnpqrstvwxyz]{2,}[a-z]+$/.test(lower)) return true;
+  if (lower.length >= 5 && /^[a-z]{2,}ing$/.test(lower)) return true;
+  if (lower.length >= 4 && /^[a-z]{2,}ed$/.test(lower)) return true;
+  return false;
+}
+
+/** 单次从左到右合并一对；多轮调用可吸收 Re+mo+ving */
+function mergeAdjacentWhisperSubwordFragments(words: DocumentWordTimestamp[]): DocumentWordTimestamp[] {
+  if (words.length < 2) return words;
+
+  const merged: DocumentWordTimestamp[] = [];
+  for (const cur of words) {
+    const prev = merged[merged.length - 1];
+    if (!prev) {
+      merged.push({ ...cur });
+      continue;
+    }
+
+    const t1 = prev.text.trim();
+    const t2 = cur.text.trim();
+    const t1Lower = t1.toLowerCase();
+    const endPrev = prev.end_time;
+    if (typeof endPrev !== 'number') {
+      merged.push({ ...cur });
+      continue;
+    }
+
+    const gap = (cur.start_time ?? 0) - endPrev;
+    const t2Lower = t2.toLowerCase();
+
+    const shouldMerge =
+      gap >= 0 &&
+      gap <= MAX_FRAGMENT_MERGE_GAP_NS &&
+      t1.length >= 2 &&
+      !NO_MERGE_BEFORE_FRAGMENT.has(t1Lower) &&
+      !/[.!?。！？]$/.test(t1) &&
+      looksLikeEnglishContinuationFragment(t2Lower);
+
+    if (shouldMerge) {
+      merged[merged.length - 1] = {
+        ...prev,
+        text: `${t1}${t2}`,
+        end_time: cur.end_time ?? prev.end_time,
+      };
+    } else {
+      merged.push({ ...cur });
+    }
+  }
+
+  return merged;
+}
+
+function refineWhisperWordFragments(words: DocumentWordTimestamp[]): DocumentWordTimestamp[] {
+  let cur = words;
+  for (let pass = 0; pass < 10; pass += 1) {
+    const next = mergeAdjacentWhisperSubwordFragments(cur);
+    if (next.length === cur.length) break;
+    cur = next;
+  }
+  return cur;
 }
 
 @Injectable()
