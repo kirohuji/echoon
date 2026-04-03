@@ -104,6 +104,14 @@ export default class DocumentLibraryService extends Service {
     return this.api.get(`${this.model}/${id}/audio`, { responseType: 'blob' });
   }
 
+  getVideoBlob(id: string) {
+    return this.api.get(`${this.model}/${id}/video`, { responseType: 'blob' });
+  }
+
+  transcribeVideo(id: string) {
+    return this.api.post(`${this.model}/${id}/transcribe-video`);
+  }
+
   lookupWordCandidates(candidates: string[]) {
     return this.api.post(`${this.model}/word-lookup`, { candidates }) as Promise<unknown>;
   }

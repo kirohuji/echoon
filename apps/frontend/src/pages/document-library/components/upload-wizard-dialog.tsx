@@ -99,7 +99,7 @@ export function UploadWizardDialog({ open, tags, onClose, onSuccess }: Props) {
             <div className="space-y-3">
               <Input
                 type="file"
-                accept=".pdf,.doc,.docx,.txt,.md"
+                accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.mp4,.mov,.mkv,.avi,.webm,.m4v"
                 onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               />
               <Input
@@ -109,12 +109,12 @@ export function UploadWizardDialog({ open, tags, onClose, onSuccess }: Props) {
               />
               <textarea
                 className="min-h-[120px] w-full resize-y rounded-md border border-black/20 bg-white px-3 py-2 text-sm outline-none placeholder:text-black/40 focus-visible:ring-1 focus-visible:ring-black/20"
-                placeholder="或直接输入文本（将用于生成音频）"
+                placeholder="或直接输入文本（无文件时使用）"
                 value={customText}
                 onChange={(event) => setCustomText(event.target.value)}
               />
               <div className="text-xs text-gray-500">
-                选择了文件则以文件为准；未选择文件时将使用此文本生成音频。
+                支持上传音频或视频；上传后会自动匹配“音频管理/视频管理”。
               </div>
             </div>
           ) : null}
@@ -139,7 +139,7 @@ export function UploadWizardDialog({ open, tags, onClose, onSuccess }: Props) {
             <div className="space-y-2 text-sm">
               <div>文件：{file?.name || '-'}</div>
               <div>标题：{title || file?.name || 'custom-text'}</div>
-              <div>模型与音频参数：上传后在“音频管理”中配置</div>
+              <div>模型与音频参数：上传后在对应管理面板中配置</div>
               <div>标签：{tagIds.length} 个</div>
               {file ? null : <div className="text-xs text-gray-600">文本长度：{customText.trim().length} 字符</div>}
             </div>

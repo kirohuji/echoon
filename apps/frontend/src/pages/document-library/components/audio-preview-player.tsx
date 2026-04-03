@@ -22,6 +22,7 @@ type AudioPreviewPlayerProps = {
   audioProvider?: string | null;
   activeLookupWord?: string;
   onWordLongPress?: (payload: { word: string; candidates: string[] }) => void;
+  lyricContainerHeight?: number;
 };
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
@@ -191,6 +192,7 @@ export function AudioPreviewPlayer({
   audioProvider,
   activeLookupWord,
   onWordLongPress,
+  lyricContainerHeight,
 }: AudioPreviewPlayerProps) {
   const audioPlayerRef = useRef<AudioPlayer>(null);
   const waveformRef = useRef<AudioWaveformHandle | null>(null);
@@ -417,7 +419,7 @@ export function AudioPreviewPlayer({
           <div
             ref={lyricContainerRef}
             className="overflow-y-auto px-1.5 py-1.5 pr-4"
-            style={{ height: IPHONE_VIEW_HEIGHT - 268 }}
+            style={{ height: lyricContainerHeight ?? IPHONE_VIEW_HEIGHT - 268 }}
           >
             {sentenceSegments.length ? (
               <div className="space-y-3">

@@ -22,6 +22,8 @@ type WordTimestamp = {
 };
 
 type AudioPreviewDocument = {
+  fileType?: string | null;
+  mimeType?: string | null;
   audioProvider?: AudioProvider | null;
   audioModel?: string | null;
   modelName?: string | null;
@@ -33,6 +35,12 @@ type AudioPreviewDocument = {
   extractedText?: string | null;
   wordTimestamps?: WordTimestamp[] | null;
 };
+
+function isVideoDocument(doc: AudioPreviewDocument | null) {
+  const ext = (doc?.fileType || '').toLowerCase();
+  const mime = (doc?.mimeType || '').toLowerCase();
+  return mime.startsWith('video/') || ['mp4', 'mov', 'mkv', 'avi', 'webm', 'm4v'].includes(ext);
+}
 
 function partOfSpeechBadgeClass(pos: string) {
   const p = pos.toLowerCase();
@@ -66,14 +74,16 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
   const [advancedParams, setAdvancedParams] = useState<Record<string, string | number | boolean>>({});
   const [audioConfigDirty, setAudioConfigDirty] = useState(false);
-  const [showExtractedText, setShowExtractedText] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string>('');
   const [selectedLookupWord, setSelectedLookupWord] = useState('');
   const [lookupCandidates, setLookupCandidates] = useState<string[]>([]);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [lookupDefinitions, setLookupDefinitions] = useState<WordLookupDefinition[]>([]);
+  const [actionError, setActionError] = useState('');
 
   const objectUrlRef = useRef<string>('');
+  const videoObjectUrlRef = useRef<string>('');
 
   const stopAndCleanupAudioUrl = useCallback(() => {
     if (objectUrlRef.current) {
@@ -81,6 +91,14 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       objectUrlRef.current = '';
     }
     setAudioUrl('');
+  }, []);
+
+  const stopAndCleanupVideoUrl = useCallback(() => {
+    if (videoObjectUrlRef.current) {
+      URL.revokeObjectURL(videoObjectUrlRef.current);
+      videoObjectUrlRef.current = '';
+    }
+    setVideoUrl('');
   }, []);
 
   const refresh = useCallback(async () => {
@@ -162,6 +180,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     if (!open || !documentId) {
       setDoc(null);
       stopAndCleanupAudioUrl();
+      stopAndCleanupVideoUrl();
       setPolling(false);
       return;
     }
@@ -202,7 +221,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       if (timer) window.clearTimeout(timer);
       setPolling(false);
     };
-  }, [open, documentId, refresh, stopAndCleanupAudioUrl, pollingRun]);
+  }, [open, documentId, refresh, stopAndCleanupAudioUrl, stopAndCleanupVideoUrl, pollingRun]);
 
   // audioStatus=success 后拉取 blob，并生成 objectURL 供播放
   useEffect(() => {
@@ -238,6 +257,38 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       cancelled = true;
     };
   }, [doc?.audioStatus, documentId, open, stopAndCleanupAudioUrl]);
+
+  useEffect(() => {
+    if (!open || !documentId) return;
+    const mime = doc?.mimeType || '';
+    const ext = (doc?.fileType || '').toLowerCase();
+    const isVideo = mime.startsWith('video/') || ['mp4', 'mov', 'mkv', 'avi', 'webm', 'm4v'].includes(ext);
+    if (!isVideo) {
+      stopAndCleanupVideoUrl();
+      return;
+    }
+    let cancelled = false;
+    const loadVideo = async () => {
+      try {
+        const blob = (await documentLibraryService.getVideoBlob(documentId)) as unknown as Blob;
+        const url = URL.createObjectURL(blob);
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        stopAndCleanupVideoUrl();
+        videoObjectUrlRef.current = url;
+        setVideoUrl(url);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(e);
+      }
+    };
+    void loadVideo();
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, doc?.fileType, doc?.mimeType, open, stopAndCleanupVideoUrl]);
 
   const providerSchema =
     selectedProvider !== ''
@@ -308,6 +359,22 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
     }
   }, [documentId]);
 
+  const onTranscribeVideo = useCallback(async () => {
+    if (!documentId) return;
+    try {
+      setActionError('');
+      await documentLibraryService.transcribeVideo(documentId);
+      setPollingRun((x) => x + 1);
+    } catch (e: any) {
+      const message =
+        e?.response?.data?.error?.message ||
+        e?.message ||
+        '视频分析失败，请稍后重试';
+      setActionError(String(message));
+      window.alert(String(message));
+    }
+  }, [documentId]);
+
   useEffect(() => {
     if (!selectedLookupWord && !lookupCandidates.length) {
       setLookupDefinitions([]);
@@ -351,6 +418,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   }, [selectedLookupWord, lookupCandidates]);
 
   const isAudioProcessing = doc?.audioStatus === 'processing';
+  const isVideoDoc = isVideoDocument(doc);
 
   return (
     <Dialog.Root
@@ -362,12 +430,14 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 max-h-[88vh] w-[min(96vw,56rem)] max-w-[56rem] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-3 shadow-xl shadow-slate-200/50 sm:p-3.5"
+          className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[min(98vw,72rem)] max-w-[72rem] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-3 shadow-xl shadow-slate-200/50 sm:p-3.5"
           aria-busy={isAudioProcessing}
         >
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
             <div className="flex min-w-0 items-center gap-2">
-              <Dialog.Title className="truncate text-sm font-semibold text-slate-900">音频管理</Dialog.Title>
+              <Dialog.Title className="truncate text-sm font-semibold text-slate-900">
+                {isVideoDoc ? '视频管理' : '音频管理'}
+              </Dialog.Title>
               {isAudioProcessing ? (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-800">
                   <span className="relative flex h-1.5 w-1.5">
@@ -426,7 +496,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_minmax(16rem,18.5rem)]">
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(14rem,16rem)]">
               <div className="min-w-0 space-y-2">
                 <div
                   className={cn(
@@ -434,49 +504,44 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     'px-2.5 py-1.5 shadow-sm ring-1 ring-black/[0.03]'
                   )}
                 >
-                  <div className="text-xs font-semibold text-slate-800">提取文本</div>
-                  <button
-                    type="button"
-                    className="rounded-md px-1.5 py-0.5 text-[11px] font-medium text-indigo-600 hover:bg-indigo-50"
-                    onClick={() => setShowExtractedText((prev) => !prev)}
-                  >
-                    {showExtractedText ? '折叠' : '展开'}
-                  </button>
+                  <div className="text-xs font-semibold text-slate-800">
+                    {isVideoDoc ? '视频预览' : '音频内容'}
+                  </div>
+                  {isVideoDoc ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={onTranscribeVideo}
+                      disabled={!canRegenerate}
+                    >
+                      提取词时间戳
+                    </Button>
+                  ) : null}
                 </div>
-                {showExtractedText ? (
-                  doc?.audioStatus === 'processing' ? (
-                    <div className="relative max-h-44 overflow-auto rounded-lg border border-blue-200/70 bg-white p-2.5 text-[11px] leading-snug whitespace-pre-wrap break-words shadow-sm">
-                      <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-b from-blue-50/0 via-blue-50/30 to-blue-50/0 animate-pulse" />
-                      <div className="relative flex min-h-[3rem] items-start gap-2">
-                        <Iconify
-                          icon="svg-spinners:3-dots-bounce"
-                          width={18}
-                          className="mt-0.5 shrink-0 text-blue-500"
-                        />
-                        <div>
-                          <div className="font-medium text-blue-900">文本同步中</div>
-                          <div className="mt-0.5 text-slate-600">
-                            {doc?.extractedText ? doc.extractedText : '正在提取或等待合成，请稍候…'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : doc?.audioStatus === 'success' ? (
-                    <div className="max-h-44 overflow-auto rounded-lg border border-slate-200/90 bg-white p-2.5 text-[11px] leading-snug whitespace-pre-wrap break-words text-slate-700 shadow-sm">
-                      {doc?.extractedText || '暂无文本'}
-                    </div>
-                  ) : (
-                    <textarea
-                      className="max-h-44 w-full resize-y rounded-lg border border-slate-200/90 bg-white p-2.5 text-[11px] leading-snug whitespace-pre-wrap break-words text-slate-800 outline-none ring-slate-200 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400/30"
-                      value={editableText}
-                      onChange={(e) => {
-                        setTextDirty(true);
-                        setEditableText(e.target.value);
-                      }}
-                      placeholder="这里可以编辑要生成音频的文本"
-                    />
-                  )
-                ) : null}
+                {isVideoDoc && videoUrl ? (
+                  <video
+                    className="h-[22rem] w-full rounded-lg border border-slate-200/90 bg-black object-contain"
+                    src={videoUrl}
+                    controls
+                    preload="metadata"
+                  />
+                ) : isVideoDoc ? (
+                  <div className="flex h-[22rem] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-500">
+                    视频暂不可预览
+                  </div>
+                ) : (
+                  <textarea
+                    className="h-[22rem] w-full resize-none rounded-lg border border-slate-200/90 bg-white p-2.5 text-[11px] leading-snug whitespace-pre-wrap break-words text-slate-800 outline-none ring-slate-200 placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-indigo-400/30"
+                    value={editableText}
+                    onChange={(e) => {
+                      setTextDirty(true);
+                      setEditableText(e.target.value);
+                    }}
+                    placeholder="这里可以编辑要生成音频的文本"
+                  />
+                )}
 
                 {doc?.audioStatus === 'success' ? (
                   <AudioPreviewPlayer
@@ -484,6 +549,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                     wordTimestamps={doc?.wordTimestamps}
                     audioProvider={doc?.audioProvider}
                     activeLookupWord={selectedLookupWord}
+                    lyricContainerHeight={150}
                     onWordLongPress={({ word, candidates }) => {
                       setSelectedLookupWord(word);
                       setLookupCandidates(candidates);
@@ -618,43 +684,50 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                   </div>
                 </div>
 
-                <div
-                  className={cn(
-                    'rounded-lg border border-slate-200/90 bg-gradient-to-br from-slate-50/80 to-white p-2.5',
-                    'shadow-sm ring-1 ring-black/[0.03]'
-                  )}
-                >
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
-                    <Iconify icon="solar:settings-bold-duotone" width={16} className="text-slate-500" />
-                    当前音频配置
+                {!isVideoDoc ? (
+                  <div
+                    className={cn(
+                      'rounded-lg border border-slate-200/90 bg-gradient-to-br from-slate-50/80 to-white p-2.5',
+                      'shadow-sm ring-1 ring-black/[0.03]'
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-800">
+                      <Iconify icon="solar:settings-bold-duotone" width={16} className="text-slate-500" />
+                      当前音频配置
+                    </div>
+                    <dl className="mt-1.5 space-y-0.5 text-[10px] leading-tight text-slate-600">
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-slate-400">Provider</dt>
+                        <dd className="truncate text-right font-medium text-slate-800">{providerLabel}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-slate-400">Model</dt>
+                        <dd className="truncate text-right font-medium text-slate-800">{modelLabel}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-slate-400">Voice</dt>
+                        <dd className="truncate text-right font-medium text-slate-800">{voiceLabel}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="shrink-0 text-slate-400">Status</dt>
+                        <dd className="font-medium text-slate-800">{doc?.audioStatus || '-'}</dd>
+                      </div>
+                    </dl>
                   </div>
-                  <dl className="mt-1.5 space-y-0.5 text-[10px] leading-tight text-slate-600">
-                    <div className="flex justify-between gap-2">
-                      <dt className="shrink-0 text-slate-400">Provider</dt>
-                      <dd className="truncate text-right font-medium text-slate-800">{providerLabel}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="shrink-0 text-slate-400">Model</dt>
-                      <dd className="truncate text-right font-medium text-slate-800">{modelLabel}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="shrink-0 text-slate-400">Voice</dt>
-                      <dd className="truncate text-right font-medium text-slate-800">{voiceLabel}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                      <dt className="shrink-0 text-slate-400">Status</dt>
-                      <dd className="font-medium text-slate-800">{doc?.audioStatus || '-'}</dd>
-                    </div>
-                  </dl>
-                </div>
+                ) : null}
 
                 {doc?.audioStatus === 'failed' && doc?.audioError ? (
                   <div className="rounded-md border border-red-200/90 bg-red-50 px-2 py-1.5 text-[11px] text-red-700">
                     {doc.audioError}
                   </div>
                 ) : null}
+                {actionError ? (
+                  <div className="rounded-md border border-red-200/90 bg-red-50 px-2 py-1.5 text-[11px] text-red-700">
+                    {actionError}
+                  </div>
+                ) : null}
 
-                {canRegenerate ? (
+                {canRegenerate && !isVideoDoc ? (
                   <div
                     className={cn(
                       'space-y-1.5 rounded-lg border border-slate-200/90 bg-white p-2.5 shadow-sm ring-1 ring-black/[0.03]'
