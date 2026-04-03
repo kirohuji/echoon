@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
@@ -50,6 +50,8 @@ function flattenVerboseJsonToWordTimestamps(data: WhisperVerboseJson): DocumentW
 
 @Injectable()
 export class WhisperTranscriptionService {
+  private readonly logger = new Logger(WhisperTranscriptionService.name);
+
   /**
    * 未配置 WHISPER_INFERENCE_URL 时返回 null；推理失败时记录日志并返回 null，不抛错。
    */
@@ -64,10 +66,16 @@ export class WhisperTranscriptionService {
     const language = process.env.WHISPER_LANGUAGE?.trim();
     const splitOnWord = process.env.WHISPER_SPLIT_ON_WORD?.trim().toLowerCase() === 'true';
 
+    const fileLabel = basename(audioPath);
+
     try {
       const buf = await readFile(audioPath);
+      this.logger.log(
+        `Whisper-server: 开始转写 file=${fileLabel} bytes=${buf.length} url=${url} language=${language ?? '(auto)'} split_on_word=${splitOnWord} timeoutMs=${timeoutMs}`
+      );
+
       const form = new FormData();
-      form.append('file', new Blob([buf]), basename(audioPath));
+      form.append('file', new Blob([new Uint8Array(buf)]), fileLabel);
       form.append('response_format', 'verbose_json');
       form.append('temperature', '0.0');
       if (language) {
@@ -83,16 +91,26 @@ export class WhisperTranscriptionService {
       });
 
       if (data && typeof data === 'object' && typeof data.error === 'string' && data.error) {
-        // eslint-disable-next-line no-console
-        console.error('Whisper inference error:', data.error);
+        this.logger.warn(`Whisper-server: 接口返回 error file=${fileLabel} message=${data.error}`);
         return null;
       }
 
       const words = flattenVerboseJsonToWordTimestamps(data);
-      return words.length ? words : null;
+      const segCount = Array.isArray(data?.segments) ? data.segments.length : 0;
+      if (words.length) {
+        this.logger.log(
+          `Whisper-server: 转写完成 file=${fileLabel} words=${words.length} segments=${segCount}`
+        );
+        return words;
+      }
+      this.logger.warn(
+        `Whisper-server: 无有效词时间戳 file=${fileLabel} segments=${segCount}（verbose_json 可能无 words 或全被过滤）`
+      );
+      return null;
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Whisper transcription failed', error);
+      this.logger.warn(
+        `Whisper-server: 请求失败 file=${fileLabel} ${error instanceof Error ? error.message : String(error)}`
+      );
       return null;
     }
   }
