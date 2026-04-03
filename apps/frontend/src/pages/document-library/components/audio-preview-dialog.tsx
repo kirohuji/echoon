@@ -85,6 +85,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
 
   const objectUrlRef = useRef<string>('');
   const videoObjectUrlRef = useRef<string>('');
+  const videoAnalyzingPendingRef = useRef(false);
   const syncingFromAudioRef = useRef(false);
   const syncingFromVideoRef = useRef(false);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
@@ -208,6 +209,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
         const status = data?.audioStatus;
         if (status === 'success' || status === 'failed') {
           setPolling(false);
+          return;
+        }
+        if (status === 'pending' && videoAnalyzingPendingRef.current) {
+          timer = window.setTimeout(loop, 1200);
           return;
         }
         if (status !== 'processing') {
@@ -387,7 +392,11 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       );
       // 立即重启轮询，确保状态快速更新。
       setPollingRun((x) => x + 1);
-      await documentLibraryService.transcribeVideo(documentId);
+      const res: any = await documentLibraryService.transcribeVideo(documentId);
+      const payload = res?.data ?? null;
+      if (payload && typeof payload === 'object') {
+        setDoc(payload as AudioPreviewDocument);
+      }
       setPollingRun((x) => x + 1);
     } catch (e: any) {
       setVideoAnalyzingPending(false);
@@ -399,6 +408,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       window.alert(String(message));
     }
   }, [documentId]);
+
+  useEffect(() => {
+    videoAnalyzingPendingRef.current = videoAnalyzingPending;
+  }, [videoAnalyzingPending]);
 
   useEffect(() => {
     if (!videoAnalyzingPending) return;

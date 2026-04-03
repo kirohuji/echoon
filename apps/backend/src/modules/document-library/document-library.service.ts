@@ -37,6 +37,7 @@ type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
 export class DocumentLibraryService {
   private readonly audioDir = path.join(process.cwd(), 'uploads', 'audios');
   private readonly videoAudioDir = path.join(process.cwd(), 'uploads', 'video-audios');
+  private readonly videoAnalysisTempDir = path.join(process.cwd(), 'uploads', 'tmp', 'video-analysis');
   private readonly sentenceEndRegex = /[.!?。！？；;:]$/;
 
   constructor(
@@ -834,6 +835,40 @@ export class DocumentLibraryService {
     });
   }
 
+  private async writeVideoAnalysisSnapshot(
+    videoPath: string,
+    audioPath: string,
+    wordTimestamps: DocumentWordTimestamp[]
+  ) {
+    await fs.mkdir(this.videoAnalysisTempDir, { recursive: true });
+    const sortedWords = [...wordTimestamps].sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0));
+    const sentenceSegments = this.buildSentenceSegments(sortedWords);
+    const snapshot = {
+      createdAt: new Date().toISOString(),
+      videoPath,
+      audioPath,
+      wordCount: sortedWords.length,
+      sentenceCount: sentenceSegments.length,
+      words: sortedWords,
+      sentences: sentenceSegments.map((segment) => {
+        const startTime = sortedWords[segment.startIdx]?.start_time ?? 0;
+        const endTime = sortedWords[segment.endIdx]?.end_time ?? undefined;
+        return {
+          sentenceIndex: segment.sentenceIndex,
+          text: segment.text,
+          startIdx: segment.startIdx,
+          endIdx: segment.endIdx,
+          startTime,
+          endTime,
+        };
+      }),
+    };
+    const videoName = path.basename(videoPath, path.extname(videoPath));
+    const snapshotPath = path.join(this.videoAnalysisTempDir, `${videoName}-${Date.now()}.json`);
+    await fs.writeFile(snapshotPath, JSON.stringify(snapshot, null, 2), 'utf8');
+    return snapshotPath;
+  }
+
   async transcribeVideoToWordTimestamps(videoPath: string) {
     const videoExt = path.extname(videoPath);
     const videoName = path.basename(videoPath, videoExt);
@@ -848,9 +883,16 @@ export class DocumentLibraryService {
       );
     }
 
+    const analysisSnapshotPath = await this.writeVideoAnalysisSnapshot(
+      videoPath,
+      audioPath,
+      wordTimestamps
+    );
+
     return {
       audioPath,
       wordTimestamps,
+      analysisSnapshotPath,
     };
   }
 
@@ -878,7 +920,9 @@ export class DocumentLibraryService {
     });
 
     try {
-      const { audioPath, wordTimestamps } = await this.transcribeVideoToWordTimestamps(target.filePath);
+      const { audioPath, wordTimestamps, analysisSnapshotPath } = await this.transcribeVideoToWordTimestamps(
+        target.filePath
+      );
 
       await this.prisma.documentLibrary.update({
         where: { id },
@@ -893,7 +937,11 @@ export class DocumentLibraryService {
         },
       });
 
-      return this.findOne(id);
+      const latest = await this.findOne(id);
+      return {
+        ...latest,
+        analysisSnapshotPath,
+      };
     } catch (error) {
       const audioError = error instanceof Error ? error.message : '视频分析失败';
       await this.prisma.documentLibrary.update({

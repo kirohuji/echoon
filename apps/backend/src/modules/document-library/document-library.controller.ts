@@ -123,6 +123,7 @@ export class DocumentLibraryController {
       fileName: file.originalname,
       videoPath,
       audioPath: result.audioPath,
+      analysisSnapshotPath: result.analysisSnapshotPath,
       wordCount: result.wordTimestamps.length,
       wordTimestamps: result.wordTimestamps,
       requestedBy: user.id,
