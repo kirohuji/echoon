@@ -81,6 +81,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const [lookupError, setLookupError] = useState('');
   const [lookupDefinitions, setLookupDefinitions] = useState<WordLookupDefinition[]>([]);
   const [actionError, setActionError] = useState('');
+  const [videoAnalyzingPending, setVideoAnalyzingPending] = useState(false);
 
   const objectUrlRef = useRef<string>('');
   const videoObjectUrlRef = useRef<string>('');
@@ -371,10 +372,25 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
   const onTranscribeVideo = useCallback(async () => {
     if (!documentId) return;
     try {
+      setVideoAnalyzingPending(true);
       setActionError('');
+      // 点击后立即进入“分析中”视觉状态，避免等后端轮询返回才有反馈。
+      setDoc((prev) =>
+        prev
+          ? {
+              ...prev,
+              audioStatus: 'processing',
+              audioStage: 'transcribing_video',
+              audioProgress: Math.max(1, Number(prev.audioProgress ?? 0)),
+            }
+          : prev
+      );
+      // 立即重启轮询，确保状态快速更新。
+      setPollingRun((x) => x + 1);
       await documentLibraryService.transcribeVideo(documentId);
       setPollingRun((x) => x + 1);
     } catch (e: any) {
+      setVideoAnalyzingPending(false);
       const message =
         e?.response?.data?.error?.message ||
         e?.message ||
@@ -383,6 +399,18 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       window.alert(String(message));
     }
   }, [documentId]);
+
+  useEffect(() => {
+    if (!videoAnalyzingPending) return;
+    // 请求已被后端接收后，由真实状态驱动；本地“pending”标记可释放。
+    if (
+      doc?.audioStatus === 'processing' ||
+      doc?.audioStatus === 'success' ||
+      doc?.audioStatus === 'failed'
+    ) {
+      setVideoAnalyzingPending(false);
+    }
+  }, [videoAnalyzingPending, doc?.audioStatus]);
 
   useEffect(() => {
     if (!selectedLookupWord && !lookupCandidates.length) {
@@ -428,6 +456,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
 
   const isAudioProcessing = doc?.audioStatus === 'processing';
   const isVideoDoc = isVideoDocument(doc);
+  const isVideoAnalyzing = isVideoDoc && (isAudioProcessing || videoAnalyzingPending);
 
   return (
     <Dialog.Root
@@ -523,9 +552,16 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                       variant="outline"
                       className="h-7 text-xs"
                       onClick={onTranscribeVideo}
-                      disabled={!canRegenerate}
+                      disabled={!canRegenerate || isVideoAnalyzing}
                     >
-                      提取词时间戳
+                      {isVideoAnalyzing ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Iconify icon="svg-spinners:3-dots-scale" width={14} />
+                          分析中...
+                        </span>
+                      ) : (
+                        '分析视频'
+                      )}
                     </Button>
                   ) : null}
                 </div>
@@ -594,7 +630,7 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                         }));
                       }}
                     />
-                    {isAudioProcessing ? (
+                    {isVideoAnalyzing ? (
                       <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-black/35">
                         <div className="flex items-center gap-2 rounded-md bg-white/90 px-3 py-2 text-xs font-medium text-slate-800 shadow">
                           <Iconify icon="svg-spinners:3-dots-scale" width={18} className="text-blue-600" />
