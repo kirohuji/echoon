@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
-import WaveSurfer from 'wavesurfer.js';
 import AudioPlayer from 'react-audio-player';
 
 import { Iconify } from 'src/components/iconify';
 import { Button } from 'src/components/ui/button';
 import { cn } from 'src/lib/utils';
+
+import { AudioWaveform, type AudioWaveformHandle } from './audio-waveform';
 
 type WordTimestamp = {
   start_time: number;
@@ -192,9 +193,7 @@ export function AudioPreviewPlayer({
   onWordLongPress,
 }: AudioPreviewPlayerProps) {
   const audioPlayerRef = useRef<AudioPlayer>(null);
-  const waveContainerRef = useRef<HTMLDivElement | null>(null);
-  const waveSurferRef = useRef<WaveSurfer | null>(null);
-  const syncingWaveRef = useRef(false);
+  const waveformRef = useRef<AudioWaveformHandle | null>(null);
 
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -258,15 +257,7 @@ export function AudioPreviewPlayer({
   }, [currentTime, sentenceSegments]);
 
   const syncWaveProgress = (time: number) => {
-    const waveSurfer = waveSurferRef.current;
-    const waveDuration = waveSurfer?.getDuration?.() ?? duration;
-    if (!waveSurfer || !waveDuration) return;
-
-    syncingWaveRef.current = true;
-    waveSurfer.seekTo(Math.max(0, Math.min(1, time / waveDuration)));
-    window.setTimeout(() => {
-      syncingWaveRef.current = false;
-    }, 0);
+    waveformRef.current?.syncProgress(time);
   };
 
   const seekToTime = (nextTime: number, userIntent = false) => {
@@ -369,46 +360,6 @@ export function AudioPreviewPlayer({
       if (loopGapTimerRef.current) window.clearTimeout(loopGapTimerRef.current);
     };
   }, []);
-
-  useEffect(() => {
-    if (!audioUrl || !waveContainerRef.current) return undefined;
-
-    waveSurferRef.current?.destroy();
-
-    const waveSurfer = WaveSurfer.create({
-      container: waveContainerRef.current,
-      waveColor: '#d4d4d8',
-      progressColor: '#111827',
-      cursorColor: '#111827',
-      height: 72,
-      barWidth: 2,
-      barGap: 2,
-      barRadius: 4,
-      normalize: true,
-      url: audioUrl,
-      interact: true,
-      dragToSeek: true,
-    });
-
-    waveSurferRef.current = waveSurfer;
-
-    waveSurfer.on('ready', () => {
-      const nextDuration = waveSurfer.getDuration?.() ?? 0;
-      if (nextDuration > 0) {
-        setDuration((currentDuration) => (currentDuration > 0 ? currentDuration : nextDuration));
-      }
-    });
-
-    waveSurfer.on('interaction', () => {
-      if (syncingWaveRef.current) return;
-      seekToTime(waveSurfer.getCurrentTime?.() ?? 0, true);
-    });
-
-    return () => {
-      waveSurfer.destroy();
-      waveSurferRef.current = null;
-    };
-  }, [audioUrl]);
 
   useEffect(() => {
     if (!lyricContainerRef.current) return;
@@ -619,9 +570,15 @@ export function AudioPreviewPlayer({
             <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
           </div>
 
-          <div
-            ref={waveContainerRef}
-            className="mt-1 min-h-[44px] w-full overflow-hidden bg-white"
+          <AudioWaveform
+            ref={waveformRef}
+            className="mt-1"
+            audioUrl={audioUrl}
+            durationSeconds={duration}
+            onSeek={(time) => seekToTime(time, true)}
+            onReady={(nextDuration) =>
+              setDuration((currentDuration) => (currentDuration > 0 ? currentDuration : nextDuration))
+            }
           />
 
           <input
