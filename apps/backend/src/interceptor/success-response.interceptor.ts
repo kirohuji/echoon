@@ -60,6 +60,9 @@ export class SuccessResponseInterceptor<T>
     const httpContext = context.switchToHttp();
     const response = httpContext.getResponse<Response>();
     const request = httpContext.getRequest<Request>();
+    if (request.path?.startsWith('/api/auth')) {
+      return next.handle() as Observable<ApiResponse<T>>;
+    }
     const method = request.method;
 
     // 根据请求方法设置状态码

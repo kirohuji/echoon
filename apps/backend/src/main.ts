@@ -6,10 +6,28 @@ import { SuccessResponseInterceptor } from '@/interceptor/success-response.inter
 import { HttpExceptionFilter } from '@/exception-handler/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
+  const frontendOrigins = (
+    process.env.FRONTEND_ORIGINS ?? 'http://localhost:5173,http://127.0.0.1:5173'
+  )
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  const isProd = process.env.NODE_ENV === 'production';
+
   app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    // 预检 OPTIONS 必须在 methods 内，否则会缺省 CORS 头导致浏览器报「Network Error」
+    origin: isProd
+      ? frontendOrigins.length > 0
+        ? frontendOrigins
+        : true
+      : true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    credentials: true,
   });
 
   app.useBodyParser('json', { limit: '15mb' });

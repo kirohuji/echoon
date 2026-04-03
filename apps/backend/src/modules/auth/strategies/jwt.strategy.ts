@@ -14,7 +14,8 @@ interface JwtPayload {
 
 interface UserWithRoles {
   id: string;
-  phone: string;
+  phoneNumber: string;
+  status: number;
   roleAssignments: Array<{ role: { value: string } }>;
 }
 
@@ -41,10 +42,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return null;
     }
 
+    if (user.status !== 1) {
+      return null;
+    }
+
+    const roles = user.roleAssignments.map((ra) => ra.role.value);
+
     return {
       id: user.id,
-      phone: user.phone,
-      roleAssignments: user.roleAssignments.map((role) => role.role.value),
+      phone: user.phoneNumber,
+      roleAssignments: roles,
+      roles,
     };
   }
 }

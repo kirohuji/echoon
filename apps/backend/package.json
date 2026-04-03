@@ -28,10 +28,11 @@
     "prisma:push": "prisma db push",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
-    "prisma:reset": "prisma migrate reset --force"
+    "prisma:reset": "prisma db push --force-reset --accept-data-loss && prisma db seed"
   },
   "dependencies": {
     "@ai-sdk/deepseek": "^0.2.8",
+    "@better-auth/prisma-adapter": "^1.5.6",
     "@nestjs/bullmq": "^11.0.2",
     "@nestjs/cache-manager": "^3.0.1",
     "@nestjs/common": "^11.0.1",
@@ -48,9 +49,11 @@
     "@suites/di.nestjs": "^3.0.1",
     "@suites/doubles.jest": "^3.0.1",
     "@suites/unit": "^3.0.1",
+    "@thallesp/nestjs-better-auth": "^2.5.3",
     "@types/multer": "^1.4.12",
     "ai": "^4.2.10",
     "axios": "^1.8.4",
+    "better-auth": "^1.5.6",
     "bullmq": "^5.46.1",
     "cache-manager": "^6.4.2",
     "chalk": "^5.4.1",
@@ -83,8 +86,8 @@
     "tencentcloud-sdk-nodejs-sms": "^4.1.10",
     "tesseract.js": "^6.0.0",
     "uuid": "^11.1.0",
-    "winston": "^3.17.0",
     "wink-lemmatizer": "^3.0.4",
+    "winston": "^3.17.0",
     "wordnet": "^2.0.0",
     "ws": "^8.20.0",
     "zod": "^3.24.2"

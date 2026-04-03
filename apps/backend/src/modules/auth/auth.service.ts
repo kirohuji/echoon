@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
-import { InvalidCredentialsException, InvalidTokenException, TokenExpiredException, UserNotFoundException, InvalidVerificationCodeException, UserAlreadyExistsException } from './exceptions';
+import { InvalidCredentialsException, InvalidTokenException, TokenExpiredException, UserNotFoundException, UserAlreadyExistsException } from './exceptions';
+import { UnauthorizedException } from '@nestjs/common';
 import { User } from '@prisma/client';
 import * as crypto from 'crypto';
 
@@ -30,12 +31,16 @@ export class AuthService {
   ): Promise<Omit<User, 'password'> | null> {
     const user = await this.prisma.user.findFirst({
       where: {
-        phone,
+        phoneNumber: phone,
       },
     });
 
     if (!user) {
       throw new UserNotFoundException();
+    }
+
+    if (user.status !== 1) {
+      throw new UnauthorizedException('账号已禁用');
     }
 
     if (user?.password) {
@@ -61,7 +66,7 @@ export class AuthService {
   async generateTokens(user: Omit<User, 'password'>) {
     const payload = {
       id: user.id,
-      phone: user.phone,
+      phone: user.phoneNumber,
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -86,7 +91,7 @@ export class AuthService {
       refresh_token: refreshToken,
       user: {
         id: user.id,
-        phone: user.phone,
+        phone: user.phoneNumber,
         username: user.username,
         status: user.status,
         createdAt: user.createdAt,
@@ -182,7 +187,7 @@ export class AuthService {
     // 检查是否有未删除的用户
     const existingActiveUser = await this.prisma.user.findFirst({
       where: {
-        phone,
+        phoneNumber: phone,
       },
     });
 
@@ -195,10 +200,14 @@ export class AuthService {
       .pbkdf2Sync(password, salt, 1000, 64, 'sha512')
       .toString('hex');
 
+    const email = `${phone.replace(/\s+/g, '')}@phone.echoon.local`;
+
     // 创建新用户
     const newUser = await this.prisma.user.create({
       data: {
-        phone,
+        phoneNumber: phone,
+        email,
+        name: username ?? phone,
         password: `${salt}:${hashedPassword}`,
         username,
       },

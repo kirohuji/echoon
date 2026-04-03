@@ -31,6 +31,9 @@ async function main() {
     await prisma.tag.deleteMany({});
     await prisma.file.deleteMany({});
     await prisma.refreshToken.deleteMany({});
+    await prisma.session.deleteMany({});
+    await prisma.account.deleteMany({});
+    await prisma.verification.deleteMany({});
     await prisma.verificationCode.deleteMany({});
     await prisma.personal.deleteMany({});
     await prisma.roleAssignment.deleteMany({});
@@ -40,7 +43,7 @@ async function main() {
     await prisma.profile.deleteMany({});
     await prisma.user.deleteMany({});
   } catch (e) {
-    // exitIfMissingTable(e);
+    exitIfMissingTable(e);
     console.error(e);
     throw e;
   }
@@ -107,19 +110,37 @@ async function main() {
     },
   });
 
-  // 5. 创建管理员用户
+  // 5. 创建管理员用户（JWT 仍为 pbkdf2；better-auth credential 使用 scynth 哈希）
   const salt = crypto.randomBytes(16).toString('hex');
   const hashedPassword = crypto
     .pbkdf2Sync('123456', salt, 1000, 64, 'sha512')
     .toString('hex');
 
+  const adminPhone = '13052202624';
+  const adminEmail = `${adminPhone}@phone.echoon.local`;
+
+  const { hashPassword } = await import('better-auth/crypto');
+  const baPasswordHash = await hashPassword('123456');
+
   const adminUser = await prisma.user.create({
     data: {
-      phone: '13052202624',
+      phoneNumber: adminPhone,
+      email: adminEmail,
+      name: 'admin',
       password: `${salt}:${hashedPassword}`,
       username: 'admin',
       status: 1,
       emails: [],
+    },
+  });
+
+  await prisma.account.create({
+    data: {
+      id: crypto.randomUUID(),
+      userId: adminUser.id,
+      accountId: adminUser.id,
+      providerId: 'credential',
+      password: baPasswordHash,
     },
   });
   await prisma.profile.create({

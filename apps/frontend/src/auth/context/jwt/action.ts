@@ -1,5 +1,6 @@
 import axios, { endpoints } from 'src/utils/axios';
 import { authService } from 'src/composables/context-provider';
+import { authClient } from 'src/lib/auth-client';
 import { setSession } from './utils';
 import { STORAGE_KEY } from './constant';
 
@@ -75,6 +76,13 @@ export const signUp = async ({
  * Sign out
  *************************************** */
 export const signOut = async (): Promise<void> => {
+  try {
+    await authClient.signOut({
+      fetchOptions: { credentials: 'include' },
+    });
+  } catch {
+    /* 无 better-auth 会话时忽略 */
+  }
   try {
     await setSession(null);
   } catch (error) {

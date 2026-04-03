@@ -13,14 +13,21 @@ export class PersonalService extends CrudService<Personal> {
 
   // 创建 personal 和 user
   async createPersonal(createPersonalDto: CreatePersonalDto): Promise<Personal> {
+    const phone = createPersonalDto.phone;
+    const email = `${phone.replace(/\s+/g, '')}@phone.echoon.local`;
     // 先创建 user
     const user = await this.prisma.user.create({
       data: {
-        phone: createPersonalDto.phone,
+        phoneNumber: phone,
+        email,
+        name: createPersonalDto.username ?? phone,
         password: createPersonalDto.password,
         emails: createPersonalDto.emails || [],
         username: createPersonalDto.username,
       },
+    });
+    await this.prisma.profile.create({
+      data: { id: user.id },
     });
     // 再创建 personal，id 与 user 一致
     const personal = await this.prisma.personal.create({
@@ -52,13 +59,19 @@ export class PersonalService extends CrudService<Personal> {
     const created: Personal[] = [];
     for (const role of roles) {
       // 先创建 user
+      const phone = `${role.id}@ai.mock`;
       const user = await this.prisma.user.create({
         data: {
-          phone: role.id + '@ai.mock',
+          phoneNumber: phone,
+          email: `${role.id}.ai@mock.echoon.local`,
+          name: role.name,
           password: 'mocked',
           emails: [],
           username: role.name,
         },
+      });
+      await this.prisma.profile.create({
+        data: { id: user.id, name: role.name },
       });
       // 再创建 personal
       const personal = await this.prisma.personal.create({

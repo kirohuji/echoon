@@ -10,21 +10,74 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
-  phone         String
-  password      String?
-  emails        String[]
-  username      String?
-  status        Int       @default(1) // 1: active, 0: inactive
-  lastOnline    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  // better-auth core (+ phone plugin fields on DB column "phone" for backward-compatible column name)
+  email              String    @unique
+  emailVerified      Boolean   @default(false)
+  name               String?
+  image              String?
+  phoneNumber        String    @unique @map("phone")
+  phoneNumberVerified Boolean  @default(false)
+  password           String?
+  emails             String[]
+  username           String?
+  status             Int       @default(1) // 1: active, 0: inactive
+  lastOnline         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
   verificationCodes VerificationCode[]
-  refreshTokens RefreshToken[]
-  profile       Profile?
-  personal      Personal?
-  files         File[]
-  roleAssignments RoleAssignment[]
+  refreshTokens     RefreshToken[]
+  sessions          Session[]
+  accounts          Account[]
+  profile           Profile?
+  personal          Personal?
+  files             File[]
+  roleAssignments   RoleAssignment[]
   documentLibraries DocumentLibrary[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
 }
 
 model Profile {

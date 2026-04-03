@@ -4,10 +4,16 @@ import packageJson from '../package.json';
 
 // ----------------------------------------------------------------------
 
+const rawServerUrl = import.meta.env.VITE_SERVER_URL ?? '';
+const authBaseUrl =
+  (import.meta.env.VITE_AUTH_BASE_URL as string | undefined)?.replace(/\/$/, '') ||
+  rawServerUrl.replace(/\/?api\/v1\/?$/i, '').replace(/\/$/, '');
+
 export type ConfigValue = {
   site: {
     name: string;
     serverUrl: string;
+    authBaseUrl: string;
     assetURL: string;
     basePath: string;
     version: string;
@@ -25,7 +31,8 @@ export type ConfigValue = {
 export const CONFIG: ConfigValue = {
   site: {
     name: 'Minimals',
-    serverUrl: import.meta.env.VITE_SERVER_URL ?? '',
+    serverUrl: rawServerUrl,
+    authBaseUrl,
     assetURL: import.meta.env.VITE_ASSET_URL ?? '',
     basePath: import.meta.env.VITE_BASE_PATH ?? '',
     version: packageJson.version,

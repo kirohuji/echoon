@@ -2,7 +2,7 @@ import { useMemo, useEffect, useCallback } from 'react';
 import { authService } from 'src/composables/context-provider';
 import { useSetState } from 'src/hooks/use-set-state';
 
-// import axios, { endpoints } from 'src/utils/axios';
+import { authClient } from 'src/lib/auth-client';
 
 import { STORAGE_KEY } from './constant';
 import { AuthContext } from '../auth-context';
@@ -30,13 +30,32 @@ export function AuthProvider({ children }: Props) {
 
   const checkUserSession = useCallback(async () => {
     try {
+      const { data: ba } = await authClient.getSession({
+        fetchOptions: { credentials: 'include' },
+      });
+      if (ba?.user) {
+        const u = ba.user as Record<string, unknown>;
+        const sessionTok =
+          ba.session && typeof ba.session === 'object' && 'token' in ba.session
+            ? String((ba.session as { token?: string }).token ?? '')
+            : '';
+        setState({
+          user: {
+            ...u,
+            phone: (u.phoneNumber as string) ?? (u.phone as string),
+            accessToken: sessionTok || undefined,
+          },
+          loading: false,
+        });
+        return;
+      }
+
       const accessToken = sessionStorage.getItem(STORAGE_KEY);
 
       if (accessToken && isValidToken(accessToken)) {
         setSession(accessToken);
 
-        const res = await authService.profile()
-        // const res = await axios.get(endpoints.auth.me);
+        const res = await authService.profile();
 
         const { user, profile } = res.data;
 

@@ -12,6 +12,7 @@ const baseURL = CONFIG.site.serverUrl
 export const service = axios.create({
   baseURL,
   timeout: 180000,
+  withCredentials: true,
 });
 service.interceptors.request.use(
   (config) => {
