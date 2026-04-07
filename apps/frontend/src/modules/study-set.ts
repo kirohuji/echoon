@@ -78,6 +78,12 @@ export type StudySetDetailDto = {
   stats?: StudySetStatsDto;
 };
 
+export type PracticeEvalIssueDto = {
+  aspect?: string;
+  detail: string;
+  suggestion: string;
+};
+
 export type PracticeEvaluateResultDto = {
   verdict: 'correct' | 'partial' | 'incorrect';
   countsAsCorrect: boolean;
@@ -85,7 +91,21 @@ export type PracticeEvaluateResultDto = {
   tips: string;
   comparisonNote: string;
   aiAvailable: boolean;
+  /** 0–100，可能为 null（旧客户端无此字段时前端可忽略） */
+  accuracyScore?: number | null;
+  summary?: string;
+  strengths?: string[];
+  issues?: PracticeEvalIssueDto[];
+  actionSteps?: string[];
+  gapVsReference?: string;
   /** 问答题：题干（term）的简体中文译文，需配置 DeepSeek */
+  questionTranslation?: string | null;
+};
+
+export type PracticeTeachResultDto = {
+  /** 精炼 Markdown 讲解（含 ## 小节与列表） */
+  bodyMd: string;
+  aiAvailable: boolean;
   questionTranslation?: string | null;
 };
 
@@ -111,6 +131,10 @@ export default class StudySetService extends Service {
 
   practiceEvaluate(id: string, body: { cardId: string; userAnswer: string }) {
     return this.api.post(`${this.model}/${id}/practice-evaluate`, body);
+  }
+
+  practiceTeach(id: string, body: { cardId: string }) {
+    return this.api.post(`${this.model}/${id}/practice-teach`, body);
   }
 
   learnFeedback(id: string, body: { cardId: string; level: LearnLevel }) {
