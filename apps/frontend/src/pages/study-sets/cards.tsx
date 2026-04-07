@@ -193,7 +193,7 @@ export default function StudySetCardsPage() {
             onClick={goBack}
             className="inline-flex h-9 items-center justify-center rounded-md border border-black/20 bg-white px-4 text-sm font-medium hover:bg-black/5"
           >
-            返回上一页
+            返回
           </button>
         </div>
 

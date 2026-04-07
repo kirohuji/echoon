@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from 'src/components/ui/button';
 import { CONFIG } from 'src/config-global';
 import { studySetService } from 'src/composables/context-provider';
@@ -18,6 +18,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 export default function StudySetLearnPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const metadata = useMemo(() => ({ title: `学习模式 ${CONFIG.site.name}` }), []);
   const [cards, setCards] = useState<StudyCardDto[]>([]);
   const [title, setTitle] = useState('');
@@ -71,6 +72,14 @@ export default function StudySetLearnPage() {
 
   if (!id) return <div className="p-4 text-sm text-red-600">无效链接</div>;
 
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(paths.main.studySets.detail(id));
+  };
+
   const done = cards.length > 0 && index >= cards.length;
 
   return (
@@ -83,7 +92,13 @@ export default function StudySetLearnPage() {
             <input type="checkbox" checked={weakFirst} onChange={(e) => setWeakFirst(e.target.checked)} />
             弱项优先
           </label>
-          <Link to={paths.main.studySets.detail(id)} className="inline-flex h-9 items-center justify-center rounded-md border border-black/20 bg-white px-4 text-sm font-medium hover:bg-black/5">返回概览</Link>
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex h-9 items-center justify-center rounded-md border border-black/20 bg-white px-4 text-sm font-medium hover:bg-black/5"
+          >
+            返回
+          </button>
         </div>
 
         {loading ? <div className="text-sm text-gray-500">加载中…</div> : null}
