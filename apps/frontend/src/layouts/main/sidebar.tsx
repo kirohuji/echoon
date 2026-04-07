@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { signOut } from 'src/auth/context/jwt/action';
 import { useAuthContext } from 'src/auth/hooks';
@@ -36,6 +36,12 @@ const items = [
     to: '/main/ops-center',
     icon: 'solar:settings-bold-duotone',
   },
+];
+
+const opsCenterSubItems = [
+  { label: '消息通知', to: '/main/ops-center?section=notification' },
+  { label: '会员管理', to: '/main/ops-center?section=membership' },
+  { label: '工单管理', to: '/main/ops-center?section=ticket' },
 ];
 
 function sidebarUserLines(user: Record<string, unknown> | null) {
@@ -177,6 +183,7 @@ function SidebarUserBar({
 
 export function MainSidebar() {
   const pathname = usePathname();
+  const location = useLocation();
   const navigate = useNavigate();
   const { user, loading, checkUserSession } = useAuthContext();
   const [signingOut, setSigningOut] = useState(false);
@@ -268,27 +275,49 @@ export function MainSidebar() {
       <nav className={cn('flex flex-1 flex-col gap-0.5', collapsed && 'items-center')}>
         {items.map((item) => {
           const active = pathname.startsWith(item.to);
+          const isOpsCenter = item.to === paths.main.opsCenter.root;
           return (
-            <Link
-              key={item.to}
-              to={item.to}
-              title={item.label}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'flex items-center gap-2.5 rounded-lg text-sm font-medium transition',
-                collapsed ? 'justify-center px-2 py-2.5' : 'px-2.5 py-1.5',
-                active
-                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/25'
-                  : 'text-slate-700 hover:bg-white hover:text-slate-900 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200/80',
-              )}
-            >
-              <Iconify
-                icon={item.icon}
-                width={22}
-                className={cn(active ? 'text-white' : 'text-indigo-600')}
-              />
-              {!collapsed ? <span className="truncate">{item.label}</span> : null}
-            </Link>
+            <div key={item.to} className={cn('w-full', collapsed && 'w-auto')}>
+              <Link
+                to={item.to}
+                title={item.label}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-2.5 rounded-lg text-sm font-medium transition',
+                  collapsed ? 'justify-center px-2 py-2.5' : 'px-2.5 py-1.5',
+                  active
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/25'
+                    : 'text-slate-700 hover:bg-white hover:text-slate-900 hover:shadow-sm ring-1 ring-transparent hover:ring-slate-200/80',
+                )}
+              >
+                <Iconify
+                  icon={item.icon}
+                  width={22}
+                  className={cn(active ? 'text-white' : 'text-indigo-600')}
+                />
+                {!collapsed ? <span className="truncate">{item.label}</span> : null}
+              </Link>
+
+              {!collapsed && isOpsCenter && active ? (
+                <div className="mt-1.5 space-y-1 pl-8">
+                  {opsCenterSubItems.map((subItem) => (
+                    <Link
+                      key={subItem.to}
+                      to={subItem.to}
+                      className={cn(
+                        'block rounded-md px-2.5 py-1.5 text-sm font-medium transition',
+                        pathname.startsWith(paths.main.opsCenter.root) &&
+                          location.search.includes(subItem.to.split('?')[1] ?? '')
+                          ? 'bg-indigo-50 text-indigo-700'
+                          : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+                      )}
+                    >
+                      {subItem.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </nav>

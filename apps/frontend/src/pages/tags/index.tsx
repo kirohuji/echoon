@@ -80,48 +80,70 @@ export default function TagsPage() {
         <title>{metadata.title}</title>
       </Helmet>
 
-      <div className="p-4">
-        <h1 className="mb-4 text-xl font-semibold">标签库</h1>
-
-        <div className="mb-4 flex flex-wrap gap-2">
-          <Input
-            className="w-48"
-            placeholder="标签名"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Input
-            className="w-80"
-            placeholder="标签描述（可选）"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-          <Button type="button" onClick={createTag} disabled={creating || !name.trim()}>
-            新增标签
-          </Button>
+      <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">标签库</h1>
+            <p className="mt-1 text-sm text-slate-500">管理资料标签，用于筛选与归类</p>
+          </div>
         </div>
 
-        {loading ? <div className="text-sm text-gray-500">Loading...</div> : null}
-        {creating ? <div className="text-sm text-gray-500">Creating...</div> : null}
-        {error ? <div className="text-sm text-red-600">{error}</div> : null}
+        <div className="rounded-xl border border-slate-200/90 bg-gradient-to-br from-slate-50/80 to-white p-4 shadow-sm ring-1 ring-slate-100">
+          <div className="flex flex-wrap gap-2">
+            <Input
+              className="w-48 border-slate-200"
+              placeholder="标签名"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              className="w-80 border-slate-200"
+              placeholder="标签描述（可选）"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <Button
+              type="button"
+              className="bg-indigo-600 text-white shadow-sm shadow-indigo-600/25 hover:bg-indigo-700"
+              onClick={createTag}
+              disabled={creating || !name.trim()}
+            >
+              新增标签
+            </Button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200/90 bg-white px-4 py-8 text-slate-500 shadow-sm">
+            <div className="h-8 w-8 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600" aria-hidden />
+            <span className="text-sm">加载标签列表...</span>
+          </div>
+        ) : null}
+        {creating ? <div className="text-sm text-slate-500">创建中...</div> : null}
+        {error ? (
+          <div className="rounded-lg border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-800 shadow-sm">
+            {error}
+          </div>
+        ) : null}
 
         {!loading && !error ? (
-          <div className="overflow-x-auto rounded border border-black/10">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-black/5">
+          <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-sm ring-1 ring-slate-100">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead>
                 <tr>
-                  <th className="px-3 py-2 font-medium">名称</th>
-                  <th className="px-3 py-2 font-medium">描述</th>
-                  <th className="px-3 py-2 font-medium">操作</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">名称</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">描述</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500">操作</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {rows.map((row) => (
-                  <tr key={row.id} className="border-t border-black/10">
-                    <td className="px-3 py-2">{row.name}</td>
-                    <td className="px-3 py-2">{row.description || '-'}</td>
-                    <td className="px-3 py-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => removeTag(row.id)}>
+                  <tr key={row.id} className="bg-white transition-colors hover:bg-slate-50/60">
+                    <td className="px-4 py-3">{row.name}</td>
+                    <td className="px-4 py-3">{row.description || '-'}</td>
+                    <td className="px-4 py-3">
+                      <Button type="button" size="sm" variant="outline" className="border-rose-200 text-rose-700 hover:bg-rose-50/80" onClick={() => removeTag(row.id)}>
                         删除
                       </Button>
                     </td>
@@ -129,7 +151,8 @@ export default function TagsPage() {
                 ))}
               </tbody>
             </table>
-            {rows.length === 0 ? <div className="p-3 text-sm text-gray-500">暂无标签</div> : null}
+            </div>
+            {rows.length === 0 ? <div className="p-3 text-sm text-slate-500">暂无标签</div> : null}
           </div>
         ) : null}
       </div>
