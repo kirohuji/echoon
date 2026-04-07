@@ -33,6 +33,28 @@ export type StudySetStatsDto = {
     vagueCount: number;
     unknownCount: number;
   };
+  audience: {
+    uniqueLearners: number;
+    totalAttempts: number;
+  };
+  charts: {
+    byCard: Array<{
+      cardId: string;
+      label: string;
+      learners: number;
+      attempts: number;
+      accuracy: number;
+    }>;
+    levelDistribution: {
+      known: number;
+      vague: number;
+      unknown: number;
+    };
+    answerDistribution: {
+      correct: number;
+      wrong: number;
+    };
+  };
 };
 
 export type StudySetListItemDto = {

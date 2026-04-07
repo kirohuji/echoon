@@ -46,13 +46,19 @@ export class StudySetService {
     }
 
     const cardIds = set.cards.map((c) => c.id);
-    const progresses =
+    const myProgresses =
       cardIds.length === 0
         ? []
         : await this.prisma.studyCardProgress.findMany({
             where: { userId, cardId: { in: cardIds } },
           });
-    const progressByCard = new Map(progresses.map((p) => [p.cardId, p]));
+    const allProgresses =
+      cardIds.length === 0
+        ? []
+        : await this.prisma.studyCardProgress.findMany({
+            where: { cardId: { in: cardIds } },
+          });
+    const progressByCard = new Map(myProgresses.map((p) => [p.cardId, p]));
 
     const cardStats = {
       total: set.cards.length,
@@ -60,7 +66,7 @@ export class StudySetService {
       qa: set.cards.filter((c) => c.cardType === StudyCardType.qa).length,
     };
 
-    const progressSummary = progresses.reduce(
+    const progressSummary = allProgresses.reduce(
       (acc, item) => {
         acc.correctCount += item.correctCount;
         acc.wrongCount += item.wrongCount;
@@ -72,11 +78,42 @@ export class StudySetService {
       { correctCount: 0, wrongCount: 0, knownCount: 0, vagueCount: 0, unknownCount: 0 },
     );
 
+    const uniqueLearners = new Set(allProgresses.map((p) => p.userId)).size;
+    const byCard = set.cards.map((card) => {
+      const rows = allProgresses.filter((p) => p.cardId === card.id);
+      const learners = new Set(rows.map((r) => r.userId)).size;
+      const attempts = rows.reduce((acc, r) => acc + r.correctCount + r.wrongCount, 0);
+      const correct = rows.reduce((acc, r) => acc + r.correctCount, 0);
+      return {
+        cardId: card.id,
+        label: card.term.slice(0, 20),
+        learners,
+        attempts,
+        accuracy: attempts > 0 ? Number(((correct / attempts) * 100).toFixed(2)) : 0,
+      };
+    });
+
     return {
       ...set,
       stats: {
         cards: cardStats,
         progress: progressSummary,
+        audience: {
+          uniqueLearners,
+          totalAttempts: progressSummary.correctCount + progressSummary.wrongCount,
+        },
+        charts: {
+          byCard,
+          levelDistribution: {
+            known: progressSummary.knownCount,
+            vague: progressSummary.vagueCount,
+            unknown: progressSummary.unknownCount,
+          },
+          answerDistribution: {
+            correct: progressSummary.correctCount,
+            wrong: progressSummary.wrongCount,
+          },
+        },
       },
       cards: set.cards.map((c) => {
         const progress = progressByCard.get(c.id);
