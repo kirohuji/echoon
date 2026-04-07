@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
@@ -50,6 +50,7 @@ function parseRowsToItems(rows: Array<Record<string, unknown>>): ImportItem[] {
 
 export default function StudySetCardsPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const metadata = useMemo(() => ({ title: `卡片管理 ${CONFIG.site.name}` }), []);
   const [detail, setDetail] = useState<StudySetDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -171,6 +172,14 @@ export default function StudySetCardsPage() {
 
   if (!id) return <div className="p-4 text-sm text-red-600">无效链接</div>;
 
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(paths.main.studySets.detail(id));
+  };
+
   return (
     <>
       <Helmet>
@@ -179,7 +188,13 @@ export default function StudySetCardsPage() {
       <div className="space-y-4 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="mr-auto text-xl font-semibold">卡片管理</h1>
-          <Link to={paths.main.studySets.detail(id)} className="inline-flex h-9 items-center justify-center rounded-md border border-black/20 bg-white px-4 text-sm font-medium hover:bg-black/5">返回概览</Link>
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex h-9 items-center justify-center rounded-md border border-black/20 bg-white px-4 text-sm font-medium hover:bg-black/5"
+          >
+            返回上一页
+          </button>
         </div>
 
         {loading ? <div className="text-sm text-gray-500">加载中…</div> : null}
