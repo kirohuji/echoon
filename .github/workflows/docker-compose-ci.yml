@@ -47,10 +47,12 @@ jobs:
           git config --global http.version HTTP/1.1
           git config --global http.postBuffer 524288000
           git config --global core.compression 0
+      # 必须把当前 commit 拉到工作目录，docker compose / Dockerfile 才能读到源码；不可删。
+      # 使用浅克隆（默认 depth=1），避免 fetch-depth:0 拉全历史导致很慢。
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           lfs: false
           submodules: false
 
