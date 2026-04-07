@@ -25,6 +25,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { DocumentLibraryService } from './document-library.service';
 import { DocumentAudioRegenerateOverrides } from './document-audio.types';
+import { SynthesizeSpeechDto } from './dto/synthesize-speech.dto';
 import { WordLookupBatchDto } from './dto/word-lookup.dto';
 
 type AudioConfigBody = {
@@ -188,6 +189,12 @@ export class DocumentLibraryController {
   @Get('audio-params-schema')
   getAudioParamsSchema() {
     return this.documentLibraryService.getAudioParamsSchema();
+  }
+
+  @Post('synthesize-speech')
+  @HttpCode(HttpStatus.OK)
+  async synthesizeSpeech(@Body() body: SynthesizeSpeechDto) {
+    return this.documentLibraryService.synthesizeSpeechEphemeral(body);
   }
 
   @Post('word-lookup')

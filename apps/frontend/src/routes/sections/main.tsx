@@ -11,12 +11,17 @@ import UsersPage from 'src/pages/users';
 import ConversationsPage from 'src/pages/conversations';
 import ConversationDetailPage from 'src/pages/conversations/detail';
 import DocumentLibraryPage from 'src/pages/document-library';
+import StudySetCardsPage from 'src/pages/study-sets/cards';
+import StudySetDetailPage from 'src/pages/study-sets/detail';
+import StudySetLearnPage from 'src/pages/study-sets/learn';
+import StudySetListPage from 'src/pages/study-sets';
+import StudySetPracticePage from 'src/pages/study-sets/practice';
 import TagsPage from 'src/pages/tags';
 
 const layoutContent = (
-  <div className="flex min-h-screen bg-gray-50">
+  <div className="flex h-screen overflow-hidden bg-gray-50">
     <MainSidebar />
-    <div className="min-w-0 flex-1">
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
       <Suspense fallback={<div className="p-4 text-sm text-gray-500">Loading...</div>}>
         <Outlet />
       </Suspense>
@@ -47,6 +52,16 @@ export const mainRoutes = [
       {
         path: 'tags',
         element: <TagsPage />,
+      },
+      {
+        path: 'study-sets',
+        children: [
+          { index: true, element: <StudySetListPage /> },
+          { path: ':id/cards', element: <StudySetCardsPage /> },
+          { path: ':id/learn', element: <StudySetLearnPage /> },
+          { path: ':id/practice', element: <StudySetPracticePage /> },
+          { path: ':id', element: <StudySetDetailPage /> },
+        ],
       },
     ]
   },

@@ -26,6 +26,11 @@ const items = [
     to: '/main/tags',
     icon: 'solar:tag-bold-duotone',
   },
+  {
+    label: '学习集',
+    to: '/main/study-sets',
+    icon: 'solar:notebook-bold-duotone',
+  },
 ];
 
 function sidebarUserLines(user: Record<string, unknown> | null) {

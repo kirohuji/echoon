@@ -38,5 +38,12 @@ export const paths = {
     tags: {
       root: '/main/tags',
     },
+    studySets: {
+      root: '/main/study-sets',
+      detail: (id: string) => `/main/study-sets/${id}`,
+      cards: (id: string) => `/main/study-sets/${id}/cards`,
+      learn: (id: string) => `/main/study-sets/${id}/learn`,
+      practice: (id: string) => `/main/study-sets/${id}/practice`,
+    },
   }
 };

@@ -33,6 +33,8 @@ model User {
   files             File[]
   roleAssignments   RoleAssignment[]
   documentLibraries DocumentLibrary[]
+  studySets         StudySet[]
+  studyCardProgress StudyCardProgress[]
 }
 
 model Session {
@@ -369,3 +371,55 @@ model DocumentLibraryTag {
   @@index([tagId])
 }
 
+model StudySet {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards       StudyCard[]
+
+  @@index([userId])
+}
+
+model StudyCard {
+  id          String   @id @default(cuid())
+  studySetId  String
+  term        String
+  definition  String
+  cardType    StudyCardType @default(translation)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  studySet    StudySet            @relation(fields: [studySetId], references: [id], onDelete: Cascade)
+  progress    StudyCardProgress[]
+
+  @@index([studySetId])
+}
+
+model StudyCardProgress {
+  id             String    @id @default(cuid())
+  userId         String
+  cardId         String
+  correctCount   Int       @default(0)
+  wrongCount     Int       @default(0)
+  knownCount     Int       @default(0)
+  vagueCount     Int       @default(0)
+  unknownCount   Int       @default(0)
+  lastReviewedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card           StudyCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, cardId])
+  @@index([userId])
+  @@index([cardId])
+}
+
+enum StudyCardType {
+  translation
+  qa
+}
