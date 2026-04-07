@@ -1,6 +1,6 @@
-# 部署（deploy）与生产栈：仅 main 分支 push 触发。
-# PR 校验（ci-check）：仅当 PR 的目标分支为 main 时触发（合并进 main 前的检查）。
-# 其他分支的 push / 指向非 main 的 PR 均不会运行本工作流。
+# 部署（deploy）：仅 main 分支 push 触发，执行完整 build + 拉起栈。
+# PR 校验（ci-check）：仅当 PR 目标为 main 且在「打开 / 更新 / 重新打开」时触发；不在 merge 关闭时触发，避免与 push→deploy 重复抢同一台 self-hosted。
+# ci-check 只做 compose 与密钥检查，不 build、不 up，避免与 deploy 重复构建。
 #
 # 远程浏览器访问管理端登录失败（CORS / Network Error / OPTIONS 204）时，请在仓库 Secrets 或 self-hosted 的 .env 中配置：
 #   FRONTEND_ORIGINS = 管理后台的完整 Origin，如 http://115.159.95.166:2605
@@ -16,6 +16,11 @@ on:
   pull_request:
     branches:
       - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
 
 jobs:
   ci-check:
@@ -67,24 +72,8 @@ jobs:
             exit 1
           fi
 
-      - name: Cleanup previous stack
-        run: docker compose -f docker-compose.yml down --remove-orphans -v || true
-
-      - name: Build images
-        run: docker compose -f docker-compose.yml build backend backend-migrate frontend client
-
-      - name: Run backend migrations/seed
-        run: docker compose -f docker-compose.yml run --rm backend-migrate
-
-      - name: Start backend and frontends for smoke check
-        run: docker compose -f docker-compose.yml up -d backend frontend client
-
-      - name: Show container status
-        run: docker compose -f docker-compose.yml ps
-
-      - name: Cleanup after PR check
-        if: always()
-        run: docker compose -f docker-compose.yml down --remove-orphans -v || true
+      - name: Validate docker-compose.yml
+        run: docker compose -f docker-compose.yml config -q
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
