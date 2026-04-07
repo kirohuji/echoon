@@ -154,7 +154,7 @@ export default function StudySetDetailPage() {
         <title>{metadata.title}</title>
       </Helmet>
 
-      <div className="h-screen overflow-y-auto bg-slate-50/60 p-4 md:p-6">
+      <div className="bg-slate-50/60 p-4 md:p-6">
         <m.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

@@ -19,9 +19,9 @@ import StudySetPracticePage from 'src/pages/study-sets/practice';
 import TagsPage from 'src/pages/tags';
 
 const layoutContent = (
-  <div className="flex min-h-screen bg-gray-50">
+  <div className="flex h-screen overflow-hidden bg-gray-50">
     <MainSidebar />
-    <div className="min-w-0 flex-1">
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
       <Suspense fallback={<div className="p-4 text-sm text-gray-500">Loading...</div>}>
         <Outlet />
       </Suspense>
