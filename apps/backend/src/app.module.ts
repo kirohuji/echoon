@@ -11,6 +11,7 @@ import { PersonalModule } from './modules/personal/personal.module';
 import { DocumentModule } from './modules/document/document.module';
 import { TagModule } from './modules/tag/tag.module';
 import { DocumentLibraryModule } from './modules/document-library/document-library.module';
+import { StudySetModule } from './modules/study-set/study-set.module';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { auth } from './lib/better-auth';
 
@@ -35,6 +36,7 @@ import { auth } from './lib/better-auth';
     DocumentModule,
     TagModule,
     DocumentLibraryModule,
+    StudySetModule,
   ],
   controllers: [],
 })
