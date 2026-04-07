@@ -154,7 +154,7 @@ export default function StudySetDetailPage() {
         <title>{metadata.title}</title>
       </Helmet>
 
-      <div className="min-h-full bg-slate-50/60 p-4 md:p-6">
+      <div className="h-screen overflow-y-auto bg-slate-50/60 p-4 md:p-6">
         <m.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -165,7 +165,6 @@ export default function StudySetDetailPage() {
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Study Set Dashboard</p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">学习集运营看板</h1>
-              <p className="mt-1 text-sm text-slate-500">参考 Minimals 风格的后台分析布局</p>
             </div>
             <Link
               to={paths.main.studySets.root}
