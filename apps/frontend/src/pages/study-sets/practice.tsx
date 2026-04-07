@@ -198,6 +198,12 @@ export default function StudySetPracticePage() {
                 {result.comparisonNote ? (
                   <p className="text-slate-700 leading-relaxed">{result.comparisonNote}</p>
                 ) : null}
+                {current.card.cardType === 'qa' && result.questionTranslation ? (
+                  <p className="border-t border-black/10 pt-2 text-slate-700 leading-relaxed">
+                    <span className="font-medium text-slate-800">题干译文：</span>
+                    {result.questionTranslation}
+                  </p>
+                ) : null}
                 {!result.countsAsCorrect ? (
                   <p className="border-t border-black/10 pt-2 text-slate-800">
                     参考答案：{result.expected}

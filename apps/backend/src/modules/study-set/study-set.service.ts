@@ -306,8 +306,13 @@ export class StudySetService {
     }
 
     const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+    const isQa = card.cardType === StudyCardType.qa;
+    const translatePromise =
+      isQa && apiKey ? this.translateStudyQuestionToZh(card.term) : Promise.resolve<string | null>(null);
+
     if (!apiKey) {
-      return this.fallbackLocalPracticeEvaluate(dto.userAnswer, card.definition);
+      const local = this.fallbackLocalPracticeEvaluate(dto.userAnswer, card.definition);
+      return { ...local, questionTranslation: null };
     }
 
     const cardTypeLabel = card.cardType === StudyCardType.qa ? '问答题' : '翻译题';
@@ -316,13 +321,19 @@ export class StudySetService {
         ? `题目：${card.term}`
         : `请翻译的原文：${card.term}`;
 
+    let questionTranslation: string | null = null;
+
     try {
-      const rawContent = await this.callDeepSeekPracticeEvaluate({
-        cardTypeLabel,
-        promptStem,
-        referenceAnswer: card.definition,
-        userAnswer: dto.userAnswer.trim(),
-      });
+      const [rawContent, translated] = await Promise.all([
+        this.callDeepSeekPracticeEvaluate({
+          cardTypeLabel,
+          promptStem,
+          referenceAnswer: card.definition,
+          userAnswer: dto.userAnswer.trim(),
+        }),
+        translatePromise,
+      ]);
+      questionTranslation = translated;
       const parsed = this.parsePracticeEvaluateContent(rawContent);
       if (parsed) {
         return {
@@ -332,11 +343,16 @@ export class StudySetService {
           tips: parsed.tips,
           comparisonNote: parsed.comparisonNote,
           aiAvailable: true,
+          questionTranslation,
         };
       }
     } catch {
       // eslint-disable-next-line no-console
       console.error('DeepSeek practice evaluate failed');
+    }
+
+    if (questionTranslation === null && isQa && apiKey) {
+      questionTranslation = await translatePromise;
     }
 
     const local = this.fallbackLocalPracticeEvaluate(dto.userAnswer, card.definition);
@@ -346,7 +362,59 @@ export class StudySetService {
         local.feedback === '与参考答案一致。'
           ? local.feedback
           : `${local.feedback}（AI 暂不可用，已用简单对比代替）`,
+      questionTranslation,
     };
+  }
+
+  /** 问答题题干译为简体中文（仅输出译文）。 */
+  private async translateStudyQuestionToZh(term: string): Promise<string | null> {
+    const text = term.trim();
+    if (!text) return null;
+    const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
+    if (!apiKey) return null;
+    try {
+      const response = await axios.post(
+        'https://api.deepseek.com/chat/completions',
+        {
+          model: 'deepseek-chat',
+          temperature: 0.1,
+          messages: [
+            {
+              role: 'system',
+              content:
+                '你是翻译助手。将用户给出的题目原文译为流畅的简体中文。只输出译文本身，不要引号、前缀或解释。',
+            },
+            { role: 'user', content: text },
+          ],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 45000,
+        },
+      );
+      const raw = response?.data?.choices?.[0]?.message?.content;
+      const content =
+        typeof raw === 'string'
+          ? raw
+          : Array.isArray(raw)
+            ? raw
+                .map((item: unknown) =>
+                  typeof item === 'string'
+                    ? item
+                    : item && typeof item === 'object' && 'text' in item
+                      ? String((item as { text: unknown }).text ?? '')
+                      : ''
+                )
+                .join('\n')
+            : '';
+      const trimmed = content.trim().replace(/^["「]|["」]$/g, '');
+      return trimmed || null;
+    } catch {
+      return null;
+    }
   }
 
   private normalizePracticeAnswer(value: string) {

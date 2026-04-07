@@ -85,6 +85,8 @@ export type PracticeEvaluateResultDto = {
   tips: string;
   comparisonNote: string;
   aiAvailable: boolean;
+  /** 问答题：题干（term）的简体中文译文，需配置 DeepSeek */
+  questionTranslation?: string | null;
 };
 
 export default class StudySetService extends Service {
