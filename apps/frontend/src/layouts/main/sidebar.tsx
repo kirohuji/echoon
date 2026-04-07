@@ -31,6 +31,11 @@ const items = [
     to: '/main/study-sets',
     icon: 'solar:notebook-bold-duotone',
   },
+  {
+    label: '运营中心',
+    to: '/main/ops-center',
+    icon: 'solar:settings-bold-duotone',
+  },
 ];
 
 function sidebarUserLines(user: Record<string, unknown> | null) {

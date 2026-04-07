@@ -45,5 +45,8 @@ export const paths = {
       learn: (id: string) => `/main/study-sets/${id}/learn`,
       practice: (id: string) => `/main/study-sets/${id}/practice`,
     },
+    opsCenter: {
+      root: '/main/ops-center',
+    },
   }
 };

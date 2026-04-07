@@ -17,6 +17,7 @@ import StudySetLearnPage from 'src/pages/study-sets/learn';
 import StudySetListPage from 'src/pages/study-sets';
 import StudySetPracticePage from 'src/pages/study-sets/practice';
 import TagsPage from 'src/pages/tags';
+import OpsCenterPage from 'src/pages/ops-center';
 
 const layoutContent = (
   <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -62,6 +63,10 @@ export const mainRoutes = [
           { path: ':id/practice', element: <StudySetPracticePage /> },
           { path: ':id', element: <StudySetDetailPage /> },
         ],
+      },
+      {
+        path: 'ops-center',
+        element: <OpsCenterPage />,
       },
     ]
   },
