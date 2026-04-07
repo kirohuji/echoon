@@ -103,4 +103,15 @@ export class AuthController {
       throw new UserNotFoundException();
     };
   }
+
+  @Get('providers')
+  getProviders() {
+    return {
+      google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+      apple: false,
+      wechat: false,
+      x: false,
+      phoneSms: false,
+    };
+  }
 }

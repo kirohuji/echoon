@@ -1,7 +1,9 @@
 @import 'tailwindcss';
 
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
+  --bg: #f8fafc;
+  --fg: #0f172a;
 }
 
 html,
@@ -13,6 +15,17 @@ body {
 body {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif;
-  background: #fff;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+#root {
+  min-height: 100%;
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 15px;
+  }
 }
 

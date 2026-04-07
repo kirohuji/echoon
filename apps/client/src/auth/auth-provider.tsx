@@ -27,13 +27,15 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const unwrap = (payload: any) => (payload && payload.success === true && 'data' in payload ? payload.data : payload);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const accessToken = sessionStorage.getItem(STORAGE_KEY);
       if (accessToken && isValidToken(accessToken)) {
-        const res = await authService.profile();
+        const raw = await authService.profile();
+        const res = unwrap(raw);
         const { user: u, profile } = res as any;
         setUser({ ...(u ?? {}), ...(profile ?? {}), accessToken });
       } else {
@@ -50,7 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback(async ({ phone, password }: { phone: string; password: string }) => {
     setLoading(true);
     try {
-      const res = await authService.login({ phone, password });
+      const raw = await authService.login({ phone, password });
+      const res = unwrap(raw);
       const accessToken = (res as any)?.access_token;
       if (!accessToken) throw new Error('access_token not found');
       sessionStorage.setItem(STORAGE_KEY, accessToken);

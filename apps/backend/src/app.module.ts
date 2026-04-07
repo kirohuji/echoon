@@ -14,6 +14,10 @@ import { DocumentLibraryModule } from './modules/document-library/document-libra
 import { StudySetModule } from './modules/study-set/study-set.module';
 import { AdminUserModule } from './modules/admin-user/admin-user.module';
 import { auth } from './lib/better-auth';
+import { HomeModule } from './modules/home/home.module';
+import { MembershipModule } from './modules/membership/membership.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { TicketModule } from './modules/ticket/ticket.module';
 
 @Module({
   imports: [
@@ -37,6 +41,10 @@ import { auth } from './lib/better-auth';
     TagModule,
     DocumentLibraryModule,
     StudySetModule,
+    HomeModule,
+    MembershipModule,
+    NotificationModule,
+    TicketModule,
   ],
   controllers: [],
 })
