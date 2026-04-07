@@ -23,5 +23,33 @@ export class MembershipService {
     }
     return row;
   }
+
+  listAll() {
+    const db = this.prisma as any;
+    return db.membership.findMany({
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+    });
+  }
+
+  updateByUserId(userId: string, dto: { plan?: string; status?: string; expiresAt?: string | null; benefits?: string[] }) {
+    const db = this.prisma as any;
+    return db.membership.upsert({
+      where: { userId },
+      create: {
+        userId,
+        plan: dto.plan ?? 'free',
+        status: dto.status ?? 'active',
+        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+        benefits: dto.benefits ?? [],
+      },
+      update: {
+        ...(dto.plan !== undefined ? { plan: dto.plan } : {}),
+        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        ...(dto.expiresAt !== undefined ? { expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null } : {}),
+        ...(dto.benefits !== undefined ? { benefits: dto.benefits } : {}),
+      },
+    });
+  }
 }
 

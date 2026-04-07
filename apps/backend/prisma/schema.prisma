@@ -446,6 +446,7 @@ model Notification {
   userId    String
   title     String
   body      String
+  imageUrl  String?
   read      Boolean  @default(false)
   type      String   @default("system")
   createdAt DateTime @default(now())

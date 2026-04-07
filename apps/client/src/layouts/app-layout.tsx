@@ -13,9 +13,9 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto flex w-full max-w-[1440px] gap-4 px-3 py-4 md:px-5">
-        <aside className="hidden w-64 shrink-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:block">
-          <div className="mb-4 text-lg font-semibold">Echoon</div>
+      <div className="mx-auto flex w-full max-w-[1320px] gap-4 px-3 py-4 md:px-5">
+        <aside className="hidden w-64 shrink-0 rounded-lg border border-slate-200 bg-white p-4 lg:block">
+          <div className="mb-4 text-base font-semibold">Echoon Client</div>
           <nav className="space-y-1">
             {navItems.map((item) => {
               const active = location.pathname.startsWith(item.to.replace('/:id', ''));
@@ -23,8 +23,8 @@ export function AppLayout() {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`block rounded-lg px-3 py-2 text-sm ${
-                    active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100'
+                  className={`block rounded-md px-3 py-2 text-sm ${
+                    active ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   {item.label}
@@ -46,7 +46,7 @@ export function AppLayout() {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`rounded-md px-2 py-1 text-xs ${active ? 'text-indigo-700' : 'text-slate-500'}`}
+                className={`rounded px-2 py-1 text-xs ${active ? 'text-slate-900' : 'text-slate-500'}`}
               >
                 {item.label}
               </Link>

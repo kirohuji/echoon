@@ -3,13 +3,17 @@ import { STORAGE_KEY } from '../auth/constant';
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = sessionStorage.getItem(STORAGE_KEY);
+  const isForm = typeof FormData !== 'undefined' && init.body instanceof FormData;
+  const baseHeaders: Record<string, string> = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  if (!isForm) baseHeaders['Content-Type'] = 'application/json';
 
   const res = await fetch(`${CONFIG.serverUrl}${path}`, {
     ...init,
     headers: {
+      ...baseHeaders,
       ...(init.headers ?? {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      'Content-Type': 'application/json',
     },
   });
 
@@ -28,6 +32,9 @@ export const http = {
   },
   post<T>(path: string, body?: unknown) {
     return request<T>(path, { method: 'POST', body: JSON.stringify(body ?? {}) });
+  },
+  postForm<T>(path: string, form: FormData) {
+    return request<T>(path, { method: 'POST', body: form });
   },
 };
 

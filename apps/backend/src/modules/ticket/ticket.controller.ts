@@ -20,5 +20,15 @@ export class TicketController {
   create(@CurrentUser() user: User, @Body() dto: { subject: string; content: string }) {
     return this.ticketService.create(user.id, dto);
   }
+
+  @Get('admin/all')
+  listAll() {
+    return this.ticketService.listAll();
+  }
+
+  @Post('admin/status')
+  updateStatus(@Body() dto: { id: string; status: string }) {
+    return this.ticketService.updateStatus(dto.id, dto.status);
+  }
 }
 

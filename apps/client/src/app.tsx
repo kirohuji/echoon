@@ -7,6 +7,7 @@ import { LoginPage } from './pages/auth/login-page';
 import { RegisterPage } from './pages/auth/register-page';
 import { HomePage } from './pages/home/home-page';
 import { ProfilePage } from './pages/me/profile-page';
+import { NotificationsPage } from './pages/notifications-page';
 import { ReadingPlayerPage } from './pages/reading-player-page';
 import { PlaceholderPage } from './pages/shared/placeholder-page';
 
@@ -26,7 +27,7 @@ export function App() {
         >
           <Route path="/home" element={<HomePage />} />
           <Route path="/library" element={<PlaceholderPage title="教材中心" desc="教材管理与加入流程将在此页面持续完善。" />} />
-          <Route path="/notifications" element={<PlaceholderPage title="消息通知" desc="系统通知、学习提醒、会员消息统一展示。" />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/me" element={<ProfilePage />} />
           <Route
             path="/me/tickets"

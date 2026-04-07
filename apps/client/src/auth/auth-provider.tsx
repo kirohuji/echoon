@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { authService } from './auth-service';
 import { STORAGE_KEY } from './constant';
 import { isValidToken } from './utils';
+import { useAppStore } from '../store/app-store';
 
 type AuthUser = Record<string, any> & { accessToken: string };
 
@@ -27,6 +28,9 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const setGlobalUser = useAppStore((s) => s.setUser);
+  const startPolling = useAppStore((s) => s.startPolling);
+  const stopPolling = useAppStore((s) => s.stopPolling);
   const unwrap = (payload: any) => (payload && payload.success === true && 'data' in payload ? payload.data : payload);
 
   const refresh = useCallback(async () => {
@@ -37,13 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const raw = await authService.profile();
         const res = unwrap(raw);
         const { user: u, profile } = res as any;
-        setUser({ ...(u ?? {}), ...(profile ?? {}), accessToken });
+        const merged = { ...(u ?? {}), ...(profile ?? {}), accessToken };
+        setUser(merged);
+        setGlobalUser(merged);
+        startPolling();
       } else {
         setUser(null);
+        setGlobalUser(null);
+        stopPolling();
       }
     } catch (e) {
       console.error('auth refresh failed', e);
       setUser(null);
+      setGlobalUser(null);
+      stopPolling();
     } finally {
       setLoading(false);
     }
@@ -66,7 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     sessionStorage.removeItem(STORAGE_KEY);
     setUser(null);
-  }, []);
+    setGlobalUser(null);
+    stopPolling();
+  }, [setGlobalUser, stopPolling]);
 
   useEffect(() => {
     void refresh();

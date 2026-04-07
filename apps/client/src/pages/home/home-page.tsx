@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { AppButton } from '../../components/app/app-button';
+import { SectionHeading } from '../../components/app/section-heading';
+import { SurfaceCard } from '../../components/app/surface-card';
 import { homeService, type HomeDoc, type HomeTag } from '../../features/home/home-service';
 
 const banners = [
@@ -27,21 +30,21 @@ export function HomePage() {
     <div className="space-y-4">
       <section className="grid gap-3 md:grid-cols-3">
         {banners.map((b) => (
-          <div key={b.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-lg font-semibold text-slate-900">{b.title}</p>
+          <SurfaceCard key={b.id} className="p-5">
+            <p className="text-base font-semibold text-slate-900">{b.title}</p>
             <p className="mt-1 text-sm text-slate-600">{b.sub}</p>
-          </div>
+          </SurfaceCard>
         ))}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="mb-3 text-sm font-semibold text-slate-800">教材分类</p>
+      <SurfaceCard className="p-4">
+        <SectionHeading title="教材分类" desc="按主题筛选你关心的内容" />
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setActiveTag('all')}
-            className={`rounded-full px-3 py-1 text-sm ${
-              activeTag === 'all' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
+            className={`rounded-md border px-3 py-1 text-sm ${
+              activeTag === 'all' ? 'border-slate-300 bg-slate-100 text-slate-900' : 'border-slate-200 bg-white text-slate-600'
             }`}
           >
             全部
@@ -51,39 +54,34 @@ export function HomePage() {
               key={t.id}
               type="button"
               onClick={() => setActiveTag(t.id)}
-              className={`rounded-full px-3 py-1 text-sm ${
-                activeTag === t.id ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'
+              className={`rounded-md border px-3 py-1 text-sm ${
+                activeTag === t.id ? 'border-slate-300 bg-slate-100 text-slate-900' : 'border-slate-200 bg-white text-slate-600'
               }`}
             >
               {t.name}
             </button>
           ))}
         </div>
-      </section>
+      </SurfaceCard>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-semibold text-slate-800">推荐教材</p>
-          <span className="text-xs text-slate-500">PC 优先布局</span>
-        </div>
+      <SurfaceCard className="p-4">
+        <SectionHeading title="推荐教材" desc="干净的信息密度，PC 优先排版" />
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {visibleDocs.map((d) => (
-            <article key={d.id} className="rounded-xl border border-slate-200 p-4">
+            <article key={d.id} className="rounded-md border border-slate-200 p-4">
               <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">{d.title}</h3>
               <p className="mt-1 text-xs text-slate-500">类型：{d.fileType ?? 'doc'}</p>
-              <button
-                type="button"
+              <AppButton
                 onClick={() => setAdded((s) => ({ ...s, [d.id]: !s[d.id] }))}
-                className={`mt-3 rounded-md px-3 py-1.5 text-xs ${
-                  added[d.id] ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-900 text-white'
-                }`}
+                className="mt-3 text-xs"
+                tone={added[d.id] ? 'soft' : 'primary'}
               >
                 {added[d.id] ? '已加入我的教材' : '加入我的教材'}
-              </button>
+              </AppButton>
             </article>
           ))}
         </div>
-      </section>
+      </SurfaceCard>
     </div>
   );
 }

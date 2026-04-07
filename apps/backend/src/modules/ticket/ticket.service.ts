@@ -25,5 +25,21 @@ export class TicketService {
       },
     });
   }
+
+  listAll() {
+    const db = this.prisma as any;
+    return db.ticket.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    });
+  }
+
+  updateStatus(id: string, status: string) {
+    const db = this.prisma as any;
+    return db.ticket.update({
+      where: { id },
+      data: { status },
+    });
+  }
 }
 

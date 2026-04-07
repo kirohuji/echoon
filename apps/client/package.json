@@ -14,8 +14,11 @@
     "react": "^19.1.0",
     "react-audio-player": "^0.17.0",
     "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.6.3",
-    "wavesurfer.js": "^7.10.0"
+    "remark-gfm": "^4.0.1",
+    "wavesurfer.js": "^7.10.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@types/react": "^19.1.8",
@@ -25,4 +28,3 @@
     "vite": "^7.0.2"
   }
 }
-

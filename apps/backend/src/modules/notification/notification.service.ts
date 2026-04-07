@@ -32,5 +32,32 @@ export class NotificationService {
       data: { read: true },
     });
   }
+
+  listAll() {
+    const db = this.prisma as any;
+    return db.notification.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
+  createForUser(dto: {
+    userId: string;
+    title: string;
+    body: string;
+    type?: string;
+    imageUrl?: string | null;
+  }) {
+    const db = this.prisma as any;
+    return db.notification.create({
+      data: {
+        userId: dto.userId,
+        title: dto.title.trim(),
+        body: dto.body.trim(),
+        type: dto.type?.trim() || 'system',
+        imageUrl: dto.imageUrl || null,
+      },
+    });
+  }
 }
 

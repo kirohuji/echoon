@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AppButton } from '../../components/app/app-button';
 import { authService } from '../../auth/auth-service';
 
 const providers = [
@@ -19,14 +20,13 @@ export function SocialLoginButtons() {
   return (
     <div className="space-y-2">
       {providers.map((p) => (
-        <button
+        <AppButton
           key={p.key}
-          type="button"
           disabled={!enabled[p.key]}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full justify-start"
         >
           使用 {p.label} 登录{enabled[p.key] ? '' : '（即将支持）'}
-        </button>
+        </AppButton>
       ))}
     </div>
   );
