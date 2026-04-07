@@ -432,10 +432,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 z-50 max-h-[92vh] w-[min(98vw,72rem)] max-w-[72rem] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-200/80 bg-white p-3 shadow-xl shadow-slate-200/50 sm:p-3.5"
+          className="fixed left-1/2 top-1/2 z-50 flex h-[min(92vh,52rem)] max-h-[92vh] w-[min(98vw,72rem)] max-w-[72rem] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-slate-200/80 bg-white p-3 shadow-xl shadow-slate-200/50 sm:p-3.5"
           aria-busy={isAudioProcessing}
         >
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
             <div className="flex min-w-0 items-center gap-2">
               <Dialog.Title className="truncate text-sm font-semibold text-slate-900">
                 {isVideoDoc ? '视频管理' : '音频管理'}
@@ -461,10 +461,10 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
             </Dialog.Close>
           </div>
 
-          <div className="mt-2.5 space-y-2.5">
+          <div className="mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden max-sm:overflow-y-auto">
             <div
               className={cn(
-                'rounded-lg border px-2.5 py-2 transition-colors',
+                'shrink-0 rounded-lg border px-2.5 py-2 transition-colors',
                 isAudioProcessing ? 'border-blue-200/90 bg-blue-50/70' : 'border-slate-100 bg-slate-50/40'
               )}
             >
@@ -498,7 +498,8 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(14rem,16rem)]">
+            <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(14rem,16rem)] xl:grid-rows-1">
+              <div className="flex min-h-0 flex-1 flex-col xl:h-full">
               {isVideoDoc ? (
                 <VideoDocumentPanel
                   doc={doc}
@@ -536,8 +537,9 @@ export function AudioPreviewDialog({ open, documentId, onClose }: AudioPreviewDi
                   onWordLongPress={onWordLongPress}
                 />
               )}
+              </div>
 
-              <div className="min-w-0 space-y-2">
+              <div className="min-h-0 min-w-0 space-y-2 overflow-y-auto xl:h-full xl:max-h-full">
                 <WordLookupSidebar
                   doc={doc}
                   selectedLookupWord={selectedLookupWord}

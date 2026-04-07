@@ -53,10 +53,10 @@ export function VideoDocumentPanel({
   onWordLongPress,
 }: VideoDocumentPanelProps) {
   return (
-    <div className="min-w-0 space-y-2">
+    <div className="flex min-h-0 h-full min-w-0 flex-col gap-2">
       <div
         className={cn(
-          'flex items-center justify-between rounded-lg border border-slate-200/90 bg-gradient-to-r from-white to-slate-50/80',
+          'flex shrink-0 items-center justify-between rounded-lg border border-slate-200/90 bg-gradient-to-r from-white to-slate-50/80',
           'px-2.5 py-1.5 shadow-sm ring-1 ring-black/[0.03]'
         )}
       >
@@ -104,7 +104,7 @@ export function VideoDocumentPanel({
       </div>
 
       {videoUrl ? (
-        <div className="relative">
+        <div className="relative shrink-0">
           <video
             ref={videoElementRef}
             className="h-[22rem] w-full rounded-lg border border-slate-200/90 bg-black object-contain"
@@ -178,18 +178,19 @@ export function VideoDocumentPanel({
           ) : null}
         </div>
       ) : (
-        <div className="flex h-[22rem] items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-500">
+        <div className="flex h-[22rem] shrink-0 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-500">
           视频暂不可预览
         </div>
       )}
 
       {doc?.audioStatus === 'success' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <AudioPreviewPlayer
           audioUrl={audioUrl}
           wordTimestamps={doc?.wordTimestamps}
           audioProvider={doc?.audioProvider}
           activeLookupWord={selectedLookupWord}
-          lyricContainerHeight={150}
+          embedFlexibleLyrics
           externalSyncSignal={videoSyncSignal}
           onSyncTime={(time) => {
             const videoEl = videoElementRef.current;
@@ -226,10 +227,11 @@ export function VideoDocumentPanel({
           }}
           onWordLongPress={onWordLongPress}
         />
+        </div>
       ) : (
         <div
           className={cn(
-            'rounded-xl border py-6 text-center',
+            'shrink-0 rounded-xl border py-6 text-center',
             doc?.audioStatus === 'processing'
               ? 'border-blue-200/90 bg-gradient-to-b from-blue-50/70 to-white shadow-sm'
               : 'border-dashed border-slate-200 bg-slate-50/30'
