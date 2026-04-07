@@ -78,6 +78,15 @@ export type StudySetDetailDto = {
   stats?: StudySetStatsDto;
 };
 
+export type PracticeEvaluateResultDto = {
+  verdict: 'correct' | 'partial' | 'incorrect';
+  countsAsCorrect: boolean;
+  feedback: string;
+  tips: string;
+  comparisonNote: string;
+  aiAvailable: boolean;
+};
+
 export default class StudySetService extends Service {
   getDetail(id: string) {
     return this.api.get(`${this.model}/${id}`);
@@ -96,6 +105,10 @@ export default class StudySetService extends Service {
 
   review(id: string, body: { cardId: string; correct: boolean }) {
     return this.api.post(`${this.model}/${id}/review`, body);
+  }
+
+  practiceEvaluate(id: string, body: { cardId: string; userAnswer: string }) {
+    return this.api.post(`${this.model}/${id}/practice-evaluate`, body);
   }
 
   learnFeedback(id: string, body: { cardId: string; level: LearnLevel }) {

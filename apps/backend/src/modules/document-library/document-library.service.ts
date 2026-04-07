@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { AudioProvider, AudioStatus, DocumentLibrary, Prisma, User } from '@prisma/client';
+import { SynthesizeSpeechDto } from './dto/synthesize-speech.dto';
 import axios from 'axios';
+import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -149,6 +151,49 @@ export class DocumentLibraryService {
 
   getAudioParamsSchema() {
     return DOCUMENT_AUDIO_PARAMS_SCHEMA;
+  }
+
+  /**
+   * 短文本 TTS，不写资料库；供学习集题干朗读等场景。
+   */
+  async synthesizeSpeechEphemeral(dto: SynthesizeSpeechDto): Promise<{
+    buffer: Buffer;
+    mimeType: string;
+  }> {
+    const textTrimmed = dto.text.trim();
+    if (!textTrimmed) {
+      throw new BadRequestException('文本为空');
+    }
+    if (textTrimmed.length > 800) {
+      throw new BadRequestException('文本长度不能超过 800 字');
+    }
+
+    const providerConfig = resolveDocumentAudioConfigForGeneration({
+      provider: dto.audioProvider,
+      model: dto.audioModel,
+      voiceId: dto.audioVoiceId ?? null,
+      legacyModelName: dto.audioModel,
+    });
+    const sanitizedParams = sanitizeRegenerateAudioParams(
+      providerConfig.provider,
+      providerConfig.model,
+      dto.params,
+    );
+
+    const provider = this.documentAudioProviderFactory.getProvider(providerConfig.provider);
+    const ephemeralId = `ephemeral-${randomUUID()}`;
+    const result = await provider.generateAudio({
+      id: ephemeralId,
+      text: textTrimmed,
+      model: providerConfig.model,
+      voiceId: providerConfig.voiceId,
+      params: sanitizedParams,
+    });
+
+    return {
+      buffer: result.audioBuffer,
+      mimeType: result.mimeType,
+    };
   }
 
   lookupEnglishWordFirstMatch(candidates: unknown) {

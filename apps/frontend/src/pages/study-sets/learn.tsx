@@ -6,6 +6,7 @@ import { CONFIG } from 'src/config-global';
 import { studySetService } from 'src/composables/context-provider';
 import type { StudyCardDto, StudySetDetailDto } from 'src/modules/study-set';
 import { paths } from 'src/routes/paths';
+import { StudyTtsControl } from './components/study-tts-control';
 
 function shuffle<T>(arr: T[]): T[] {
   const out = [...arr];
@@ -92,6 +93,9 @@ export default function StudySetLearnPage() {
             <input type="checkbox" checked={weakFirst} onChange={(e) => setWeakFirst(e.target.checked)} />
             弱项优先
           </label>
+          {current && !done ? (
+            <StudyTtsControl text={flipped ? current.definition : current.term} className="min-w-[120px]" />
+          ) : null}
           <button
             type="button"
             onClick={goBack}

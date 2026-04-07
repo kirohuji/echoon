@@ -63,13 +63,16 @@ export function parseWordLookupResponse(raw: unknown): WordLookupResponse | null
   return { word: String(obj.word ?? ''), definitions: obj.definitions as WordLookupDefinition[] };
 }
 
-type GenerateAudioFromTextPayload = {
+export type GenerateAudioFromTextPayload = {
   text: string;
   audioProvider?: 'minimax' | 'cartesia' | 'hume' | 'elevenlabs' | 'deepgram';
   audioModel?: string;
   audioVoiceId?: string;
   params?: Record<string, string | number | boolean>;
 };
+
+/** 与资料库「从文本生成音频」相同的 TTS 选项；用于短时合成接口 `synthesize-speech`。 */
+export type SynthesizeSpeechPayload = GenerateAudioFromTextPayload;
 
 export default class DocumentLibraryService extends Service {
   upload(formData: FormData) {
@@ -90,6 +93,12 @@ export default class DocumentLibraryService extends Service {
 
   generateAudioFromText(id: string, payload: GenerateAudioFromTextPayload) {
     return this.api.post(`${this.model}/${id}/generate-audio-text`, payload);
+  }
+
+  synthesizeSpeech(payload: SynthesizeSpeechPayload) {
+    return this.api.post(`${this.model}/synthesize-speech`, payload, {
+      responseType: 'blob',
+    }) as Promise<Blob>;
   }
 
   generateTranslation(id: string) {

@@ -15,6 +15,7 @@ import { CurrentUser } from '@/decorator/user.decorator';
 import { AddStudyCardsDto } from './dto/add-study-cards.dto';
 import { CreateStudySetDto } from './dto/create-study-set.dto';
 import { LearnFeedbackDto } from './dto/learn-feedback.dto';
+import { PracticeEvaluateDto } from './dto/practice-evaluate.dto';
 import { ReviewStudyCardDto } from './dto/review-study-card.dto';
 import { UpdateStudySetDto } from './dto/update-study-set.dto';
 import { StudySetService } from './study-set.service';
@@ -79,5 +80,14 @@ export class StudySetController {
     @CurrentUser() user: User,
   ) {
     return this.studySetService.review(id, user.id, dto);
+  }
+
+  @Post(':id/practice-evaluate')
+  practiceEvaluate(
+    @Param('id') id: string,
+    @Body() dto: PracticeEvaluateDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.studySetService.practiceEvaluate(id, user.id, dto);
   }
 }
