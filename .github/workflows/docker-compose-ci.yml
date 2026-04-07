@@ -1,6 +1,4 @@
-# 部署（deploy）：仅 main 分支 push 触发，执行完整 build + 拉起栈。
-# PR 校验（ci-check）：仅当 PR 目标为 main 且在「打开 / 更新 / 重新打开」时触发；不在 merge 关闭时触发，避免与 push→deploy 重复抢同一台 self-hosted。
-# ci-check 只做 compose 与密钥检查，不 build、不 up，避免与 deploy 重复构建。
+# 仅 main 分支 push：build + 迁移 + 拉起 Docker Compose 栈。
 #
 # 远程浏览器访问管理端登录失败（CORS / Network Error / OPTIONS 204）时，请在仓库 Secrets 或 self-hosted 的 .env 中配置：
 #   FRONTEND_ORIGINS = 管理后台的完整 Origin，如 http://115.159.95.166:2605
@@ -13,70 +11,9 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
 
 jobs:
-  ci-check:
-    if: github.event_name == 'pull_request'
-    runs-on: self-hosted
-    env:
-      GIT_HTTP_VERSION: HTTP/1.1
-      BACKEND_HOST_PORT: 2604
-      FRONTEND_HOST_PORT: 2605
-      CLIENT_HOST_PORT: 2606
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
-      VITE_AUTH_BASE_URL: ${{ secrets.VITE_AUTH_BASE_URL }}
-      FRONTEND_ORIGINS: ${{ secrets.FRONTEND_ORIGINS }}
-      BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
-      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-      MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
-      MINIMAX_GROUP_ID: ${{ secrets.MINIMAX_GROUP_ID }}
-      CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
-      CARTERSIA_API_KEY: ${{ secrets.CARTERSIA_API_KEY }}
-      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
-      DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
-      HUME_API_KEY: ${{ secrets.HUME_API_KEY }}
-      HUME_API_SECRET: ${{ secrets.HUME_API_SECRET }}
-      DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-      # Whisper-server：仅当服务可用且该 URL 非空时，后端才会做词级时间戳补全
-      WHISPER_INFERENCE_URL: ${{ secrets.WHISPER_INFERENCE_URL }}
-      WHISPER_LANGUAGE: ${{ secrets.WHISPER_LANGUAGE || 'en' }}
-      WHISPER_TIMEOUT_MS: ${{ secrets.WHISPER_TIMEOUT_MS || '600000' }}
-      WHISPER_SPLIT_ON_WORD: ${{ secrets.WHISPER_SPLIT_ON_WORD || 'true' }}
-    steps:
-      - name: Configure git transport
-        run: |
-          git config --global http.version HTTP/1.1
-          git config --global http.postBuffer 524288000
-          git config --global core.compression 0
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: false
-          submodules: false
-
-      - name: Check required secrets
-        run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "DATABASE_URL is empty. Please set repository secret DATABASE_URL."
-            exit 1
-          fi
-
-      - name: Validate docker-compose.yml
-        run: docker compose -f docker-compose.yml config -q
-
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     env:
       GIT_HTTP_VERSION: HTTP/1.1
