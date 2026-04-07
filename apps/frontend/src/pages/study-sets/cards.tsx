@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useParams } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { Button } from 'src/components/ui/button';
 import { Input } from 'src/components/ui/input';
 import { CONFIG } from 'src/config-global';
@@ -9,6 +10,43 @@ import type { StudyCardDto, StudyCardType, StudySetDetailDto } from 'src/modules
 import { paths } from 'src/routes/paths';
 
 type TabMode = 'single' | 'batch';
+type ImportItem = { term: string; definition: string; cardType: StudyCardType };
+
+function normalizeCardType(raw: string | undefined): StudyCardType {
+  const value = String(raw ?? '')
+    .trim()
+    .toLowerCase();
+  return value === 'qa' ? 'qa' : 'translation';
+}
+
+function parseDelimitedText(text: string): ImportItem[] {
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const items: ImportItem[] = [];
+  for (const line of lines) {
+    const parts = line.includes('\t') ? line.split('\t') : line.split(',');
+    if (parts.length < 2) continue;
+    const term = parts[0]?.trim() ?? '';
+    const definition = parts[1]?.trim() ?? '';
+    if (!term || !definition) continue;
+    items.push({ term, definition, cardType: normalizeCardType(parts[2]) });
+  }
+  return items;
+}
+
+function parseRowsToItems(rows: Array<Record<string, unknown>>): ImportItem[] {
+  const items: ImportItem[] = [];
+  for (const row of rows) {
+    const term = String(row.term ?? row.front ?? row.question ?? '').trim();
+    const definition = String(row.definition ?? row.back ?? row.answer ?? '').trim();
+    const cardType = normalizeCardType(String(row.type ?? row.cardType ?? 'translation'));
+    if (!term || !definition) continue;
+    items.push({ term, definition, cardType });
+  }
+  return items;
+}
 
 export default function StudySetCardsPage() {
   const { id } = useParams<{ id: string }>();
@@ -82,6 +120,40 @@ export default function StudySetCardsPage() {
     await load();
   };
 
+  const importFromFile = async (file: File) => {
+    if (!id) return;
+    try {
+      setError(null);
+      let items: ImportItem[] = [];
+      const lowerName = file.name.toLowerCase();
+
+      if (lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.csv')) {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: '' });
+        items = parseRowsToItems(rows);
+      } else if (lowerName.endsWith('.tsv') || lowerName.endsWith('.txt')) {
+        const text = await file.text();
+        items = parseDelimitedText(text);
+      } else {
+        setError('暂不支持该文件类型，请上传 csv/xlsx/xls/tsv/txt');
+        return;
+      }
+
+      if (items.length === 0) {
+        setError('文件中没有可导入的数据。列名建议使用 term, definition, type');
+        return;
+      }
+
+      await studySetService.addCards(id, items);
+      await load();
+    } catch (e: unknown) {
+      const err = e as { message?: string; response?: { data?: { error?: { message?: string } } } };
+      setError(err?.response?.data?.error?.message ?? err?.message ?? '文件导入失败');
+    }
+  };
+
   const saveCard = async (card: StudyCardDto, next: { term: string; definition: string; cardType: StudyCardType }) => {
     await studySetService.updateCard(card.id, {
       term: next.term,
@@ -134,7 +206,27 @@ export default function StudySetCardsPage() {
               ) : (
                 <div>
                   <textarea className="min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder={'每行一条：term\tdefinition\ttype(可选)\nhello\t你好\ttranslation\nWhat is AI?\tArtificial Intelligence\tqa'} value={batchText} onChange={(e) => setBatchText(e.target.value)} />
-                  <Button className="mt-2" onClick={addBatch}>导入批量</Button>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Button onClick={addBatch}>导入批量文本</Button>
+                    <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-black/20 bg-white px-4 text-sm font-medium hover:bg-black/5">
+                      一键导入文件
+                      <input
+                        type="file"
+                        accept=".csv,.xlsx,.xls,.tsv,.txt"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            void importFromFile(file);
+                          }
+                          e.currentTarget.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    文件导入支持列：`term`, `definition`, `type`（type 可选，默认 translation；值为 qa 或 translation）。
+                  </p>
                 </div>
               )}
             </div>
