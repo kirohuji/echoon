@@ -13,17 +13,18 @@ export function NotificationsPage() {
   const refreshGlobal = useAppStore((s) => s.refreshGlobal);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('## 通知标题\n\n- 支持 **Markdown**\n- 支持上传图片');
+  const [targetUserId, setTargetUserId] = useState('');
   const [image, setImage] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const preview = useMemo(() => body || '*请输入通知内容*', [body]);
 
   const onSubmit = async () => {
-    if (!user?.id || !title.trim() || !body.trim()) return;
+    if (!title.trim() || !body.trim()) return;
     setSaving(true);
     try {
       await profileService.createNotification({
-        userId: user.id,
+        userId: targetUserId.trim() || user?.id || undefined,
         title,
         body,
         image,
@@ -47,6 +48,12 @@ export function NotificationsPage() {
             placeholder="通知标题"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+          />
+          <input
+            className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+            placeholder="接收用户ID（留空=全体用户）"
+            value={targetUserId}
+            onChange={(e) => setTargetUserId(e.target.value)}
           />
           <textarea
             className="min-h-48 w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
