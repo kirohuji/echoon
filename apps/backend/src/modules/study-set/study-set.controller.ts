@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Controller,
   Delete,
@@ -14,6 +14,7 @@ import { User } from '@prisma/client';
 import { CurrentUser } from '@/decorator/user.decorator';
 import { AddStudyCardsDto } from './dto/add-study-cards.dto';
 import { CreateStudySetDto } from './dto/create-study-set.dto';
+import { LearnFeedbackDto } from './dto/learn-feedback.dto';
 import { ReviewStudyCardDto } from './dto/review-study-card.dto';
 import { UpdateStudySetDto } from './dto/update-study-set.dto';
 import { StudySetService } from './study-set.service';
@@ -60,6 +61,15 @@ export class StudySetController {
     @CurrentUser() user: User,
   ) {
     return this.studySetService.addCards(id, user.id, dto);
+  }
+
+  @Post(':id/learn-feedback')
+  learnFeedback(
+    @Param('id') id: string,
+    @Body() dto: LearnFeedbackDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.studySetService.learnFeedback(id, user.id, dto);
   }
 
   @Post(':id/review')

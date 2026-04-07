@@ -135,10 +135,26 @@ export default function StudySetListPage() {
                             'inline-flex h-8 items-center justify-center rounded-md border border-black/20 bg-white px-3 text-sm font-medium hover:bg-black/5',
                           )}
                         >
-                          编辑
+                          概览
                         </Link>
                         <Link
-                          to={paths.main.studySets.study(row.id)}
+                          to={paths.main.studySets.cards(row.id)}
+                          className={cn(
+                            'inline-flex h-8 items-center justify-center rounded-md border border-black/20 bg-white px-3 text-sm font-medium hover:bg-black/5',
+                          )}
+                        >
+                          卡片
+                        </Link>
+                        <Link
+                          to={paths.main.studySets.learn(row.id)}
+                          className={cn(
+                            'inline-flex h-8 items-center justify-center rounded-md border border-black/20 bg-white px-3 text-sm font-medium hover:bg-black/5',
+                          )}
+                        >
+                          学习
+                        </Link>
+                        <Link
+                          to={paths.main.studySets.practice(row.id)}
                           className={cn(
                             'inline-flex h-8 items-center justify-center rounded-md border border-black/20 bg-white px-3 text-sm font-medium hover:bg-black/5',
                           )}

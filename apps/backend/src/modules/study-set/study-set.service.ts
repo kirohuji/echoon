@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+﻿import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
-import { User } from '@prisma/client';
+import { StudyCardType, User } from '@prisma/client';
 import { AddStudyCardsDto } from './dto/add-study-cards.dto';
 import { CreateStudySetDto } from './dto/create-study-set.dto';
+import { LearnFeedbackDto } from './dto/learn-feedback.dto';
 import { ReviewStudyCardDto } from './dto/review-study-card.dto';
 import { UpdateStudyCardDto } from './dto/update-study-card.dto';
 import { UpdateStudySetDto } from './dto/update-study-set.dto';
@@ -53,8 +54,30 @@ export class StudySetService {
           });
     const progressByCard = new Map(progresses.map((p) => [p.cardId, p]));
 
+    const cardStats = {
+      total: set.cards.length,
+      translation: set.cards.filter((c) => c.cardType === StudyCardType.translation).length,
+      qa: set.cards.filter((c) => c.cardType === StudyCardType.qa).length,
+    };
+
+    const progressSummary = progresses.reduce(
+      (acc, item) => {
+        acc.correctCount += item.correctCount;
+        acc.wrongCount += item.wrongCount;
+        acc.knownCount += item.knownCount;
+        acc.vagueCount += item.vagueCount;
+        acc.unknownCount += item.unknownCount;
+        return acc;
+      },
+      { correctCount: 0, wrongCount: 0, knownCount: 0, vagueCount: 0, unknownCount: 0 },
+    );
+
     return {
       ...set,
+      stats: {
+        cards: cardStats,
+        progress: progressSummary,
+      },
       cards: set.cards.map((c) => {
         const progress = progressByCard.get(c.id);
         return {
@@ -63,6 +86,9 @@ export class StudySetService {
             ? {
                 correctCount: progress.correctCount,
                 wrongCount: progress.wrongCount,
+                knownCount: progress.knownCount,
+                vagueCount: progress.vagueCount,
+                unknownCount: progress.unknownCount,
                 lastReviewedAt: progress.lastReviewedAt,
               }
             : null,
@@ -109,6 +135,7 @@ export class StudySetService {
         studySetId: setId,
         term: item.term.trim(),
         definition: item.definition.trim(),
+        cardType: item.cardType ?? StudyCardType.translation,
         sortOrder,
       };
     });
@@ -129,12 +156,15 @@ export class StudySetService {
     if (!card || card.studySet.userId !== userId) {
       throw new NotFoundException('卡片不存在');
     }
-    const data: { term?: string; definition?: string; sortOrder?: number } = {};
+    const data: { term?: string; definition?: string; cardType?: StudyCardType; sortOrder?: number } = {};
     if (dto.term !== undefined) {
       data.term = dto.term.trim();
     }
     if (dto.definition !== undefined) {
       data.definition = dto.definition.trim();
+    }
+    if (dto.cardType !== undefined) {
+      data.cardType = dto.cardType;
     }
     if (dto.sortOrder !== undefined) {
       data.sortOrder = dto.sortOrder;
@@ -158,6 +188,43 @@ export class StudySetService {
     }
     await this.prisma.studyCard.delete({ where: { id: cardId } });
     return { id: cardId };
+  }
+
+  async learnFeedback(setId: string, userId: string, dto: LearnFeedbackDto) {
+    await this.ensureSetOwned(setId, userId);
+    const card = await this.prisma.studyCard.findFirst({
+      where: { id: dto.cardId, studySetId: setId },
+      select: { id: true },
+    });
+    if (!card) {
+      throw new NotFoundException('卡片不存在');
+    }
+
+    const now = new Date();
+    const levelFieldMap = {
+      known: 'knownCount',
+      vague: 'vagueCount',
+      unknown: 'unknownCount',
+    } as const;
+    const field = levelFieldMap[dto.level];
+
+    return this.prisma.studyCardProgress.upsert({
+      where: {
+        userId_cardId: { userId, cardId: dto.cardId },
+      },
+      create: {
+        userId,
+        cardId: dto.cardId,
+        knownCount: dto.level === 'known' ? 1 : 0,
+        vagueCount: dto.level === 'vague' ? 1 : 0,
+        unknownCount: dto.level === 'unknown' ? 1 : 0,
+        lastReviewedAt: now,
+      },
+      update: {
+        [field]: { increment: 1 },
+        lastReviewedAt: now,
+      },
+    });
   }
 
   async review(setId: string, userId: string, dto: ReviewStudyCardDto) {

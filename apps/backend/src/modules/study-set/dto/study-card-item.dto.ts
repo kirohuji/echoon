@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+﻿import { Type } from 'class-transformer';
+import { IsIn, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class StudyCardItemDto {
   @IsString()
@@ -11,6 +11,10 @@ export class StudyCardItemDto {
   @IsNotEmpty()
   @MaxLength(8000)
   definition!: string;
+
+  @IsOptional()
+  @IsIn(['translation', 'qa'])
+  cardType?: 'translation' | 'qa';
 
   @IsOptional()
   @Type(() => Number)

@@ -41,7 +41,9 @@ export const paths = {
     studySets: {
       root: '/main/study-sets',
       detail: (id: string) => `/main/study-sets/${id}`,
-      study: (id: string) => `/main/study-sets/${id}/study`,
+      cards: (id: string) => `/main/study-sets/${id}/cards`,
+      learn: (id: string) => `/main/study-sets/${id}/learn`,
+      practice: (id: string) => `/main/study-sets/${id}/practice`,
     },
   }
 };

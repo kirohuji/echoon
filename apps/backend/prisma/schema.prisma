@@ -389,6 +389,7 @@ model StudyCard {
   studySetId  String
   term        String
   definition  String
+  cardType    StudyCardType @default(translation)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -404,6 +405,9 @@ model StudyCardProgress {
   cardId         String
   correctCount   Int       @default(0)
   wrongCount     Int       @default(0)
+  knownCount     Int       @default(0)
+  vagueCount     Int       @default(0)
+  unknownCount   Int       @default(0)
   lastReviewedAt DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -413,4 +417,9 @@ model StudyCardProgress {
   @@unique([userId, cardId])
   @@index([userId])
   @@index([cardId])
+}
+
+enum StudyCardType {
+  translation
+  qa
 }

@@ -1,8 +1,14 @@
-import { Service } from './base';
+﻿import { Service } from './base';
+
+export type StudyCardType = 'translation' | 'qa';
+export type LearnLevel = 'known' | 'vague' | 'unknown';
 
 export type StudyCardProgressDto = {
   correctCount: number;
   wrongCount: number;
+  knownCount: number;
+  vagueCount: number;
+  unknownCount: number;
   lastReviewedAt: number | null;
 };
 
@@ -11,10 +17,22 @@ export type StudyCardDto = {
   studySetId: string;
   term: string;
   definition: string;
+  cardType: StudyCardType;
   sortOrder: number;
   createdAt?: number;
   updatedAt?: number;
   progress: StudyCardProgressDto | null;
+};
+
+export type StudySetStatsDto = {
+  cards: { total: number; translation: number; qa: number };
+  progress: {
+    correctCount: number;
+    wrongCount: number;
+    knownCount: number;
+    vagueCount: number;
+    unknownCount: number;
+  };
 };
 
 export type StudySetListItemDto = {
@@ -35,6 +53,7 @@ export type StudySetDetailDto = {
   createdAt: number;
   updatedAt: number;
   cards: StudyCardDto[];
+  stats?: StudySetStatsDto;
 };
 
 export default class StudySetService extends Service {
@@ -48,7 +67,7 @@ export default class StudySetService extends Service {
 
   addCards(
     id: string,
-    items: { term: string; definition: string; sortOrder?: number }[],
+    items: { term: string; definition: string; cardType?: StudyCardType; sortOrder?: number }[],
   ) {
     return this.api.post(`${this.model}/${id}/cards`, { items });
   }
@@ -57,7 +76,14 @@ export default class StudySetService extends Service {
     return this.api.post(`${this.model}/${id}/review`, body);
   }
 
-  updateCard(cardId: string, body: { term?: string; definition?: string; sortOrder?: number }) {
+  learnFeedback(id: string, body: { cardId: string; level: LearnLevel }) {
+    return this.api.post(`${this.model}/${id}/learn-feedback`, body);
+  }
+
+  updateCard(
+    cardId: string,
+    body: { term?: string; definition?: string; cardType?: StudyCardType; sortOrder?: number },
+  ) {
     return this.api.put(`study-card/${cardId}`, body);
   }
 

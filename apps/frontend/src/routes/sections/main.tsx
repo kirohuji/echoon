@@ -11,9 +11,11 @@ import UsersPage from 'src/pages/users';
 import ConversationsPage from 'src/pages/conversations';
 import ConversationDetailPage from 'src/pages/conversations/detail';
 import DocumentLibraryPage from 'src/pages/document-library';
+import StudySetCardsPage from 'src/pages/study-sets/cards';
 import StudySetDetailPage from 'src/pages/study-sets/detail';
+import StudySetLearnPage from 'src/pages/study-sets/learn';
 import StudySetListPage from 'src/pages/study-sets';
-import StudySetStudyPage from 'src/pages/study-sets/study';
+import StudySetPracticePage from 'src/pages/study-sets/practice';
 import TagsPage from 'src/pages/tags';
 
 const layoutContent = (
@@ -55,7 +57,9 @@ export const mainRoutes = [
         path: 'study-sets',
         children: [
           { index: true, element: <StudySetListPage /> },
-          { path: ':id/study', element: <StudySetStudyPage /> },
+          { path: ':id/cards', element: <StudySetCardsPage /> },
+          { path: ':id/learn', element: <StudySetLearnPage /> },
+          { path: ':id/practice', element: <StudySetPracticePage /> },
           { path: ':id', element: <StudySetDetailPage /> },
         ],
       },

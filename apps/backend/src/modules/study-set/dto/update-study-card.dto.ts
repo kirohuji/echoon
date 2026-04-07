@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+﻿import { IsIn, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class UpdateStudyCardDto {
   @IsOptional()
@@ -10,6 +10,10 @@ export class UpdateStudyCardDto {
   @IsString()
   @MaxLength(8000)
   definition?: string;
+
+  @IsOptional()
+  @IsIn(['translation', 'qa'])
+  cardType?: 'translation' | 'qa';
 
   @IsOptional()
   @IsInt()
