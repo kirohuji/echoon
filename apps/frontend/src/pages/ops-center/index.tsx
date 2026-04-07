@@ -28,9 +28,9 @@ export default function OpsCenterPage() {
   }, [startPolling, stopPolling]);
 
   const publishNotification = async () => {
-    if (!notifyUserId.trim() || !notifyTitle.trim() || !notifyMarkdown.trim()) return;
+    if (!notifyTitle.trim() || !notifyMarkdown.trim()) return;
     const form = new FormData();
-    form.append('userId', notifyUserId.trim());
+    if (notifyUserId.trim()) form.append('userId', notifyUserId.trim());
     form.append('title', notifyTitle.trim());
     form.append('body', notifyMarkdown);
     if (notifyImage) form.append('image', notifyImage);
@@ -76,7 +76,7 @@ export default function OpsCenterPage() {
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="space-y-2 rounded border border-black/10 bg-white p-4">
               <h2 className="text-sm font-semibold">发布通知（Markdown + 图片）</h2>
-              <Input placeholder="接收用户ID" value={notifyUserId} onChange={(e) => setNotifyUserId(e.target.value)} />
+              <Input placeholder="接收用户ID（留空=全体用户）" value={notifyUserId} onChange={(e) => setNotifyUserId(e.target.value)} />
               <Input placeholder="标题" value={notifyTitle} onChange={(e) => setNotifyTitle(e.target.value)} />
               <textarea
                 className="min-h-36 w-full rounded-md border border-black/20 p-2 text-sm"

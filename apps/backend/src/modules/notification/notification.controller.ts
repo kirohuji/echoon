@@ -39,7 +39,7 @@ export class NotificationController {
     }),
   )
   async create(
-    @Body() dto: { userId: string; title: string; body: string; type?: string },
+    @Body() dto: { userId?: string; title: string; body: string; type?: string },
     @UploadedFile() image?: Express.Multer.File,
   ) {
     let imageUrl: string | null = null;

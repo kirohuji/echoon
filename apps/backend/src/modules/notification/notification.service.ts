@@ -41,23 +41,49 @@ export class NotificationService {
     });
   }
 
-  createForUser(dto: {
-    userId: string;
+  async createForUser(dto: {
+    userId?: string;
     title: string;
     body: string;
     type?: string;
     imageUrl?: string | null;
   }) {
     const db = this.prisma as any;
-    return db.notification.create({
-      data: {
-        userId: dto.userId,
-        title: dto.title.trim(),
-        body: dto.body.trim(),
-        type: dto.type?.trim() || 'system',
-        imageUrl: dto.imageUrl || null,
-      },
+    const title = dto.title.trim();
+    const body = dto.body.trim();
+    const type = dto.type?.trim() || 'system';
+    const imageUrl = dto.imageUrl || null;
+    const userId = dto.userId?.trim();
+
+    if (userId) {
+      return db.notification.create({
+        data: {
+          userId,
+          title,
+          body,
+          type,
+          imageUrl,
+        },
+      });
+    }
+
+    const users = await db.user.findMany({
+      select: { id: true },
+      where: { status: 1 },
     });
+    if (users.length === 0) {
+      return { createdCount: 0, broadcast: true };
+    }
+    await db.notification.createMany({
+      data: users.map((u: { id: string }) => ({
+        userId: u.id,
+        title,
+        body,
+        type,
+        imageUrl,
+      })),
+    });
+    return { createdCount: users.length, broadcast: true };
   }
 }
 

@@ -19,9 +19,9 @@ export const profileService = {
   async getTickets() {
     return unwrap(await http.get<any>('/ticket/me')) as TicketDto[];
   },
-  async createNotification(input: { userId: string; title: string; body: string; type?: string; image?: File | null }) {
+  async createNotification(input: { userId?: string; title: string; body: string; type?: string; image?: File | null }) {
     const form = new FormData();
-    form.append('userId', input.userId);
+    if (input.userId?.trim()) form.append('userId', input.userId.trim());
     form.append('title', input.title);
     form.append('body', input.body);
     if (input.type) form.append('type', input.type);
