@@ -193,10 +193,8 @@ export class DocumentLibraryController {
 
   @Post('synthesize-speech')
   @HttpCode(HttpStatus.OK)
-  async synthesizeSpeech(@Body() body: SynthesizeSpeechDto, @Res({ passthrough: false }) res: Response) {
-    const { buffer, mimeType } = await this.documentLibraryService.synthesizeSpeechEphemeral(body);
-    res.setHeader('Content-Type', mimeType);
-    res.send(buffer);
+  async synthesizeSpeech(@Body() body: SynthesizeSpeechDto) {
+    return this.documentLibraryService.synthesizeSpeechEphemeral(body);
   }
 
   @Post('word-lookup')

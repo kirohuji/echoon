@@ -74,6 +74,21 @@ export type GenerateAudioFromTextPayload = {
 /** 与资料库「从文本生成音频」相同的 TTS 选项；用于短时合成接口 `synthesize-speech`。 */
 export type SynthesizeSpeechPayload = GenerateAudioFromTextPayload;
 
+export type SynthesizeSpeechWordTimestamp = {
+  text: string;
+  start_time: number;
+  end_time?: number;
+  sentenceIndex?: number;
+  sentenceText?: string;
+  sentenceZh?: string;
+};
+
+export type SynthesizeSpeechResponse = {
+  mimeType: string;
+  audioBase64: string;
+  wordTimestamps: SynthesizeSpeechWordTimestamp[] | null;
+};
+
 export default class DocumentLibraryService extends Service {
   upload(formData: FormData) {
     return this.api.post(`${this.model}/upload`, formData, {
@@ -96,9 +111,15 @@ export default class DocumentLibraryService extends Service {
   }
 
   synthesizeSpeech(payload: SynthesizeSpeechPayload) {
-    return this.api.post(`${this.model}/synthesize-speech`, payload, {
-      responseType: 'blob',
-    }) as Promise<Blob>;
+    return this.api.post(`${this.model}/synthesize-speech`, payload) as Promise<unknown>;
+  }
+
+  /** 解析 axios 拦截器返回的 `{ success, data }` 或裸 data。 */
+  static unwrapSynthesizeSpeech(raw: unknown): SynthesizeSpeechResponse {
+    if (raw && typeof raw === 'object' && 'data' in raw && (raw as { success?: boolean }).success === true) {
+      return (raw as { data: SynthesizeSpeechResponse }).data;
+    }
+    return raw as SynthesizeSpeechResponse;
   }
 
   generateTranslation(id: string) {

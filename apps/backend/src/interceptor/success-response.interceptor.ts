@@ -63,9 +63,6 @@ export class SuccessResponseInterceptor<T>
     if (request.path?.startsWith('/api/auth')) {
       return next.handle() as Observable<ApiResponse<T>>;
     }
-    if (request.path?.includes('/document-library/synthesize-speech')) {
-      return next.handle() as Observable<ApiResponse<T>>;
-    }
     const method = request.method;
 
     // 根据请求方法设置状态码

@@ -175,9 +175,13 @@ export default function StudySetPracticePage() {
               <span>{current.typeLabel}</span>
               <span>第 {index + 1} / {questions.length} 题</span>
             </div>
-            <div className="mb-4 flex flex-wrap items-start gap-3">
-              <p className="min-w-0 flex-1 text-lg font-medium text-slate-800">{current.prompt}</p>
-              <StudyTtsControl text={current.card.term} className="shrink-0" />
+            <div className="mb-4">
+              <StudyTtsControl
+                variant="practice"
+                text={current.card.term}
+                promptPrefix={current.card.cardType === 'translation' ? '请翻译：' : undefined}
+                className="w-full"
+              />
             </div>
             <Input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="请输入答案" />
 

@@ -40,6 +40,7 @@ export class DocumentLibraryService {
   private readonly audioDir = path.join(process.cwd(), 'uploads', 'audios');
   private readonly videoAudioDir = path.join(process.cwd(), 'uploads', 'video-audios');
   private readonly videoAnalysisTempDir = path.join(process.cwd(), 'uploads', 'tmp', 'video-analysis');
+  private readonly ttsEphemeralTempDir = path.join(process.cwd(), 'uploads', 'tmp', 'tts-ephemeral');
   private readonly sentenceEndRegex = /[.!?。！？；;:]$/;
 
   constructor(
@@ -155,10 +156,12 @@ export class DocumentLibraryService {
 
   /**
    * 短文本 TTS，不写资料库；供学习集题干朗读等场景。
+   * 返回 base64 音频 + 提供商给出的词级时间戳（如 Cartesia；MiniMax 等常为 null）。
    */
   async synthesizeSpeechEphemeral(dto: SynthesizeSpeechDto): Promise<{
-    buffer: Buffer;
     mimeType: string;
+    audioBase64: string;
+    wordTimestamps: DocumentWordTimestamp[] | null;
   }> {
     const textTrimmed = dto.text.trim();
     if (!textTrimmed) {
@@ -190,10 +193,20 @@ export class DocumentLibraryService {
       params: sanitizedParams,
     });
 
-    return {
-      buffer: result.audioBuffer,
-      mimeType: result.mimeType,
-    };
+    let tempAudioPath: string | null = null;
+    try {
+      tempAudioPath = await this.writeTempEphemeralAudio(result.audioBuffer, result.fileExtension);
+      const wordTimestamps = await this.resolveWordTimestampsForSave(tempAudioPath, result.wordTimestamps);
+      return {
+        mimeType: result.mimeType,
+        audioBase64: result.audioBuffer.toString('base64'),
+        wordTimestamps,
+      };
+    } finally {
+      if (tempAudioPath) {
+        await fs.unlink(tempAudioPath).catch(() => undefined);
+      }
+    }
   }
 
   lookupEnglishWordFirstMatch(candidates: unknown) {
@@ -369,6 +382,14 @@ export class DocumentLibraryService {
   private async writeAudioFile(id: string, extension: 'mp3' | 'wav', buffer: Buffer) {
     await fs.mkdir(this.audioDir, { recursive: true });
     const audioPath = path.join(this.audioDir, `${id}.${extension}`);
+    await fs.writeFile(audioPath, buffer);
+    return audioPath;
+  }
+
+  /** 短时合成写临时文件，供 whisper-server 对齐词时间戳（与资料库管线一致）。 */
+  private async writeTempEphemeralAudio(buffer: Buffer, extension: 'mp3' | 'wav') {
+    await fs.mkdir(this.ttsEphemeralTempDir, { recursive: true });
+    const audioPath = path.join(this.ttsEphemeralTempDir, `${randomUUID()}.${extension}`);
     await fs.writeFile(audioPath, buffer);
     return audioPath;
   }
