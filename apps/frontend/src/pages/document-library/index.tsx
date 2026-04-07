@@ -19,7 +19,15 @@ type LibraryItem = {
   audioStatus: 'pending' | 'processing' | 'success' | 'failed';
   createdAt: number;
   tags: Array<{ tag: TagItem }>;
+  fileType?: string | null;
+  mimeType?: string | null;
 };
+
+function isVideoAsset(item: Pick<LibraryItem, 'fileType' | 'mimeType'>) {
+  const ext = (item.fileType || '').toLowerCase();
+  const mime = (item.mimeType || '').toLowerCase();
+  return mime.startsWith('video/') || ['mp4', 'mov', 'mkv', 'avi', 'webm', 'm4v'].includes(ext);
+}
 
 export default function DocumentLibraryPage() {
   const metadata = useMemo(() => ({ title: `资料库管理 ${CONFIG.site.name}` }), []);
@@ -65,13 +73,13 @@ export default function DocumentLibraryPage() {
     loadData();
   }, [loadData]);
 
-  const openAudioPreview = (id: string) => {
+  const openVideoPreview = (id: string) => {
     setPreviewDocumentId(id);
     setPreviewOpen(true);
   };
 
-  const onOpenAudioManagement = (id: string) => {
-    openAudioPreview(id);
+  const onOpenVideoManagement = (id: string) => {
+    openVideoPreview(id);
   };
 
   const onRemove = async (id: string) => {
@@ -185,10 +193,10 @@ export default function DocumentLibraryPage() {
                           <Button
                             type="button"
                             size="sm"
-                            onClick={() => onOpenAudioManagement(row.id)}
+                            onClick={() => onOpenVideoManagement(row.id)}
                             disabled={row.audioStatus === 'processing'}
                           >
-                            音频管理
+                            {isVideoAsset(row) ? '视频管理' : '音频管理'}
                           </Button>
                           <Button
                             type="button"
@@ -243,10 +251,10 @@ export default function DocumentLibraryPage() {
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => onOpenAudioManagement(row.id)}
+                      onClick={() => onOpenVideoManagement(row.id)}
                       disabled={row.audioStatus === 'processing'}
                     >
-                      音频管理
+                      {isVideoAsset(row) ? '视频管理' : '音频管理'}
                     </Button>
                     <Button
                       type="button"

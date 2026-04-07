@@ -4,6 +4,8 @@ import { AudioProvider, AudioStatus, DocumentLibrary, Prisma, User } from '@pris
 import axios from 'axios';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { spawn } from 'node:child_process';
+import * as ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import {
   DocumentAudioConfigError,
   resolveDocumentAudioConfigForGeneration,
@@ -34,6 +36,8 @@ type CreateDocumentLibraryInput = CreateDocumentAudioConfigInput & {
 @Injectable()
 export class DocumentLibraryService {
   private readonly audioDir = path.join(process.cwd(), 'uploads', 'audios');
+  private readonly videoAudioDir = path.join(process.cwd(), 'uploads', 'video-audios');
+  private readonly videoAnalysisTempDir = path.join(process.cwd(), 'uploads', 'tmp', 'video-analysis');
   private readonly sentenceEndRegex = /[.!?。！？；;:]$/;
 
   constructor(
@@ -785,5 +789,183 @@ export class DocumentLibraryService {
       },
     });
     return this.findOne(id);
+  }
+
+  private async extractAudioFromVideo(videoPath: string, outputAudioPath: string): Promise<void> {
+    await fs.mkdir(path.dirname(outputAudioPath), { recursive: true });
+    const installedFfmpegPath =
+      (ffmpegInstaller as { path?: string })?.path ||
+      (ffmpegInstaller as { default?: { path?: string } })?.default?.path ||
+      '';
+    const ffmpegCommand = process.env.FFMPEG_PATH?.trim() || installedFfmpegPath || 'ffmpeg';
+    await new Promise<void>((resolve, reject) => {
+      const ffmpeg = spawn(ffmpegCommand, [
+        '-y',
+        '-i',
+        videoPath,
+        '-vn',
+        '-acodec',
+        'pcm_s16le',
+        '-ar',
+        '16000',
+        '-ac',
+        '1',
+        outputAudioPath,
+      ]);
+
+      let stderr = '';
+      ffmpeg.stderr.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString('utf8');
+      });
+      ffmpeg.on('error', (error) => {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === 'ENOENT') {
+          reject(new Error('ffmpeg 不可用，请检查 FFMPEG_PATH 或重新安装后端依赖'));
+          return;
+        }
+        reject(error);
+      });
+      ffmpeg.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+          return;
+        }
+        reject(new Error(`ffmpeg 抽取失败，退出码=${code}，详情：${stderr.slice(-500)}`));
+      });
+    });
+  }
+
+  private async writeVideoAnalysisSnapshot(
+    videoPath: string,
+    audioPath: string,
+    wordTimestamps: DocumentWordTimestamp[]
+  ) {
+    await fs.mkdir(this.videoAnalysisTempDir, { recursive: true });
+    const sortedWords = [...wordTimestamps].sort((a, b) => (a.start_time ?? 0) - (b.start_time ?? 0));
+    const sentenceSegments = this.buildSentenceSegments(sortedWords);
+    const snapshot = {
+      createdAt: new Date().toISOString(),
+      videoPath,
+      audioPath,
+      wordCount: sortedWords.length,
+      sentenceCount: sentenceSegments.length,
+      words: sortedWords,
+      sentences: sentenceSegments.map((segment) => {
+        const startTime = sortedWords[segment.startIdx]?.start_time ?? 0;
+        const endTime = sortedWords[segment.endIdx]?.end_time ?? undefined;
+        return {
+          sentenceIndex: segment.sentenceIndex,
+          text: segment.text,
+          startIdx: segment.startIdx,
+          endIdx: segment.endIdx,
+          startTime,
+          endTime,
+        };
+      }),
+    };
+    const videoName = path.basename(videoPath, path.extname(videoPath));
+    const snapshotPath = path.join(this.videoAnalysisTempDir, `${videoName}-${Date.now()}.json`);
+    await fs.writeFile(snapshotPath, JSON.stringify(snapshot, null, 2), 'utf8');
+    return snapshotPath;
+  }
+
+  async transcribeVideoToWordTimestamps(
+    videoPath: string,
+    options?: { whisperTemperature?: number; whisperSplitOnWord?: boolean }
+  ) {
+    const videoExt = path.extname(videoPath);
+    const videoName = path.basename(videoPath, videoExt);
+    const audioPath = path.join(this.videoAudioDir, `${videoName}.wav`);
+
+    await this.extractAudioFromVideo(videoPath, audioPath);
+
+    const wordTimestamps = await this.whisperTranscription.transcribeFileToWordTimestamps(audioPath, {
+      temperature: options?.whisperTemperature,
+      splitOnWord: options?.whisperSplitOnWord,
+    });
+    if (!wordTimestamps?.length) {
+      throw new BadRequestException(
+        '未生成词级时间戳，请确认 WHISPER_INFERENCE_URL 可用且支持 verbose_json words 输出'
+      );
+    }
+
+    const analysisSnapshotPath = await this.writeVideoAnalysisSnapshot(
+      videoPath,
+      audioPath,
+      wordTimestamps
+    );
+
+    return {
+      audioPath,
+      wordTimestamps,
+      analysisSnapshotPath,
+    };
+  }
+
+  async transcribeVideoDocument(
+    id: string,
+    user?: User,
+    options?: { whisperTemperature?: number; whisperSplitOnWord?: boolean }
+  ) {
+    const target = await this.findOne(id);
+    const isVideoFile =
+      (target.fileType || '').toLowerCase() === 'mp4' ||
+      (target.mimeType || '').toLowerCase().startsWith('video/');
+    if (!isVideoFile) {
+      throw new BadRequestException('当前资料不是视频文件');
+    }
+    if (!target.filePath) {
+      throw new BadRequestException('视频文件路径为空');
+    }
+
+    await this.prisma.documentLibrary.update({
+      where: { id },
+      data: {
+        audioStatus: AudioStatus.processing,
+        audioProgress: 15,
+        audioStage: 'transcribing_video',
+        audioError: null,
+        updatedBy: user?.id ?? 'system',
+      },
+    });
+
+    try {
+      const { audioPath, wordTimestamps, analysisSnapshotPath } = await this.transcribeVideoToWordTimestamps(
+        target.filePath,
+        options
+      );
+
+      await this.prisma.documentLibrary.update({
+        where: { id },
+        data: {
+          audioStatus: AudioStatus.success,
+          audioProgress: 100,
+          audioStage: 'done',
+          audioError: null,
+          audioPath,
+          wordTimestamps: this.toWordTimestampJson(wordTimestamps),
+          updatedBy: user?.id ?? 'system',
+        },
+      });
+
+      const latest = await this.findOne(id);
+      return {
+        ...latest,
+        analysisSnapshotPath,
+      };
+    } catch (error) {
+      const audioError = error instanceof Error ? error.message : '视频分析失败';
+      await this.prisma.documentLibrary.update({
+        where: { id },
+        data: {
+          audioStatus: AudioStatus.failed,
+          audioProgress: 0,
+          audioStage: 'failed',
+          audioError,
+          updatedBy: user?.id ?? 'system',
+        },
+      });
+      throw new BadRequestException(audioError);
+    }
   }
 }

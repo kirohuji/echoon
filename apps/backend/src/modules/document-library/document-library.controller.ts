@@ -91,6 +91,45 @@ export class DocumentLibraryController {
     );
   }
 
+  @Post('transcribe-video')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 1024 * 1024 * 500 },
+    }),
+  )
+  async transcribeVideo(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: User,
+  ) {
+    if (!file) {
+      throw new BadRequestException('请上传视频文件');
+    }
+    const isVideoMime = typeof file.mimetype === 'string' && file.mimetype.startsWith('video/');
+    const isVideoExt = /\.(mp4|mov|mkv|avi|webm|m4v)$/i.test(file.originalname);
+    if (!isVideoMime && !isVideoExt) {
+      throw new BadRequestException('仅支持视频文件上传');
+    }
+
+    const videoUploadDir = path.join(this.uploadDir, 'videos');
+    await fs.mkdir(videoUploadDir, { recursive: true });
+    const safeName = `${Date.now()}-${file.originalname.replace(/\s+/g, '-')}`;
+    const videoPath = path.join(videoUploadDir, safeName);
+    await fs.writeFile(videoPath, file.buffer);
+
+    const result = await this.documentLibraryService.transcribeVideoToWordTimestamps(videoPath);
+    return {
+      success: true,
+      fileName: file.originalname,
+      videoPath,
+      audioPath: result.audioPath,
+      analysisSnapshotPath: result.analysisSnapshotPath,
+      wordCount: result.wordTimestamps.length,
+      wordTimestamps: result.wordTimestamps,
+      requestedBy: user.id,
+    };
+  }
+
   @Post('create-text')
   async createText(
     @Body()
@@ -228,5 +267,40 @@ export class DocumentLibraryController {
       return res.status(404).send('Audio not found');
     }
     return res.sendFile(record.audioPath);
+  }
+
+  @Get(':id/video')
+  async getVideo(@Param('id') id: string, @Res() res: Response) {
+    const record = await this.documentLibraryService.findOne(id);
+    if (!record.filePath || !record.mimeType?.startsWith('video/')) {
+      return res.status(404).send('Video not found');
+    }
+    return res.sendFile(record.filePath);
+  }
+
+  @Post(':id/transcribe-video')
+  async transcribeExistingVideo(
+    @Param('id') id: string,
+    @Body() body: { whisperTemperature?: number | string; whisperSplitOnWord?: boolean | string },
+    @CurrentUser() user: User
+  ) {
+    const raw = body?.whisperTemperature;
+    const whisperTemperature =
+      raw === undefined || raw === null || raw === ''
+        ? undefined
+        : Number.isFinite(Number(raw))
+          ? Number(raw)
+          : undefined;
+    const rawSplitOnWord = body?.whisperSplitOnWord;
+    const whisperSplitOnWord =
+      typeof rawSplitOnWord === 'boolean'
+        ? rawSplitOnWord
+        : typeof rawSplitOnWord === 'string'
+          ? rawSplitOnWord.trim().toLowerCase() === 'true'
+          : undefined;
+    return this.documentLibraryService.transcribeVideoDocument(id, user, {
+      whisperTemperature,
+      whisperSplitOnWord,
+    });
   }
 }

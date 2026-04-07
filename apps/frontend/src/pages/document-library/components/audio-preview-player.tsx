@@ -22,6 +22,20 @@ type AudioPreviewPlayerProps = {
   audioProvider?: string | null;
   activeLookupWord?: string;
   onWordLongPress?: (payload: { word: string; candidates: string[] }) => void;
+  lyricContainerHeight?: number;
+  onSyncTime?: (time: number) => void;
+  onSyncPlayState?: (isPlaying: boolean) => void;
+  onSyncPlaybackRate?: (rate: number) => void;
+  externalSyncSignal?: {
+    nonce: number;
+    time: number;
+    isPlaying: boolean;
+    playbackRate: number;
+  };
+  /**
+   * 嵌在限高父级（弹窗等）内时：歌词区用 flex 占满剩余高度，不再使用固定像素高度。
+   */
+  embedFlexibleLyrics?: boolean;
 };
 
 const NANOSECONDS_PER_SECOND = 1_000_000_000;
@@ -191,6 +205,12 @@ export function AudioPreviewPlayer({
   audioProvider,
   activeLookupWord,
   onWordLongPress,
+  lyricContainerHeight,
+  onSyncTime,
+  onSyncPlayState,
+  onSyncPlaybackRate,
+  externalSyncSignal,
+  embedFlexibleLyrics = false,
 }: AudioPreviewPlayerProps) {
   const audioPlayerRef = useRef<AudioPlayer>(null);
   const waveformRef = useRef<AudioWaveformHandle | null>(null);
@@ -329,7 +349,24 @@ export function AudioPreviewPlayer({
     const audioElement = audioPlayerRef.current?.audioEl?.current;
     if (!audioElement) return;
     audioElement.playbackRate = playbackRate;
-  }, [audioUrl, playbackRate]);
+    onSyncPlaybackRate?.(playbackRate);
+  }, [audioUrl, playbackRate, onSyncPlaybackRate]);
+
+  useEffect(() => {
+    if (!externalSyncSignal) return;
+    const audioElement = audioPlayerRef.current?.audioEl?.current;
+    if (!audioElement) return;
+    const nextRate = externalSyncSignal.playbackRate || 1;
+    if (playbackRate !== nextRate) {
+      setPlaybackRate(nextRate);
+    }
+    seekToTime(externalSyncSignal.time, false);
+    if (externalSyncSignal.isPlaying) {
+      void audioElement.play();
+    } else {
+      audioElement.pause();
+    }
+  }, [externalSyncSignal?.nonce]);
 
   useEffect(() => {
     setDuration(0);
@@ -407,17 +444,32 @@ export function AudioPreviewPlayer({
     };
   }, []);
 
+  const lyricBoxStyle = embedFlexibleLyrics
+    ? undefined
+    : { height: lyricContainerHeight ?? IPHONE_VIEW_HEIGHT - 268 };
+
   return (
-    <div className="space-y-2">
-      <div className="flex justify-center">
+    <div
+      className={cn(
+        embedFlexibleLyrics ? 'flex h-full min-h-0 flex-col gap-2' : 'space-y-2'
+      )}
+    >
+      <div className={cn('flex justify-center', embedFlexibleLyrics && 'min-h-0 flex-1')}>
         <div
-          className="rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-sm ring-1 ring-black/[0.03]"
+          className={cn(
+            'rounded-xl border-slate-200/90 bg-white p-1.5 shadow-sm',
+            embedFlexibleLyrics &&
+              'flex h-full max-h-full min-h-0 w-full flex-1 flex-col overflow-hidden'
+          )}
           style={{ width: IPHONE_VIEW_WIDTH, maxWidth: '100%' }}
         >
           <div
             ref={lyricContainerRef}
-            className="overflow-y-auto px-1.5 py-1.5 pr-4"
-            style={{ height: IPHONE_VIEW_HEIGHT - 268 }}
+            className={cn(
+              'overflow-y-auto px-1.5 py-1.5 pr-4',
+              embedFlexibleLyrics && 'min-h-[6.5rem] flex-1 basis-0'
+            )}
+            style={lyricBoxStyle}
           >
             {sentenceSegments.length ? (
               <div className="space-y-3">
@@ -534,7 +586,7 @@ export function AudioPreviewPlayer({
           </div>
 
           {hasWords ? (
-            <div className="mt-1.5 space-y-1 border-t border-slate-100 px-0.5 pt-1.5 text-left text-[10px] leading-snug text-slate-600">
+            <div className="mt-1.5 shrink-0 space-y-1 border-t border-slate-100 px-0.5 pt-1.5 text-left text-[10px] leading-snug text-slate-600">
               <label className="flex cursor-pointer items-start gap-2">
                 <input
                   type="checkbox"
@@ -565,14 +617,14 @@ export function AudioPreviewPlayer({
             </div>
           ) : null}
 
-          <div className="mt-1 flex items-center justify-between text-[10px] tabular-nums text-slate-500">
+          <div className="mt-1 flex shrink-0 items-center justify-between text-[10px] tabular-nums text-slate-500">
             <span>{formatTime(currentTime)}</span>
             <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
           </div>
 
           <AudioWaveform
             ref={waveformRef}
-            className="mt-1"
+            className="mt-1 shrink-0"
             audioUrl={audioUrl}
             durationSeconds={duration}
             onSeek={(time) => seekToTime(time, true)}
@@ -582,7 +634,7 @@ export function AudioPreviewPlayer({
           />
 
           <input
-            className="mt-1.5 h-1.5 w-full cursor-pointer accent-indigo-600"
+            className="mt-1.5 h-1.5 w-full shrink-0 cursor-pointer accent-indigo-600"
             type="range"
             min={0}
             max={duration || 0}
@@ -591,7 +643,7 @@ export function AudioPreviewPlayer({
             onChange={(e) => seekToTime(Number(e.target.value), true)}
           />
 
-          <div className="mt-2 flex items-center justify-between gap-1">
+          <div className="mt-2 flex shrink-0 items-center justify-between gap-1">
             <Button variant="outline" size="sm" className="h-7 px-1.5" onClick={() => jumpBy(-10)}>
               <Iconify icon="solar:rewind-10-seconds-back-broken" width={16} />
             </Button>
@@ -624,7 +676,7 @@ export function AudioPreviewPlayer({
             </Button>
           </div>
 
-          <div className="mt-2 flex items-center justify-center gap-1">
+          <div className="mt-2 flex shrink-0 items-center justify-center gap-1">
             {PLAYBACK_RATES.map((rate) => (
               <button
                 key={rate}
@@ -653,10 +705,12 @@ export function AudioPreviewPlayer({
         onPlay={() => {
           setIsPlaying(true);
           isPlayingRef.current = true;
+          onSyncPlayState?.(true);
         }}
         onPause={() => {
           setIsPlaying(false);
           isPlayingRef.current = false;
+          onSyncPlayState?.(false);
         }}
         onEnded={() => {
           setIsPlaying(false);
@@ -673,6 +727,7 @@ export function AudioPreviewPlayer({
         onListen={(time) => {
           setCurrentTime(time);
           syncWaveProgress(time);
+          onSyncTime?.(time);
 
           const segments = sentenceSegmentsRef.current;
           if (!sentenceLoopEnabledRef.current || !segments.length) return;
