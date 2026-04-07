@@ -141,6 +141,17 @@ export default function StudySetPracticePage() {
     setSubmitError(null);
   };
 
+  const retryAnswer = () => {
+    setResult((current) => {
+      if (current?.countsAsCorrect) {
+        setScore((s) => Math.max(0, s - 1));
+      }
+      return null;
+    });
+    setAnswer('');
+    setSubmitError(null);
+  };
+
   const verdictLabel =
     result?.verdict === 'correct' ? '判为正确' : result?.verdict === 'partial' ? '部分正确' : '需要改进';
 
@@ -212,13 +223,20 @@ export default function StudySetPracticePage() {
               </div>
             ) : null}
 
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
               {!result ? (
-                <Button onClick={() => { void submit(); }} disabled={!answer.trim() || submitting}>
+                <Button onClick={() => { void submit(); }} disabled={answer.trim().length === 0 || submitting}>
                   {submitting ? '批改中…' : '提交'}
                 </Button>
               ) : null}
-              {result ? <Button variant="outline" onClick={next}>下一题</Button> : null}
+              {result ? (
+                <>
+                  <Button variant="outline" onClick={retryAnswer}>
+                    重新答题
+                  </Button>
+                  <Button onClick={next}>下一题</Button>
+                </>
+              ) : null}
             </div>
           </div>
         ) : null}
