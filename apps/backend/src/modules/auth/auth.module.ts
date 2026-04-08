@@ -35,6 +35,6 @@ import { AuthExceptionFilter } from './exceptions';
       useClass: AuthExceptionFilter,
     },
   ],
-  exports: [AuthService],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

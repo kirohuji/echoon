@@ -18,6 +18,7 @@ import { HomeModule } from './modules/home/home.module';
 import { MembershipModule } from './modules/membership/membership.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { TicketModule } from './modules/ticket/ticket.module';
+import { RealtimeModule } from './modules/realtime/realtime.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { TicketModule } from './modules/ticket/ticket.module';
     StudySetModule,
     HomeModule,
     MembershipModule,
+    RealtimeModule,
     NotificationModule,
     TicketModule,
   ],

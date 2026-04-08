@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
+import { UserPushService } from '@/modules/realtime/user-push.service';
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly userPush: UserPushService,
+  ) {}
 
   async listMine(userId: string) {
     const db = this.prisma as any;
@@ -25,12 +29,14 @@ export class NotificationService {
     }).then(async () => db.notification.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }));
   }
 
-  markRead(userId: string, id: string) {
+  async markRead(userId: string, id: string) {
     const db = this.prisma as any;
-    return db.notification.updateMany({
+    const result = await db.notification.updateMany({
       where: { id, userId },
       data: { read: true },
     });
+    this.userPush.notifyNotificationsChanged(userId);
+    return result;
   }
 
   listAll() {
@@ -56,7 +62,7 @@ export class NotificationService {
     const userId = dto.userId?.trim();
 
     if (userId) {
-      return db.notification.create({
+      const row = await db.notification.create({
         data: {
           userId,
           title,
@@ -65,6 +71,8 @@ export class NotificationService {
           imageUrl,
         },
       });
+      this.userPush.notifyNotificationsChanged(userId);
+      return row;
     }
 
     const users = await db.user.findMany({
@@ -83,6 +91,9 @@ export class NotificationService {
         imageUrl,
       })),
     });
+    for (const u of users as { id: string }[]) {
+      this.userPush.notifyNotificationsChanged(u.id);
+    }
     return { createdCount: users.length, broadcast: true };
   }
 }

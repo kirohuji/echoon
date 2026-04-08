@@ -6,23 +6,19 @@ type AppState = {
   membership: MembershipDto | null;
   notifications: NotificationDto[];
   tickets: TicketDto[];
-  polling: boolean;
   setUser: (u: any | null) => void;
-  refreshGlobal: () => Promise<void>;
-  startPolling: () => void;
-  stopPolling: () => void;
+  /** 登录后一次性拉取会员、通知、工单（无周期轮询） */
+  bootstrapProfileData: () => Promise<void>;
+  refreshNotifications: () => Promise<void>;
 };
 
-let timer: ReturnType<typeof setInterval> | null = null;
-
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>((set) => ({
   user: null,
   membership: null,
   notifications: [],
   tickets: [],
-  polling: false,
   setUser: (u) => set({ user: u }),
-  refreshGlobal: async () => {
+  bootstrapProfileData: async () => {
     const [membership, notifications, tickets] = await Promise.all([
       profileService.getMembership().catch(() => null),
       profileService.getNotifications().catch(() => []),
@@ -34,18 +30,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       tickets: Array.isArray(tickets) ? tickets : [],
     });
   },
-  startPolling: () => {
-    if (timer) return;
-    void get().refreshGlobal();
-    timer = setInterval(() => {
-      void get().refreshGlobal();
-    }, 60 * 1000);
-    set({ polling: true });
-  },
-  stopPolling: () => {
-    if (timer) clearInterval(timer);
-    timer = null;
-    set({ polling: false });
+  refreshNotifications: async () => {
+    const notifications = await profileService.getNotifications().catch(() => []);
+    set({
+      notifications: Array.isArray(notifications) ? notifications : [],
+    });
   },
 }));
-

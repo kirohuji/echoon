@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { authService } from './auth-service';
 import { STORAGE_KEY } from './constant';
 import { isValidToken } from './utils';
+import { connectNotificationsRealtime, disconnectNotificationsRealtime } from '../lib/notifications-realtime';
 import { useAppStore } from '../store/app-store';
 
 type AuthUser = Record<string, any> & { accessToken: string };
@@ -29,8 +30,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const setGlobalUser = useAppStore((s) => s.setUser);
-  const startPolling = useAppStore((s) => s.startPolling);
-  const stopPolling = useAppStore((s) => s.stopPolling);
+  const bootstrapProfileData = useAppStore((s) => s.bootstrapProfileData);
+  const refreshNotifications = useAppStore((s) => s.refreshNotifications);
   const unwrap = (payload: any) => (payload && payload.success === true && 'data' in payload ? payload.data : payload);
 
   const refresh = useCallback(async () => {
@@ -44,21 +45,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const merged = { ...(u ?? {}), ...(profile ?? {}), accessToken };
         setUser(merged);
         setGlobalUser(merged);
-        startPolling();
+        await bootstrapProfileData();
+        connectNotificationsRealtime(() => {
+          void refreshNotifications();
+        });
       } else {
         setUser(null);
         setGlobalUser(null);
-        stopPolling();
+        disconnectNotificationsRealtime();
       }
     } catch (e) {
       console.error('auth refresh failed', e);
       setUser(null);
       setGlobalUser(null);
-      stopPolling();
+      disconnectNotificationsRealtime();
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [bootstrapProfileData, refreshNotifications]);
 
   const signIn = useCallback(async ({ phone, password }: { phone: string; password: string }) => {
     setLoading(true);
@@ -78,8 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem(STORAGE_KEY);
     setUser(null);
     setGlobalUser(null);
-    stopPolling();
-  }, [setGlobalUser, stopPolling]);
+    disconnectNotificationsRealtime();
+  }, [setGlobalUser]);
 
   useEffect(() => {
     void refresh();

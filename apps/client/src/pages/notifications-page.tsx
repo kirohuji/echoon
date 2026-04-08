@@ -10,7 +10,7 @@ import { useAppStore } from '../store/app-store';
 export function NotificationsPage() {
   const user = useAppStore((s) => s.user);
   const notifications = useAppStore((s) => s.notifications);
-  const refreshGlobal = useAppStore((s) => s.refreshGlobal);
+  const refreshNotifications = useAppStore((s) => s.refreshNotifications);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('## 通知标题\n\n- 支持 **Markdown**\n- 支持上传图片');
   const [targetUserId, setTargetUserId] = useState('');
@@ -32,7 +32,7 @@ export function NotificationsPage() {
       setTitle('');
       setBody('');
       setImage(null);
-      await refreshGlobal();
+      await refreshNotifications();
     } finally {
       setSaving(false);
     }

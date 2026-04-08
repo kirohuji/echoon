@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { SuccessResponseInterceptor } from '@/interceptor/success-response.interceptor';
 import { HttpExceptionFilter } from '@/exception-handler/http-exception.filter';
+import { SocketIoAdapter } from '@/modules/realtime/socket-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -16,7 +17,27 @@ async function bootstrap() {
     .map((o) => o.trim())
     .filter(Boolean);
 
+  const clientAppOrigins = (
+    process.env.CLIENT_APP_ORIGINS ??
+    'http://localhost:8081,http://127.0.0.1:8081'
+  )
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   const isProd = process.env.NODE_ENV === 'production';
+
+  const socketIoOrigins = [...new Set([...frontendOrigins, ...clientAppOrigins])];
+  app.useWebSocketAdapter(
+    new SocketIoAdapter(
+      app,
+      isProd
+        ? socketIoOrigins.length > 0
+          ? { origin: socketIoOrigins, credentials: true }
+          : { origin: true, credentials: true }
+        : { origin: true, credentials: true },
+    ),
+  );
 
   app.enableCors({
     // 预检 OPTIONS 必须在 methods 内，否则会缺省 CORS 头导致浏览器报「Network Error」
