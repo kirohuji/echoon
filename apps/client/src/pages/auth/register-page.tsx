@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AppButton } from '../../components/app/app-button';
 import { SurfaceCard } from '../../components/app/surface-card';
+import { Button, FormField, Input } from '../../components/ui';
 import { authService } from '../../auth/auth-service';
 
 export function RegisterPage() {
@@ -28,17 +28,34 @@ export function RegisterPage() {
 
   return (
     <SurfaceCard className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="text-xl font-semibold text-slate-900">注册账号</h1>
+      <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">注册账号</h1>
       <form onSubmit={onSubmit} className="mt-4 space-y-3">
-        <input className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="用户名" />
-        <input className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="手机号" />
-        <input type="password" className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="密码" />
+        <FormField label="用户名" htmlFor="username">
+          <Input
+            id="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="请输入用户名"
+          />
+        </FormField>
+        <FormField label="手机号" htmlFor="phone">
+          <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="请输入手机号" />
+        </FormField>
+        <FormField label="密码" htmlFor="password">
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="请输入密码"
+          />
+        </FormField>
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-        <AppButton type="submit" disabled={loading} tone="primary" className="w-full justify-center">
+        <Button type="submit" disabled={loading} variant="primary" className="w-full">
           {loading ? '提交中...' : '注册'}
-        </AppButton>
+        </Button>
       </form>
-      <p className="mt-4 text-sm text-slate-600">
+      <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
         已有账号？<Link to="/login" className="text-indigo-600">去登录</Link>
       </p>
     </SurfaceCard>

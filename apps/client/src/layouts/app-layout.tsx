@@ -65,7 +65,7 @@ export function AppLayout() {
   const closeSettingsDrawer = () => setSettingsDrawerOpen(false);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-black text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen overflow-x-hidden text-slate-900 dark:text-slate-100">
       <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950">
         <header className="fixed left-0 right-0 top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 lg:hidden">
           <div className="mx-auto flex h-14 max-w-xl items-center justify-between px-4">
@@ -268,8 +268,8 @@ export function AppLayout() {
 
                   <Button
                     type="button"
-                    variant="outline"
-                    className="h-11 w-full border-rose-200 text-rose-700 hover:bg-rose-50/80 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-950/50"
+                    variant="destructive"
+                    className="h-11 w-full"
                     onClick={() => {
                       void signOut();
                       closeSettingsDrawer();
@@ -348,8 +348,8 @@ export function AppLayout() {
                   </Link>
                   <Button
                     type="button"
-                    variant="outline"
-                    className="h-10 w-full border-rose-200 text-rose-700 hover:bg-rose-50/80 dark:border-rose-900 dark:text-rose-400 dark:hover:bg-rose-950/50"
+                    variant="destructive"
+                    className="h-10 w-full"
                     onClick={() => {
                       void signOut();
                       setAvatarMenuOpen(false);

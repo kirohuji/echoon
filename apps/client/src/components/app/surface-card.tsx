@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Card } from '../ui/card';
 
 type Props = {
   children: ReactNode;
@@ -6,12 +7,6 @@ type Props = {
 };
 
 export function SurfaceCard({ children, className = '' }: Props) {
-  return (
-    <section
-      className={`rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 ${className}`}
-    >
-      {children}
-    </section>
-  );
+  return <Card className={className}>{children}</Card>;
 }
 

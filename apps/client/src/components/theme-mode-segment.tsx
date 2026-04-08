@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 
 export function ThemeModeSegment({ className = '' }: { className?: string }) {
   const [colorMode, setColorMode] = useState<'light' | 'dark'>(() =>
@@ -13,30 +14,12 @@ export function ThemeModeSegment({ className = '' }: { className?: string }) {
 
   return (
     <div className={className}>
-      <div className="flex rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">
-        <button
-          type="button"
-          className={`flex-1 rounded-md py-2 text-xs font-medium ${
-            colorMode === 'light'
-              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-              : 'text-slate-600 dark:text-slate-400'
-          }`}
-          onClick={() => setThemeMode('light')}
-        >
-          浅色
-        </button>
-        <button
-          type="button"
-          className={`flex-1 rounded-md py-2 text-xs font-medium ${
-            colorMode === 'dark'
-              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-              : 'text-slate-600 dark:text-slate-400'
-          }`}
-          onClick={() => setThemeMode('dark')}
-        >
-          深色
-        </button>
-      </div>
+      <Tabs value={colorMode} onValueChange={(v) => setThemeMode(v as 'light' | 'dark')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="light">浅色</TabsTrigger>
+          <TabsTrigger value="dark">深色</TabsTrigger>
+        </TabsList>
+      </Tabs>
     </div>
   );
 }

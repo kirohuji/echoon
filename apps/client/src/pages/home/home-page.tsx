@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AppButton } from '../../components/app/app-button';
 import { SectionHeading } from '../../components/app/section-heading';
 import { SurfaceCard } from '../../components/app/surface-card';
+import { Button } from '../../components/ui';
 import { homeService, type HomeDoc, type HomeTag } from '../../features/home/home-service';
 
 const banners = [
@@ -43,8 +43,10 @@ export function HomePage() {
           <button
             type="button"
             onClick={() => setActiveTag('all')}
-            className={`rounded-md border px-3 py-1 text-sm ${
-              activeTag === 'all' ? 'border-slate-300 bg-slate-100 text-slate-900' : 'border-slate-200 bg-white text-slate-600'
+            className={`rounded-md border px-3 py-1 text-sm transition-colors ${
+              activeTag === 'all'
+                ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
             }`}
           >
             全部
@@ -54,8 +56,10 @@ export function HomePage() {
               key={t.id}
               type="button"
               onClick={() => setActiveTag(t.id)}
-              className={`rounded-md border px-3 py-1 text-sm ${
-                activeTag === t.id ? 'border-slate-300 bg-slate-100 text-slate-900' : 'border-slate-200 bg-white text-slate-600'
+              className={`rounded-md border px-3 py-1 text-sm transition-colors ${
+                activeTag === t.id
+                  ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100'
+                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
               }`}
             >
               {t.name}
@@ -68,16 +72,17 @@ export function HomePage() {
         <SectionHeading title="推荐教材" desc="干净的信息密度，PC 优先排版" />
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {visibleDocs.map((d) => (
-            <article key={d.id} className="rounded-md border border-slate-200 p-4">
-              <h3 className="line-clamp-2 text-sm font-semibold text-slate-900">{d.title}</h3>
-              <p className="mt-1 text-xs text-slate-500">类型：{d.fileType ?? 'doc'}</p>
-              <AppButton
+            <article key={d.id} className="rounded-md border border-slate-200 p-4 dark:border-slate-700">
+              <h3 className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{d.title}</h3>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">类型：{d.fileType ?? 'doc'}</p>
+              <Button
                 onClick={() => setAdded((s) => ({ ...s, [d.id]: !s[d.id] }))}
                 className="mt-3 text-xs"
-                tone={added[d.id] ? 'soft' : 'primary'}
+                size="sm"
+                variant={added[d.id] ? 'soft' : 'primary'}
               >
                 {added[d.id] ? '已加入我的教材' : '加入我的教材'}
-              </AppButton>
+              </Button>
             </article>
           ))}
         </div>

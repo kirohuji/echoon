@@ -1,9 +1,13 @@
 @import 'tailwindcss';
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #f8fafc;
   --fg: #0f172a;
+  --surface: #ffffff;
+  --surface-muted: #f1f5f9;
+  --border: #e2e8f0;
+  --text-muted: #64748b;
 }
 
 html,
@@ -19,9 +23,17 @@ body {
   color: var(--fg);
 }
 
+html.dark {
+  color-scheme: dark;
+}
+
 html.dark body {
   --bg: #020617;
   --fg: #f1f5f9;
+  --surface: #0f172a;
+  --surface-muted: #1e293b;
+  --border: #334155;
+  --text-muted: #94a3b8;
 }
 
 #root {

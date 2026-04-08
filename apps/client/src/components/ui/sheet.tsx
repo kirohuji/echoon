@@ -12,7 +12,7 @@ export function SheetOverlay(props: React.ComponentPropsWithoutRef<typeof Dialog
   return (
     <Dialog.Overlay
       className={cn(
-        'fixed inset-0 z-50 bg-black/50',
+        'fixed inset-0 z-50 bg-black/45',
         props.className,
       )}
       {...props}
@@ -39,7 +39,7 @@ export const SheetContent = React.forwardRef<HTMLDivElement, SheetContentProps>(
       <Dialog.Content
         ref={ref}
         className={cn(
-          'fixed z-50 gap-4 bg-white p-0 shadow-lg outline-none',
+          'fixed z-50 gap-4 border-slate-200 bg-white p-0 shadow-lg outline-none dark:border-slate-700 dark:bg-slate-950',
           sideClasses,
           side === 'bottom' && 'mt-24 rounded-t-[16px]',
           side === 'top' && 'mb-24 rounded-b-[16px]',

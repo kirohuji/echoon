@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { AppButton } from '../../components/app/app-button';
 import { SectionHeading } from '../../components/app/section-heading';
 import { SurfaceCard } from '../../components/app/surface-card';
 import { ThemeModeSegment } from '../../components/theme-mode-segment';
+import { Button, Card } from '../../components/ui';
 import { useAuth } from '../../auth/auth-provider';
 import { useAppStore } from '../../store/app-store';
 
@@ -20,8 +20,8 @@ export function ProfilePage() {
           desc="个人信息与会员概览；手机上在「我的」页通过右上角齿轮进入设置。"
         />
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <Card title="个人信息" desc={`当前用户：${user?.name ?? user?.username ?? '未命名用户'}`} />
-          <Card
+          <InfoCard title="个人信息" desc={`当前用户：${user?.name ?? user?.username ?? '未命名用户'}`} />
+          <InfoCard
             title="会员管理"
             desc={`套餐：${membership?.plan ?? 'Free'} · 状态：${membership?.status ?? 'normal'}`}
           />
@@ -49,9 +49,9 @@ export function ProfilePage() {
             </Link>
           </div>
         </div>
-        <AppButton onClick={() => void signOut()} className="mt-4 hidden lg:inline-flex">
+        <Button onClick={() => void signOut()} className="mt-4 hidden lg:inline-flex" variant="destructive">
           退出登录
-        </AppButton>
+        </Button>
       </SurfaceCard>
 
       <section className="space-y-4">
@@ -90,12 +90,12 @@ export function ProfilePage() {
   );
 }
 
-function Card({ title, desc }: { title: string; desc: string }) {
+function InfoCard({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="rounded-md border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900/40">
+    <Card className="rounded-md p-3 dark:bg-slate-900/40">
       <p className="text-sm font-semibold dark:text-slate-100">{title}</p>
       <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">{desc}</p>
-    </div>
+    </Card>
   );
 }
 

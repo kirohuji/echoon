@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import WaveSurfer from 'wavesurfer.js';
 import ReactAudioPlayer from 'react-audio-player';
 
+import { Button } from '../components/ui/button';
 import { http } from '../lib/http';
 
 type WordTimestamp = {
@@ -194,45 +195,41 @@ export function ReadingPlayerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white p-4">
-        <div className="text-sm text-gray-600">Loading...</div>
+      <div className="min-h-screen p-4">
+        <div className="text-sm text-slate-600 dark:text-slate-300">Loading...</div>
       </div>
     );
   }
 
   if (errorMsg) {
     return (
-      <div className="min-h-screen bg-white p-4">
-        <div className="text-sm text-red-600">{errorMsg}</div>
+      <div className="min-h-screen p-4">
+        <div className="text-sm text-rose-600">{errorMsg}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white p-4">
+    <div className="min-h-screen p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-base font-semibold">
+          <div className="truncate text-base font-semibold text-slate-900 dark:text-slate-100">
             {doc?.title ? doc.title : 'Reading'}
           </div>
-          <div className="text-xs text-gray-500">Document id: {id}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">Document id: {id}</div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="rounded-md bg-gray-900 px-3 py-2 text-sm text-white"
-            onClick={handlePlayPause}
-          >
+          <Button type="button" variant="primary" onClick={handlePlayPause}>
             {isPlaying ? 'Pause' : 'Play'}
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="rounded-lg border p-3">
+      <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900">
         <div ref={waveContainerRef} className="mb-2 w-full" />
 
-        <div className="flex items-center justify-between text-xs text-gray-600">
+        <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
           <div>{currentTime.toFixed(1)}s</div>
           <div>{duration ? duration.toFixed(1) : '--'}s</div>
         </div>
@@ -249,15 +246,15 @@ export function ReadingPlayerPage() {
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-xs text-gray-500">Speed</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">Speed</div>
             {[0.75, 1, 1.25, 1.5].map((r) => (
               <button
                 key={r}
                 type="button"
                 className={`rounded-md px-2 py-1 text-xs ${
                   playbackRate === r
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-800'
+                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                    : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
                 }`}
                 onClick={() => setPlaybackRate(r)}
               >
@@ -267,9 +264,9 @@ export function ReadingPlayerPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="text-xs text-gray-500">Sleep</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">Sleep</div>
             <select
-              className="rounded-md border bg-white px-2 py-1 text-xs"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900"
               value={sleepMinutes}
               onChange={(e) => setSleepMinutes(Number(e.target.value))}
             >
@@ -283,8 +280,8 @@ export function ReadingPlayerPage() {
         </div>
       </div>
 
-      <div className="mt-3 rounded-lg border p-3">
-        <div className="mb-2 text-xs font-medium text-gray-700">
+      <div className="mt-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900">
+        <div className="mb-2 text-xs font-medium text-slate-700 dark:text-slate-200">
           {normalizedWords.length ? 'Words' : 'No word timestamps.'}
         </div>
 
@@ -295,8 +292,8 @@ export function ReadingPlayerPage() {
               key={`${i}-${w.start_time}`}
               className={`inline-block rounded-sm px-0.5 py-0.5 transition-colors ${
                 i === activeWordIndex
-                  ? 'bg-yellow-300 text-gray-900'
-                  : 'text-gray-900'
+                  ? 'bg-yellow-300 text-slate-900'
+                  : 'text-slate-900 dark:text-slate-100'
               }`}
             >
               {w.text}{' '}
