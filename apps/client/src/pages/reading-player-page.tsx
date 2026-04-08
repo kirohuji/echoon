@@ -3,8 +3,6 @@ import { useParams } from 'react-router-dom';
 import WaveSurfer from 'wavesurfer.js';
 import ReactAudioPlayer from 'react-audio-player';
 
-import { CONFIG } from '../config';
-import { STORAGE_KEY } from '../auth/constant';
 import { http } from '../lib/http';
 
 type WordTimestamp = {
@@ -86,21 +84,7 @@ export function ReadingPlayerPage() {
         const documentRes = await http.get<DocumentData>(`/document/${id}`);
         setDoc(documentRes);
 
-        const token = sessionStorage.getItem(STORAGE_KEY);
-        if (!token) throw new Error('Missing login token.');
-
-        const audioRes = await fetch(`${CONFIG.serverUrl}/document/${id}/audio`, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!audioRes.ok) {
-          throw new Error(`Failed to load audio: ${audioRes.status}`);
-        }
-
-        const blob = await audioRes.blob();
+        const blob = await http.getBlob(`/document/${id}/audio`);
         objectUrl = URL.createObjectURL(blob);
         setAudioUrl(objectUrl);
       } catch (e) {

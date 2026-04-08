@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AuthProvider } from './auth/auth-provider';
+import { NotificationProvider } from './auth/notification-provider';
 import { RequireAuth } from './auth/require-auth';
 import { AppLayout } from './layouts/app-layout';
 import { LoginPage } from './pages/auth/login-page';
@@ -14,6 +15,7 @@ import { PlaceholderPage } from './pages/shared/placeholder-page';
 export function App() {
   return (
     <AuthProvider>
+      <NotificationProvider>
       <Routes>
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/login" element={<LoginPage />} />
@@ -33,6 +35,15 @@ export function App() {
             path="/me/tickets"
             element={<PlaceholderPage title="我的工单" desc="反馈、追踪和处理记录。" />}
           />
+          <Route
+            path="/me/guidelines"
+            element={
+              <PlaceholderPage
+                title="规范文件"
+                desc="学习规范、平台规则与常见问题将整理在此，后续会接入完整文档。"
+              />
+            }
+          />
           <Route path="/reading/:id" element={<ReadingPlayerPage />} />
         </Route>
         <Route
@@ -47,6 +58,7 @@ export function App() {
           }
         />
       </Routes>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

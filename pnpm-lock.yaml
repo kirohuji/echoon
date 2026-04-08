@@ -335,7 +335,7 @@ importers:
         specifier: ^1.0.11
         version: 1.0.11(react@19.1.0)(wavesurfer.js@7.10.0)
       axios:
-        specifier: ^1.8.4
+        specifier: ^1.10.0
         version: 1.10.0
       framer-motion:
         specifier: ^12.23.0

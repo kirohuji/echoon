@@ -19,6 +19,11 @@ body {
   color: var(--fg);
 }
 
+html.dark body {
+  --bg: #020617;
+  --fg: #f1f5f9;
+}
+
 #root {
   min-height: 100%;
 }
